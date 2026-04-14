@@ -1,0 +1,306 @@
+<!--
+  WIREFRAME: Account — /account
+  ============================================================
+  Component file : src/app/(shop)/account/page.tsx
+  Auth           : Required — middleware redirects to /login if not authenticated
+  Data           : GET /api/orders (own orders, authenticated)
+  Design ref     : DESIGN_SYSTEM.md
+  TDD ref        : Section 6.1
+
+  LAYOUT INTENT
+  ─────────────
+  Two-column: sidebar nav left (180px fixed), content area right.
+  Default view: Orders tab active.
+  Sidebar stays fixed, content area scrolls.
+
+  CONSTRAINTS
+  ───────────
+  · Sidebar nav: Orders (default) · Skin profile · Addresses · Settings · Sign out
+  · Orders: show all orders, newest first, with reorder button on each
+  · Restock reminder: shown only if a product was ordered > 40 days ago
+  · Skin profile: editable — opens edit mode inline, not a modal
+  · Never show other customers' orders — RLS enforces this at DB level
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wireframe — Account + Support</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #fafafa; color: #141414; line-height: 1.5; }
+    .wf-note { background: #fffbe6; border-left: 3px solid #f0c000; padding: 6px 10px; font-size: 11px; color: #7a5f00; margin: 4px 0; }
+    .wf-component { border: 1.5px dashed #a3a3a3; border-radius: 2px; padding: 8px 12px; margin: 4px 0; background: #fff; font-size: 12px; color: #6b6b6b; }
+    .wf-section { border: 1px solid #ebebeb; margin: 0; padding: 16px 24px; background: #fff; }
+    .wf-section + .wf-section { border-top: none; }
+    .wf-section.alt { background: #fafafa; }
+    .wf-label { font-size: 9px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: #a3a3a3; margin-bottom: 8px; display: block; }
+    .wf-placeholder { background: #f5f5f5; border: 1px solid #ebebeb; border-radius: 2px; display: flex; align-items: center; justify-content: center; color: #a3a3a3; font-size: 11px; text-align:center; }
+    .row { display: flex; gap: 12px; }
+    .col { flex: 1; }
+    .inp { border:1px solid #d6d6d6; border-radius:2px; padding:7px 10px; font-size:12px; width:100%; background:#fff; }
+    .inp-lbl { font-size:9px; font-family:monospace; letter-spacing:.1em; text-transform:uppercase; color:#6b6b6b; display:block; margin-bottom:4px; }
+    h2 { font-size:16px; font-weight:400; margin-bottom:12px; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════
+     ACCOUNT PAGE — /account
+     ════════════════════════════════════════════════════════ -->
+
+<!-- Navbar (full — user is logged in) -->
+<div class="wf-section">
+  <span class="wf-label">Navbar — full, user logged in (user icon shows initials or filled state)</span>
+  <div class="row" style="align-items:center; padding:8px 0">
+    <div class="wf-component" style="width:60px">Brand.</div>
+    <div class="col" style="display:flex;gap:16px;justify-content:center">
+      <div class="wf-component">Shop</div>
+      <div class="wf-component">Ingredients</div>
+      <div class="wf-component">About</div>
+    </div>
+    <div class="row" style="gap:6px;flex:0 0 auto">
+      <div class="wf-component" style="width:28px;height:28px;padding:0;text-align:center">🔍</div>
+      <!-- User icon: filled/active state when logged in — shows initials PM on hover -->
+      <div class="wf-component" style="width:28px;height:28px;padding:0;text-align:center;background:#141414;color:#fff;font-size:9px;font-family:monospace">PM</div>
+      <div class="wf-component" style="width:28px;height:28px;padding:0;text-align:center">🛍</div>
+    </div>
+  </div>
+</div>
+
+<!-- Account main layout -->
+<div class="wf-section">
+  <span class="wf-label">Account — 2-col: sidebar left (180px), content right</span>
+  <div class="row" style="gap:0; min-height:500px">
+
+    <!-- ── SIDEBAR ──────────────────────────────────────────── -->
+    <div style="width:180px; flex-shrink:0; border-right:1px solid #ebebeb; background:#fafafa; padding:16px">
+      <!-- User summary -->
+      <div style="margin-bottom:20px">
+        <!-- Avatar: initials circle, 36×36, bg-gray-900, white text -->
+        <div style="width:36px; height:36px; border-radius:50%; background:#141414; display:flex; align-items:center; justify-content:center; margin-bottom:8px; color:#fff; font-size:11px; font-family:monospace">PM</div>
+        <div style="font-size:12px; font-weight:500; margin-bottom:2px">Priya Mehta</div>
+        <div style="font-size:10px; font-family:monospace; color:#a3a3a3">priya@example.com</div>
+      </div>
+
+      <!-- Sidebar nav links -->
+      <div style="display:flex; flex-direction:column; gap:2px">
+        <!-- Active: bg-white, border-gray-100, text-gray-900 font-medium -->
+        <!-- Inactive: no bg, text-gray-600 -->
+        <div class="wf-component" style="font-size:12px; font-weight:500; color:#141414; background:#fff; border:1px solid #ebebeb">Orders</div>
+        <div class="wf-component" style="font-size:12px; color:#6b6b6b; border:none; background:none">Skin profile</div>
+        <div class="wf-component" style="font-size:12px; color:#6b6b6b; border:none; background:none">Addresses</div>
+        <div class="wf-component" style="font-size:12px; color:#6b6b6b; border:none; background:none">Settings</div>
+        <hr style="border:none; border-top:1px solid #ebebeb; margin:8px 0">
+        <!-- Sign out: text-gray-400, onClick → supabase.auth.signOut() → redirect to / -->
+        <div class="wf-component" style="font-size:12px; color:#a3a3a3; border:none; background:none; cursor:pointer">Sign out</div>
+      </div>
+    </div>
+
+    <!-- ── CONTENT AREA: ORDERS ─────────────────────────────── -->
+    <div class="col" style="padding:20px 24px">
+      <div class="row" style="justify-content:space-between; align-items:baseline; margin-bottom:20px">
+        <h2 style="margin-bottom:0">Order history</h2>
+        <span style="font-size:10px; font-family:monospace; color:#a3a3a3">3 orders</span>
+      </div>
+
+      <!-- ── ORDER ROW 1 (most recent) ──── -->
+      <!-- data-testid="order-row" on each row -->
+      <div style="display:flex; align-items:center; gap:12px; padding:14px 0; border-bottom:1px solid #ebebeb">
+        <div style="flex:1">
+          <!-- Order number: font-mono, text-2xs, text-gray-400, uppercase -->
+          <div style="font-size:9px; font-family:monospace; color:#a3a3a3; text-transform:uppercase; margin-bottom:2px">ORD-2026-0001</div>
+          <!-- Products summary: font-body, text-xs, text-gray-900 -->
+          <div style="font-size:12px; font-weight:500; margin-bottom:2px">Brightening Serum + Pore Toner</div>
+          <!-- Date + amount: font-mono, text-2xs, text-gray-400 -->
+          <div style="font-size:10px; font-family:monospace; color:#a3a3a3">29 Apr 2026 · ₹2,198</div>
+        </div>
+        <!-- StatusBadge component: import from @/components/ui/StatusBadge -->
+        <!-- Props: { status: "confirmed" } -->
+        <!-- data-testid="status-badge" -->
+        <div class="wf-component" style="font-size:9px; font-family:monospace; background:#eff2f0; color:#4a5e4e; border-color:#d8ded9; padding:3px 8px">Confirmed</div>
+        <!-- Reorder: btn-outline, text-xs -->
+        <!-- onClick: adds all order_items back to cart, opens CartDrawer -->
+        <div class="wf-component" style="font-size:10px; padding:4px 10px; border:1px solid #d6d6d6; cursor:pointer; white-space:nowrap">Reorder</div>
+        <!-- View details: text link, navigates to /account/orders/[id] -->
+        <div class="wf-component" style="font-size:10px; font-family:monospace; color:#a3a3a3; border:none; background:none; cursor:pointer">View →</div>
+      </div>
+
+      <!-- ORDER ROW 2 -->
+      <div style="display:flex; align-items:center; gap:12px; padding:14px 0; border-bottom:1px solid #ebebeb">
+        <div style="flex:1">
+          <div style="font-size:9px; font-family:monospace; color:#a3a3a3; text-transform:uppercase; margin-bottom:2px">ORD-2026-0381</div>
+          <div style="font-size:12px; font-weight:500; margin-bottom:2px">Night Repair Cream</div>
+          <div style="font-size:10px; font-family:monospace; color:#a3a3a3">12 Mar 2026 · ₹2,499</div>
+        </div>
+        <div class="wf-component" style="font-size:9px; font-family:monospace; background:#f5f5f5; color:#6b6b6b; border-color:#ebebeb; padding:3px 8px">Delivered</div>
+        <div class="wf-component" style="font-size:10px; padding:4px 10px; border:1px solid #d6d6d6; cursor:pointer; white-space:nowrap">Reorder</div>
+        <div class="wf-component" style="font-size:10px; font-family:monospace; color:#a3a3a3; border:none; background:none; cursor:pointer">View →</div>
+      </div>
+
+      <!-- ORDER ROW 3 -->
+      <div style="display:flex; align-items:center; gap:12px; padding:14px 0; border-bottom:1px solid #ebebeb">
+        <div style="flex:1">
+          <div style="font-size:9px; font-family:monospace; color:#a3a3a3; text-transform:uppercase; margin-bottom:2px">ORD-2026-0294</div>
+          <div style="font-size:12px; font-weight:500; margin-bottom:2px">Pore Refining Toner</div>
+          <div style="font-size:10px; font-family:monospace; color:#a3a3a3">18 Jan 2026 · ₹899</div>
+        </div>
+        <div class="wf-component" style="font-size:9px; font-family:monospace; background:#f5f5f5; color:#6b6b6b; border-color:#ebebeb; padding:3px 8px">Delivered</div>
+        <div class="wf-component" style="font-size:10px; padding:4px 10px; border:1px solid #d6d6d6; cursor:pointer; white-space:nowrap">Reorder</div>
+        <div class="wf-component" style="font-size:10px; font-family:monospace; color:#a3a3a3; border:none; background:none; cursor:pointer">View →</div>
+      </div>
+
+      <hr style="border:none; border-top:1px solid #ebebeb; margin:20px 0">
+
+      <!-- SKIN PROFILE SECTION -->
+      <h2>Skin profile</h2>
+      <div class="wf-note">Editable inline — not a modal. Click "Edit" to swap to input fields in place.</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:20px">
+        <!-- Each field: label + value, border-gray-100 -->
+        <div style="padding:10px 12px; border:1px solid #ebebeb; border-radius:2px">
+          <div class="inp-lbl" style="margin-bottom:2px">Skin type</div>
+          <div style="font-size:12px">Combination</div>
+        </div>
+        <div style="padding:10px 12px; border:1px solid #ebebeb; border-radius:2px">
+          <div class="inp-lbl" style="margin-bottom:2px">Concerns</div>
+          <div style="font-size:12px">Dullness · Pores</div>
+        </div>
+        <div style="padding:10px 12px; border:1px solid #ebebeb; border-radius:2px">
+          <div class="inp-lbl" style="margin-bottom:2px">Sensitivities</div>
+          <div style="font-size:12px">None noted</div>
+        </div>
+        <div style="padding:10px 12px; border:1px solid #ebebeb; border-radius:2px">
+          <div class="inp-lbl" style="margin-bottom:2px">Last quiz</div>
+          <div style="font-size:12px">Jan 2026 <span style="font-family:monospace; font-size:9px; color:#a3a3a3; text-decoration:underline; cursor:pointer">Retake →</span></div>
+        </div>
+      </div>
+
+      <!-- RESTOCK REMINDER — conditional, shown if last order > 40 days ago -->
+      <div class="wf-note">Restock reminder: only shown if most recent order containing this product is > 40 days old. Compute server-side.</div>
+      <div class="wf-component" style="background:#fafafa; border-left:2px solid #141414; padding:12px 14px">
+        <div style="font-size:9px; font-family:monospace; color:#a3a3a3; text-transform:uppercase; margin-bottom:4px">RUNNING LOW?</div>
+        <div style="font-size:12px; color:#6b6b6b; margin-bottom:10px">Your Pore Refining Toner (100ml) typically lasts ~45 days. You ordered 78 days ago.</div>
+        <!-- Reorder CTA: btn-primary, text-xs -->
+        <!-- onClick: addItem(variant, product, 1) → open CartDrawer -->
+        <div class="wf-component" style="background:#141414; color:#fff; padding:6px 14px; font-size:10px; display:inline-block; cursor:pointer">Reorder now — ₹899</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SUPPORT FORM — /support/new
+     ============================================================
+     Component file : src/app/(shop)/support/new/page.tsx
+     Auth           : Public (guest can submit with email)
+     Data           : POST /api/support
+     TDD ref        : Sections 5.6, 9.3
+
+     LAYOUT INTENT
+     ─────────────
+     Simple centered form. Max-width 520px. No sidebar.
+     Optional order link — dropdown of customer's past orders if logged in.
+
+     CONSTRAINTS
+     ───────────
+     · Guest can submit without login — must provide email
+     · Logged-in user: email pre-filled, hidden (read-only)
+     · Order link is optional — not required to submit
+     · Subject: max 200 chars · Body: max 5000 chars
+     · On success: show inline confirmation (do not redirect)
+     · data-testid="support-form" on the form element
+     ════════════════════════════════════════════════════════ -->
+
+<div style="margin-top:32px; border-top:3px solid #ebebeb; padding-top:8px">
+  <div class="wf-section">
+    <span class="wf-label">PAGE 3: Support form — /support/new</span>
+  </div>
+</div>
+
+<!-- Navbar (full) -->
+<div class="wf-section">
+  <span class="wf-label">Navbar — full</span>
+  <div class="wf-component" style="text-align:center; color:#a3a3a3; font-size:11px">Full navbar (see home.html)</div>
+</div>
+
+<!-- Support form -->
+<div class="wf-section" style="padding:40px 24px">
+  <span class="wf-label">Support form — centered, max-width 520px</span>
+
+  <div style="max-width:520px; margin:0 auto">
+    <!-- Page heading -->
+    <div class="wf-component" style="font-size:18px; font-family:Georgia; margin-bottom:6px">Contact support</div>
+    <div class="wf-component" style="font-size:12px; color:#6b6b6b; margin-bottom:24px">
+      We typically respond within 1 business day.
+    </div>
+
+    <!-- data-testid="support-form" -->
+    <!-- React Hook Form + Zod validation -->
+    <div style="display:flex; flex-direction:column; gap:16px">
+
+      <!-- Email — pre-filled and hidden if logged in, required if guest -->
+      <div>
+        <label class="inp-lbl">Email address *</label>
+        <input class="inp" type="email" placeholder="you@example.com">
+        <div class="wf-note" style="margin-top:4px">If logged in: pre-fill from auth.user.email and set to readOnly. Show as static text not input.</div>
+      </div>
+
+      <!-- Order link (optional) -->
+      <div>
+        <label class="inp-lbl">Related order (optional)</label>
+        <!-- If logged in: dropdown of own orders from GET /api/orders -->
+        <!-- If guest: text input for order number -->
+        <select class="inp">
+          <option value="">No specific order</option>
+          <option value="ord-001">ORD-2026-0001 — Brightening Serum + Pore Toner</option>
+          <option value="ord-002">ORD-2026-0381 — Night Repair Cream</option>
+        </select>
+        <div class="wf-note" style="margin-top:4px">If guest: show text input with placeholder "Order number e.g. ORD-2026-0001"</div>
+      </div>
+
+      <!-- Subject -->
+      <div>
+        <label class="inp-lbl">Subject * <span style="color:#a3a3a3; font-weight:400">(max 200 chars)</span></label>
+        <input class="inp" placeholder="Briefly describe your issue">
+      </div>
+
+      <!-- Body -->
+      <div>
+        <label class="inp-lbl">Message * <span style="color:#a3a3a3; font-weight:400">(max 5000 chars)</span></label>
+        <textarea class="inp" rows="6" placeholder="Please describe your issue in detail. Include any relevant photos or order details." style="resize:vertical"></textarea>
+        <!-- Character counter: right-aligned, font-mono text-2xs text-gray-400 -->
+        <div style="text-align:right; font-size:9px; font-family:monospace; color:#a3a3a3; margin-top:4px">0 / 5000</div>
+      </div>
+
+      <!-- Submit -->
+      <div class="wf-component" style="background:#141414; color:#fff; text-align:center; padding:10px; font-size:11px; font-family:monospace; letter-spacing:.06em; text-transform:uppercase; cursor:pointer">
+        Submit ticket
+      </div>
+    </div>
+
+    <!-- Success state — shown after successful POST /api/support -->
+    <!-- Replaces form, not a separate page -->
+    <div style="margin-top:32px; padding-top:24px; border-top:1px solid #ebebeb">
+      <span class="wf-label">Success state — shown after submit (replaces form)</span>
+      <div class="wf-note">Do not redirect. Replace form content with this confirmation in place.</div>
+      <div style="text-align:center; padding:24px">
+        <div style="width:32px; height:32px; border-radius:50%; background:#141414; color:#fff; display:flex; align-items:center; justify-content:center; margin:0 auto 12px; font-size:16px">✓</div>
+        <div class="wf-component" style="font-size:15px; font-family:Georgia; margin-bottom:6px">Ticket submitted.</div>
+        <div class="wf-component" style="font-size:12px; color:#6b6b6b; margin-bottom:4px">Ticket #TKT-0042 · We'll respond to you@example.com within 1 business day.</div>
+        <div class="wf-component" style="display:inline-block; margin-top:12px; border:1px solid #d6d6d6; padding:6px 16px; font-size:11px; cursor:pointer">Back to shop</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Footer (shared) -->
+<div class="wf-section">
+  <span class="wf-label">Footer — shared component</span>
+  <div class="wf-component" style="text-align:center; color:#a3a3a3; font-size:11px">Footer component</div>
+</div>
+
+</body>
+</html>

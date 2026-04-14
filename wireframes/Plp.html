@@ -1,0 +1,289 @@
+<!--
+  WIREFRAME: Product Listing Page (PLP) — /products
+  ============================================================
+  Component file : src/app/(shop)/products/page.tsx
+  Auth           : Public
+  Data           : GET /api/products (with query params from filters)
+  Design ref     : DESIGN_SYSTEM.md
+  TDD ref        : Section 6.1
+
+  URL PARAM MAPPING
+  ──────────────────
+  /products?skin_type=dry&concern=acne&sort=price_asc&limit=20&offset=0
+
+  LAYOUT INTENT
+  ─────────────
+  Filter bar always visible at top (not hidden in sidebar).
+  Product grid fills remaining width. No sidebar layout.
+  Empty state rendered inline if filters return zero results.
+
+  CONSTRAINTS
+  ───────────
+  · Filters are URL-driven — update pushes to router, page re-fetches
+  · Sort select is right-aligned in the same bar as filters
+  · "Not sure?" CTA section appears at bottom of EVERY page, above footer
+  · Grid is 4-col desktop, 2-col tablet, 1-col mobile
+  · Product count shown next to heading in muted mono text
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wireframe — Product Listing Page</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #fafafa; color: #141414; line-height: 1.5; }
+    .wf-note { background: #fffbe6; border-left: 3px solid #f0c000; padding: 6px 10px; font-size: 11px; color: #7a5f00; margin: 4px 0; }
+    .wf-component { border: 1.5px dashed #a3a3a3; border-radius: 2px; padding: 8px 12px; margin: 4px 0; background: #fff; font-size: 12px; color: #6b6b6b; }
+    .wf-section { border: 1px solid #ebebeb; margin: 0; padding: 16px 24px; background: #fff; }
+    .wf-section + .wf-section { border-top: none; }
+    .wf-section.alt { background: #fafafa; }
+    .wf-label { font-size: 9px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: #a3a3a3; margin-bottom: 8px; display: block; }
+    .wf-placeholder { background: #f5f5f5; border: 1px solid #ebebeb; border-radius: 2px; display: flex; align-items: center; justify-content: center; color: #a3a3a3; font-size: 11px; text-align:center; }
+    .row { display: flex; gap: 12px; }
+    .col { flex: 1; }
+    h2 { font-size: 16px; font-weight: 400; }
+    .filter-btn { border: 1px solid #ebebeb; background: #fff; padding: 4px 10px; font-size: 10px; font-family: monospace; letter-spacing: .08em; text-transform: uppercase; color: #6b6b6b; cursor: pointer; border-radius: 2px; }
+    .filter-btn.active { background: #141414; color: #fff; border-color: #141414; }
+  </style>
+</head>
+<body>
+
+<!-- Navbar (shared) — see home.html for spec -->
+<div class="wf-section">
+  <span class="wf-label">Navbar — shared component (see home.html)</span>
+  <div class="row" style="align-items:center; padding:8px 0">
+    <div class="wf-component" style="width:60px">Brand.</div>
+    <div class="col" style="display:flex;gap:16px;justify-content:center">
+      <div class="wf-component" style="font-weight:600;color:#141414">Shop ←active</div>
+      <div class="wf-component">Ingredients</div>
+      <div class="wf-component">About</div>
+      <div class="wf-component">Journal</div>
+    </div>
+    <div class="row" style="gap:6px;flex:0 0 auto">
+      <div class="wf-component" style="width:28px;height:28px;padding:0;text-align:center">🔍</div>
+      <div class="wf-component" style="width:28px;height:28px;padding:0;text-align:center">👤</div>
+      <div class="wf-component" style="width:28px;height:28px;padding:0;text-align:center">🛍</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 1: FILTER BAR
+     Component : src/components/shop/FilterBar.tsx
+     Behaviour : URL-driven — each toggle pushes router.push with updated params
+                 Active filters visually highlighted (active class)
+                 Multiple concerns can be selected simultaneously
+                 Skin type is single-select (radio behaviour)
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="padding:12px 24px">
+  <span class="wf-label">FilterBar — src/components/shop/FilterBar.tsx</span>
+  <div class="wf-note">FilterBar is a client component ("use client"). Reads searchParams, updates via router.push.</div>
+
+  <div class="row" style="align-items:center; flex-wrap:wrap; gap:8px; justify-content:space-between">
+    <!-- Left: skin type filters (single-select) -->
+    <div class="row" style="align-items:center; gap:6px; flex-wrap:wrap">
+      <!-- Label: font-mono, text-2xs, uppercase, text-gray-400, mr-1 -->
+      <span style="font-size:9px; font-family:monospace; color:#a3a3a3; text-transform:uppercase">Skin type:</span>
+      <!-- FilterButton props: { label, value, param: "skin_type", mode: "single" } -->
+      <button class="filter-btn active">All</button>
+      <button class="filter-btn">Dry</button>
+      <button class="filter-btn">Oily</button>
+      <button class="filter-btn">Combination</button>
+      <button class="filter-btn">Sensitive</button>
+    </div>
+
+    <!-- Middle: concern filters (multi-select) -->
+    <div class="row" style="align-items:center; gap:6px; flex-wrap:wrap">
+      <span style="font-size:9px; font-family:monospace; color:#a3a3a3; text-transform:uppercase">Concern:</span>
+      <!-- FilterButton props: { label, value, param: "concern", mode: "multi" } -->
+      <button class="filter-btn">Acne</button>
+      <button class="filter-btn">Dullness</button>
+      <button class="filter-btn">Aging</button>
+      <button class="filter-btn">Pores</button>
+      <button class="filter-btn">Redness</button>
+    </div>
+
+    <!-- Right: sort select -->
+    <div class="row" style="align-items:center; gap:6px">
+      <span style="font-size:9px; font-family:monospace; color:#a3a3a3; text-transform:uppercase">Sort:</span>
+      <!-- Native select — styled via Tailwind, no custom dropdown -->
+      <!-- onChange → router.push with updated sort param -->
+      <div class="wf-component" style="padding:4px 8px; font-size:10px">
+        Best match ▾
+        <!-- Options: Best match | Price: low | Price: high | Newest -->
+      </div>
+    </div>
+  </div>
+  <div class="wf-note">When filters return 0 results: hide grid, show EmptyState component (see below). Never show blank page.</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 2: PRODUCT GRID HEADER + GRID
+     Component : server component in page.tsx
+     Data      : Receives products[] + total from server fetch
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section">
+  <span class="wf-label">Product grid — 4-col, server component</span>
+
+  <!-- Grid header -->
+  <div class="row" style="justify-content:space-between; align-items:baseline; margin-bottom:16px">
+    <!-- h1: font-heading, text-3xl, font-normal — only h1 on page -->
+    <div style="display:flex; align-items:baseline; gap:8px">
+      <h2 style="font-size:18px">All products</h2>
+      <!-- Count: font-mono, text-xs, text-gray-400 — shows total from API -->
+      <span class="wf-component" style="padding:2px 6px; font-size:10px">(12)</span>
+    </div>
+  </div>
+
+  <!-- Product grid: grid, grid-cols-4, gap-3 -->
+  <!-- Loading state: replace with SkeletonCard × 8 while fetching -->
+  <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:10px">
+    <!-- ProductCard × 6 shown, remaining loaded via pagination -->
+    <!-- ProductCard props: { product: ProductSummary, showBadge?: boolean } -->
+
+    <!-- Card pattern (repeat for each product) -->
+    <div class="wf-component" style="padding:0; overflow:hidden">
+      <div class="wf-placeholder" style="height:120px; background:#f5f5f5">
+        <!-- next/image: fill, object-cover, aspect-ratio-square -->
+        <!-- Image stored in Supabase storage, served via CDN URL -->
+        Image
+      </div>
+      <div style="padding:8px">
+        <!-- Overline: font-mono, text-2xs, uppercase, text-gray-400 -->
+        <div style="font-size:9px; color:#a3a3a3; margin-bottom:2px">VITAMIN C</div>
+        <!-- Name: font-heading, text-base, font-normal, text-gray-900 -->
+        <div style="font-size:12px; margin-bottom:2px">Brightening Serum</div>
+        <!-- Ingredient summary: font-mono, text-2xs, text-gray-400 -->
+        <div style="font-size:9px; color:#a3a3a3; margin-bottom:6px; font-family:monospace">10% · HA</div>
+        <div class="row" style="justify-content:space-between; align-items:center">
+          <!-- Price: font-heading, text-sm — paise → ₹display -->
+          <span style="font-size:12px">₹1,299</span>
+          <!-- Add button: 24×24, bg-gray-900, text-white, rounded-sm -->
+          <!-- data-testid="add-to-cart" -->
+          <!-- onClick → addItem(firstVariant, product, 1) + open CartDrawer -->
+          <div class="wf-component" style="width:22px;height:22px;background:#141414;color:#fff;text-align:center;padding:0;font-size:13px">+</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wf-component" style="padding:0; overflow:hidden">
+      <div class="wf-placeholder" style="height:120px; background:#f5f0ef">Image</div>
+      <div style="padding:8px">
+        <div style="font-size:9px; color:#a3a3a3; margin-bottom:2px">RETINOL</div>
+        <div style="font-size:12px; margin-bottom:2px">Night Repair Cream</div>
+        <div style="font-size:9px; color:#a3a3a3; margin-bottom:6px; font-family:monospace">0.1% · Ceramides</div>
+        <div class="row" style="justify-content:space-between; align-items:center">
+          <span style="font-size:12px">₹2,499</span>
+          <div class="wf-component" style="width:22px;height:22px;background:#141414;color:#fff;text-align:center;padding:0;font-size:13px">+</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wf-component" style="padding:0; overflow:hidden">
+      <div class="wf-placeholder" style="height:120px; background:#eff2f0">Image</div>
+      <div style="padding:8px">
+        <div style="font-size:9px; color:#a3a3a3; margin-bottom:2px">NIACINAMIDE</div>
+        <div style="font-size:12px; margin-bottom:2px">Pore Refining Toner</div>
+        <div style="font-size:9px; color:#a3a3a3; margin-bottom:6px; font-family:monospace">2% · Zinc PCA</div>
+        <div class="row" style="justify-content:space-between; align-items:center">
+          <span style="font-size:12px">₹899</span>
+          <div class="wf-component" style="width:22px;height:22px;background:#141414;color:#fff;text-align:center;padding:0;font-size:13px">+</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wf-component" style="padding:0; overflow:hidden">
+      <div class="wf-placeholder" style="height:120px">Image</div>
+      <div style="padding:8px">
+        <div style="font-size:9px; color:#a3a3a3; margin-bottom:2px">HYALURONIC ACID</div>
+        <div style="font-size:12px; margin-bottom:2px">Hydration Serum</div>
+        <div style="font-size:9px; color:#a3a3a3; margin-bottom:6px; font-family:monospace">3-weight HA</div>
+        <div class="row" style="justify-content:space-between; align-items:center">
+          <span style="font-size:12px">₹1,099</span>
+          <div class="wf-component" style="width:22px;height:22px;background:#141414;color:#fff;text-align:center;padding:0;font-size:13px">+</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wf-component" style="padding:0; overflow:hidden">
+      <div class="wf-placeholder" style="height:120px">Image</div>
+      <div style="padding:8px">
+        <div style="font-size:9px; color:#a3a3a3; margin-bottom:2px">SPF</div>
+        <div style="font-size:12px; margin-bottom:2px">Daily Shield SPF50</div>
+        <div style="font-size:9px; color:#a3a3a3; margin-bottom:6px; font-family:monospace">PA++++ · Zinc</div>
+        <div class="row" style="justify-content:space-between; align-items:center">
+          <span style="font-size:12px">₹1,599</span>
+          <div class="wf-component" style="width:22px;height:22px;background:#141414;color:#fff;text-align:center;padding:0;font-size:13px">+</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wf-component" style="padding:0; overflow:hidden">
+      <div class="wf-placeholder" style="height:120px; background:#f5f0ef">Image</div>
+      <div style="padding:8px">
+        <div style="font-size:9px; color:#a3a3a3; margin-bottom:2px">AHA/BHA</div>
+        <div style="font-size:12px; margin-bottom:2px">Exfoliating Toner</div>
+        <div style="font-size:9px; color:#a3a3a3; margin-bottom:6px; font-family:monospace">7% AHA · 1% BHA</div>
+        <div class="row" style="justify-content:space-between; align-items:center">
+          <span style="font-size:12px">₹1,199</span>
+          <div class="wf-component" style="width:22px;height:22px;background:#141414;color:#fff;text-align:center;padding:0;font-size:13px">+</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pagination — simple prev/next, no page numbers -->
+  <!-- Only shown when total > limit -->
+  <div class="row" style="justify-content:center; gap:8px; margin-top:24px">
+    <div class="wf-component" style="padding:6px 16px; font-size:10px; color:#a3a3a3">← Previous</div>
+    <div class="wf-component" style="font-size:10px; font-family:monospace; padding:6px 10px; color:#a3a3a3">1 of 3</div>
+    <div class="wf-component" style="padding:6px 16px; font-size:10px">Next →</div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     EMPTY STATE (conditional — shown when filters return 0)
+     Component : src/components/ui/EmptyState.tsx
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section alt" style="text-align:center; padding:48px 24px">
+  <span class="wf-label">Empty state — shown when filter returns 0 results (conditional render)</span>
+  <div class="wf-note">Replace product grid with this when data.length === 0. Never show blank page.</div>
+  <div class="wf-component" style="display:inline-block; font-size:14px; margin-bottom:8px">No products match these filters.</div>
+  <div class="wf-component" style="font-size:11px; color:#6b6b6b; margin-bottom:16px">Try removing a filter or browsing all products.</div>
+  <div class="row" style="justify-content:center; gap:8px">
+    <!-- Clears all filters: router.push('/products') -->
+    <div class="wf-component" style="background:#141414; color:#fff; padding:6px 16px; font-size:10px">Clear all filters</div>
+    <div class="wf-component" style="padding:6px 16px; font-size:10px; border:1px solid #d6d6d6">Take the skin quiz</div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     QUIZ CTA SECTION — always shown at bottom of PLP
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="text-align:center; padding:32px 24px; background:#fafafa">
+  <span class="wf-label">Quiz CTA — always visible at bottom of PLP</span>
+  <h2 style="font-size:16px; margin-bottom:4px">Not sure where to start?</h2>
+  <div class="wf-component" style="font-size:12px; color:#6b6b6b; margin-bottom:16px">
+    Take the 2-minute skin quiz and we'll match you to the right routine.
+  </div>
+  <!-- href="/products?quiz=true" — Phase 2 quiz modal. For now: links to /support/new with pre-filled subject -->
+  <div class="wf-component" style="display:inline-block; background:#141414; color:#fff; padding:8px 20px; font-size:10px">
+    Take the quiz →
+  </div>
+</div>
+
+<!-- Footer (shared) — see home.html for spec -->
+<div class="wf-section">
+  <span class="wf-label">Footer — shared component (see home.html)</span>
+  <div class="wf-component" style="text-align:center; color:#a3a3a3; font-size:11px">Footer component</div>
+</div>
+
+</body>
+</html>
