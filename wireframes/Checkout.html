@@ -1,0 +1,379 @@
+<!--
+  WIREFRAME: Checkout — /checkout
+  ============================================================
+  Component file : src/app/(shop)/checkout/page.tsx
+  Auth           : Public (guest checkout is default)
+  Data           : POST /api/orders on submit
+  Design ref     : DESIGN_SYSTEM.md
+  TDD ref        : Sections 5.1, 6.1, 9.1
+
+  LAYOUT INTENT
+  ─────────────
+  Single page — no multi-step wizard, no page reloads between sections.
+  Two columns: form left (flex:1), order summary right (fixed 280px).
+  Three numbered form sections stacked vertically on the left.
+
+  CONSTRAINTS
+  ───────────
+  · Guest checkout is DEFAULT — account login is optional, offered after purchase
+  · Never require login before placing order
+  · Shipping cost shown BEFORE the final submit button — no surprise at last step
+  · Payment note: "handled at next step" — Razorpay is Phase 2
+  · Form validation: React Hook Form + Zod, client-side before API call
+  · On submit: POST /api/orders → success → redirect to /order/[id]
+  · Order summary column: sticky on desktop (position: sticky, top: 24px)
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wireframe — Checkout + Order Confirmation</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #fafafa; color: #141414; line-height: 1.5; }
+    .wf-note { background: #fffbe6; border-left: 3px solid #f0c000; padding: 6px 10px; font-size: 11px; color: #7a5f00; margin: 4px 0; }
+    .wf-component { border: 1.5px dashed #a3a3a3; border-radius: 2px; padding: 8px 12px; margin: 4px 0; background: #fff; font-size: 12px; color: #6b6b6b; }
+    .wf-section { border: 1px solid #ebebeb; margin: 0; padding: 16px 24px; background: #fff; }
+    .wf-section + .wf-section { border-top: none; }
+    .wf-section.alt { background: #fafafa; }
+    .wf-label { font-size: 9px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: #a3a3a3; margin-bottom: 8px; display: block; }
+    .wf-placeholder { background: #f5f5f5; border: 1px solid #ebebeb; border-radius: 2px; display: flex; align-items: center; justify-content: center; color: #a3a3a3; font-size: 11px; text-align:center; }
+    .row { display: flex; gap: 12px; }
+    .col { flex: 1; }
+    .inp { border:1px solid #d6d6d6; border-radius:2px; padding:8px 10px; font-size:12px; width:100%; background:#fff; }
+    .inp-lbl { font-size:9px; font-family:monospace; letter-spacing:.1em; text-transform:uppercase; color:#6b6b6b; display:block; margin-bottom:4px; }
+    h2 { font-size:22px; font-weight:400; margin-bottom:16px; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════
+     CHECKOUT PAGE
+     ════════════════════════════════════════════════════════ -->
+
+<!-- Minimal navbar: brand only + secure checkout label -->
+<div class="wf-section">
+  <span class="wf-label">Checkout navbar — minimal, no nav links</span>
+  <div class="row" style="align-items:center; justify-content:space-between; padding:8px 0">
+    <div class="wf-component" style="width:60px; font-size:14px">Brand.</div>
+    <!-- Secure label: font-mono, text-2xs, uppercase, text-gray-400 + lock icon -->
+    <div class="wf-component" style="font-size:10px; font-family:monospace; color:#a3a3a3">🔒 Secure checkout</div>
+  </div>
+  <div class="wf-note">No nav links on checkout page. Logo links back to homepage. Reduces distraction and exit intent.</div>
+</div>
+
+<!-- Main checkout layout -->
+<div class="wf-section">
+  <span class="wf-label">Checkout main — 2-col: form left, order summary right (sticky)</span>
+  <div class="row" style="gap:32px; align-items:flex-start">
+
+    <!-- ── LEFT: CHECKOUT FORM ──────────────────────────────
+         "use client" — React Hook Form + Zod
+         Three sections stacked vertically, all visible simultaneously
+    ────────────────────────────────────────────────────────── -->
+    <div class="col">
+
+      <!-- STEP 1: Contact -->
+      <div style="margin-bottom:24px">
+        <!-- Step header: number circle + label -->
+        <div class="row" style="align-items:center; gap:10px; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid #f5f5f5">
+          <div style="width:22px; height:22px; border-radius:50%; background:#141414; color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; font-family:monospace; flex-shrink:0">1</div>
+          <div>
+            <div style="font-size:13px; font-weight:500">Contact</div>
+            <div style="font-size:10px; color:#a3a3a3">Email for order updates</div>
+          </div>
+        </div>
+        <!-- Email field -->
+        <div style="margin-bottom:10px">
+          <label class="inp-lbl">Email address *</label>
+          <input class="inp" type="email" placeholder="you@example.com">
+        </div>
+        <!-- Guest note: shown when not logged in -->
+        <div class="wf-note">Show "Already have an account? Sign in →" link here. Clicking opens login modal (Phase 2). For MVP: link to /login.</div>
+      </div>
+
+      <!-- STEP 2: Shipping address -->
+      <div style="margin-bottom:24px">
+        <div class="row" style="align-items:center; gap:10px; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid #f5f5f5">
+          <div style="width:22px; height:22px; border-radius:50%; background:#141414; color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; font-family:monospace; flex-shrink:0">2</div>
+          <div>
+            <div style="font-size:13px; font-weight:500">Shipping address</div>
+            <div style="font-size:10px; color:#a3a3a3">Where should we send it?</div>
+          </div>
+        </div>
+        <!-- Name row: 2 columns -->
+        <div class="row" style="gap:10px; margin-bottom:10px">
+          <div class="col">
+            <label class="inp-lbl">First name *</label>
+            <input class="inp" placeholder="Priya">
+          </div>
+          <div class="col">
+            <label class="inp-lbl">Last name *</label>
+            <input class="inp" placeholder="Mehta">
+          </div>
+        </div>
+        <!-- Address line 1 -->
+        <div style="margin-bottom:10px">
+          <label class="inp-lbl">Address line 1 *</label>
+          <input class="inp" placeholder="Flat / Building / Street">
+        </div>
+        <!-- Address line 2 (optional) -->
+        <div style="margin-bottom:10px">
+          <label class="inp-lbl">Address line 2 (optional)</label>
+          <input class="inp" placeholder="Area / Landmark">
+        </div>
+        <!-- City + PIN row -->
+        <div class="row" style="gap:10px; margin-bottom:10px">
+          <div class="col">
+            <label class="inp-lbl">City *</label>
+            <input class="inp" placeholder="Bengaluru">
+          </div>
+          <div class="col">
+            <label class="inp-lbl">PIN code *</label>
+            <input class="inp" placeholder="560001">
+          </div>
+        </div>
+        <!-- State + Country row -->
+        <div class="row" style="gap:10px; margin-bottom:10px">
+          <div class="col">
+            <label class="inp-lbl">State *</label>
+            <select class="inp">
+              <option>Karnataka</option>
+              <option>Maharashtra</option>
+            </select>
+          </div>
+          <div class="col">
+            <label class="inp-lbl">Country</label>
+            <input class="inp" value="India" disabled style="background:#f5f5f5; color:#a3a3a3">
+          </div>
+        </div>
+        <!-- Phone -->
+        <div>
+          <label class="inp-lbl">Phone (for delivery updates)</label>
+          <input class="inp" placeholder="+91 98765 43210">
+        </div>
+      </div>
+
+      <!-- STEP 3: Review and place -->
+      <div>
+        <div class="row" style="align-items:center; gap:10px; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid #f5f5f5">
+          <div style="width:22px; height:22px; border-radius:50%; background:#141414; color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; font-family:monospace; flex-shrink:0">3</div>
+          <div>
+            <div style="font-size:13px; font-weight:500">Review and place order</div>
+            <div style="font-size:10px; color:#a3a3a3">Confirm your details above</div>
+          </div>
+        </div>
+        <!-- Payment note: ScienceCallout style -->
+        <div class="wf-component" style="background:#fafafa; border-left:2px solid #141414; padding:10px 12px; margin-bottom:16px">
+          <div style="font-size:9px; font-family:monospace; color:#a3a3a3; text-transform:uppercase; margin-bottom:4px">PAYMENT — NEXT STEP</div>
+          <div style="font-size:11px; color:#6b6b6b">We use Razorpay — UPI, cards, net banking, and wallets all supported.</div>
+        </div>
+        <!-- Primary CTA: full-width btn-primary -->
+        <!-- type="submit" on the form — triggers React Hook Form handleSubmit -->
+        <!-- On success: POST /api/orders → redirect to /order/[id] -->
+        <!-- Shows loading spinner inside button while submitting -->
+        <div class="wf-component" style="background:#141414; color:#fff; text-align:center; padding:12px; font-size:11px; font-family:monospace; letter-spacing:.06em; text-transform:uppercase; cursor:pointer; width:100%; margin-bottom:8px">
+          Continue to payment →
+        </div>
+        <!-- Guest note -->
+        <div style="text-align:center">
+          <span style="font-size:10px; font-family:monospace; color:#a3a3a3">No account needed · Guest checkout</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── RIGHT: ORDER SUMMARY (sticky) ────────────────────
+         position: sticky, top: 24px on desktop
+         background: fafafa, border: gray-100
+    ────────────────────────────────────────────────────────── -->
+    <div style="width:280px; flex-shrink:0; background:#fafafa; border:1px solid #ebebeb; padding:16px; border-radius:2px">
+      <div style="font-size:9px; font-family:monospace; color:#a3a3a3; text-transform:uppercase; margin-bottom:12px">Order summary</div>
+
+      <!-- Item 1 -->
+      <div style="display:flex; gap:8px; align-items:flex-start; padding:8px 0; border-bottom:1px solid #ebebeb">
+        <div class="wf-placeholder" style="width:40px; height:40px; flex-shrink:0; font-size:9px">Img</div>
+        <div style="flex:1">
+          <div style="font-size:11px; font-weight:500">Brightening Serum</div>
+          <div style="font-size:9px; font-family:monospace; color:#a3a3a3">30ml · Qty 1</div>
+        </div>
+        <div style="font-size:11px; font-weight:500; white-space:nowrap">₹1,299</div>
+      </div>
+
+      <!-- Item 2 -->
+      <div style="display:flex; gap:8px; align-items:flex-start; padding:8px 0; border-bottom:1px solid #ebebeb">
+        <div class="wf-placeholder" style="width:40px; height:40px; flex-shrink:0; background:#eff2f0; font-size:9px">Img</div>
+        <div style="flex:1">
+          <div style="font-size:11px; font-weight:500">Pore Refining Toner</div>
+          <div style="font-size:9px; font-family:monospace; color:#a3a3a3">100ml · Qty 1</div>
+        </div>
+        <div style="font-size:11px; font-weight:500; white-space:nowrap">₹899</div>
+      </div>
+
+      <!-- Totals -->
+      <div style="padding-top:10px">
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px">
+          <span style="font-size:11px; font-family:monospace; color:#a3a3a3; text-transform:uppercase">Subtotal</span>
+          <span style="font-size:12px">₹2,198</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:10px">
+          <span style="font-size:11px; font-family:monospace; color:#a3a3a3; text-transform:uppercase">Shipping</span>
+          <!-- Compute server-side: free if subtotal ≥ 99900 paise (₹999) -->
+          <span style="font-size:11px; font-family:monospace; color:#4a5e4e; text-transform:uppercase">Free</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; border-top:1px solid #ebebeb; padding-top:10px">
+          <span style="font-size:13px; font-weight:500">Total</span>
+          <span style="font-size:14px; font-family:Georgia">₹2,198</span>
+        </div>
+      </div>
+
+      <!-- Promo code -->
+      <div style="margin-top:16px; border-top:1px solid #ebebeb; padding-top:12px">
+        <label class="inp-lbl">Promo code</label>
+        <div class="row" style="gap:6px">
+          <input class="inp" style="flex:1" placeholder="Enter code">
+          <div class="wf-component" style="padding:6px 10px; font-size:10px; border:1px solid #d6d6d6; cursor:pointer; white-space:nowrap">Apply</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     ORDER CONFIRMATION PAGE — /order/[id]
+     ============================================================
+     Component file : src/app/(shop)/order/[id]/page.tsx
+     Auth           : Public (accessible by order ID — no auth required)
+     Data           : GET /api/orders/[id]
+     TDD ref        : Section 5.2, 9.1
+     
+     KEY MOMENT: Trust is highest here. Use it.
+     · Account creation incentive — 10% off next order
+     · Start retention journey: what to expect from the product
+     · Product recommendations immediately below
+     
+     CONSTRAINTS
+     ───────────
+     · Account creation is OPTIONAL and incentivised, not required
+     · Order number must be visible and copyable
+     · Confirmation email mention: "we've sent a confirmation to..."
+     · Related products: max 3, same algorithm as PDP
+     ════════════════════════════════════════════════════════ -->
+
+<div style="margin-top:32px; border-top:3px solid #ebebeb; padding-top:8px">
+  <div class="wf-section">
+    <span class="wf-label">PAGE 2: Order confirmation — /order/[id]</span>
+  </div>
+</div>
+
+<!-- Minimal navbar (same as checkout) -->
+<div class="wf-section">
+  <span class="wf-label">Navbar — minimal, same as checkout</span>
+  <div class="row" style="align-items:center; justify-content:space-between; padding:8px 0">
+    <div class="wf-component" style="width:60px; font-size:14px">Brand.</div>
+    <!-- Cart icon: now shows 0 items (cart was cleared on order success) -->
+    <div class="wf-component" style="width:28px;height:28px;padding:0;text-align:center">🛍</div>
+  </div>
+</div>
+
+<!-- Confirmation hero -->
+<div class="wf-section" style="text-align:center; padding:48px 24px">
+  <span class="wf-label">Order confirmed — hero section</span>
+
+  <!-- Checkmark icon: 32×32 circle, bg-gray-900, white checkmark SVG -->
+  <div style="width:40px; height:40px; border-radius:50%; background:#141414; display:flex; align-items:center; justify-content:center; margin:0 auto 16px; color:#fff; font-size:18px">✓</div>
+
+  <!-- Heading: font-heading, text-2xl, font-normal -->
+  <div class="wf-component" style="font-size:20px; font-family:Georgia; margin-bottom:6px">Order confirmed.</div>
+
+  <!-- Sub: font-body, text-sm, text-gray-600 -->
+  <div class="wf-component" style="font-size:12px; color:#6b6b6b; margin-bottom:4px">Thank you, Priya. We're preparing your order now.</div>
+
+  <!-- Order number + email -->
+  <div class="wf-component" style="font-size:10px; font-family:monospace; color:#a3a3a3; margin-bottom:24px">
+    Order #ORD-2026-0001 · Confirmation sent to priya@example.com
+  </div>
+
+  <!-- Info strip: 3 columns -->
+  <div style="display:inline-flex; border:1px solid #ebebeb; border-radius:2px; overflow:hidden; margin-bottom:32px; max-width:480px; width:100%">
+    <div style="flex:1; padding:12px; border-right:1px solid #ebebeb; text-align:center">
+      <div style="font-size:9px; font-family:monospace; color:#a3a3a3; text-transform:uppercase; margin-bottom:4px">Estimated delivery</div>
+      <div style="font-size:12px; font-weight:500">3–5 business days</div>
+    </div>
+    <div style="flex:1; padding:12px; border-right:1px solid #ebebeb; text-align:center">
+      <div style="font-size:9px; font-family:monospace; color:#a3a3a3; text-transform:uppercase; margin-bottom:4px">Shipping to</div>
+      <div style="font-size:12px; font-weight:500">Bengaluru, 560001</div>
+    </div>
+    <div style="flex:1; padding:12px; text-align:center">
+      <div style="font-size:9px; font-family:monospace; color:#a3a3a3; text-transform:uppercase; margin-bottom:4px">Total paid</div>
+      <div style="font-size:12px; font-weight:500">₹2,198</div>
+    </div>
+  </div>
+
+  <!-- Account creation incentive -->
+  <div style="max-width:400px; margin:0 auto">
+    <div class="wf-component" style="background:#fafafa; border-left:2px solid #141414; text-align:left; padding:14px 16px; margin-bottom:16px">
+      <div style="font-size:9px; font-family:monospace; color:#a3a3a3; text-transform:uppercase; margin-bottom:4px">SAVE 10% ON YOUR NEXT ORDER</div>
+      <div style="font-size:12px; color:#6b6b6b; margin-bottom:12px">Create an account to track this order, reorder with one click, and get early access to new formulas.</div>
+      <div class="row" style="gap:8px">
+        <input class="inp" style="flex:1" placeholder="Set a password" type="password">
+        <!-- POST /api/auth/signup with email from order + password -->
+        <div class="wf-component" style="background:#141414; color:#fff; padding:8px 14px; font-size:10px; white-space:nowrap; cursor:pointer">Create account</div>
+      </div>
+    </div>
+    <!-- Skip: text link, navigates to /products -->
+    <div class="wf-component" style="text-align:center; margin-bottom:8px; border:1px solid #d6d6d6; padding:8px; cursor:pointer; font-size:11px">Continue shopping</div>
+    <div style="font-size:10px; font-family:monospace; color:#a3a3a3; text-align:center">
+      Questions? <span style="text-decoration:underline; cursor:pointer">Contact us</span>
+    </div>
+  </div>
+</div>
+
+<!-- Order items summary -->
+<div class="wf-section alt">
+  <span class="wf-label">Order items — confirm what was purchased</span>
+  <div style="max-width:480px; margin:0 auto">
+    <div style="font-size:9px; font-family:monospace; color:#a3a3a3; text-transform:uppercase; margin-bottom:12px">Your order</div>
+    <div style="display:flex; gap:10px; align-items:flex-start; padding:10px 0; border-bottom:1px solid #ebebeb">
+      <div class="wf-placeholder" style="width:48px; height:48px; flex-shrink:0; font-size:9px">Img</div>
+      <div style="flex:1">
+        <div style="font-size:12px; font-weight:500">Brightening Serum</div>
+        <div style="font-size:9px; font-family:monospace; color:#a3a3a3">VITAMIN C · 30ML · QTY 1</div>
+      </div>
+      <div style="font-size:12px; font-weight:500">₹1,299</div>
+    </div>
+    <div style="display:flex; gap:10px; align-items:flex-start; padding:10px 0; border-bottom:1px solid #ebebeb">
+      <div class="wf-placeholder" style="width:48px; height:48px; flex-shrink:0; background:#eff2f0; font-size:9px">Img</div>
+      <div style="flex:1">
+        <div style="font-size:12px; font-weight:500">Pore Refining Toner</div>
+        <div style="font-size:9px; font-family:monospace; color:#a3a3a3">NIACINAMIDE · 100ML · QTY 1</div>
+      </div>
+      <div style="font-size:12px; font-weight:500">₹899</div>
+    </div>
+  </div>
+</div>
+
+<!-- Related products -->
+<div class="wf-section">
+  <span class="wf-label">Related products — 3-col, same as PDP</span>
+  <div class="row" style="justify-content:space-between; align-items:baseline; margin-bottom:16px">
+    <div class="wf-component" style="font-size:14px; font-family:Georgia">You might also like</div>
+    <div class="wf-component" style="font-size:10px; font-family:monospace; color:#a3a3a3">View all →</div>
+  </div>
+  <div class="row" style="gap:12px">
+    <div class="wf-component col" style="padding:0"><div class="wf-placeholder" style="height:80px; background:#f5f0ef">Img</div><div style="padding:8px"><div style="font-size:11px">Night Repair Cream</div><div style="font-size:11px">₹2,499</div></div></div>
+    <div class="wf-component col" style="padding:0"><div class="wf-placeholder" style="height:80px">Img</div><div style="padding:8px"><div style="font-size:11px">Daily Shield SPF50</div><div style="font-size:11px">₹1,599</div></div></div>
+    <div class="wf-component col" style="padding:0"><div class="wf-placeholder" style="height:80px; background:#fafafa">Img</div><div style="padding:8px"><div style="font-size:11px">Hydration Serum</div><div style="font-size:11px">₹1,099</div></div></div>
+  </div>
+</div>
+
+<!-- Footer (shared) -->
+<div class="wf-section">
+  <span class="wf-label">Footer — shared component</span>
+  <div class="wf-component" style="text-align:center; color:#a3a3a3; font-size:11px">Footer component</div>
+</div>
+
+</body>
+</html>

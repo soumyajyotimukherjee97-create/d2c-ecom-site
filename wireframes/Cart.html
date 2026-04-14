@@ -1,0 +1,210 @@
+<!--
+  WIREFRAME: Cart Drawer — overlay component
+  ============================================================
+  Component file : src/components/shop/CartDrawer.tsx
+  Auth           : Public (cart is client-side state)
+  State          : Zustand useCartStore
+  Design ref     : DESIGN_SYSTEM.md
+  TDD ref        : Section 6.3
+
+  LAYOUT INTENT
+  ─────────────
+  Slides in from right. Page content remains visible (dimmed) behind.
+  NOT a separate page. Triggered by any "Add to cart" action.
+  Fixed width 340px on desktop, full-width on mobile.
+
+  BEHAVIOUR
+  ─────────
+  · Opens: any addItem() call triggers onOpen from CartDrawer parent
+  · Closes: click X, click backdrop, navigate to /checkout
+  · Stock validation: on open, call GET /api/products/[id]/stock for all items
+    If a variant is now out of stock, show inline warning on that item
+  · Upsell slot: hardcoded 1 product max — never dynamic AI suggestion for MVP
+
+  CONSTRAINTS
+  ───────────
+  · Never a full page — always a drawer/overlay
+  · Max 1 upsell product shown
+  · Subtotal always visible at bottom — sticky
+  · Empty state: shown when cart.items.length === 0
+  · "Continue shopping" closes drawer (does not navigate)
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wireframe — Cart Drawer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #fafafa; color: #141414; line-height: 1.5; }
+    .wf-note { background: #fffbe6; border-left: 3px solid #f0c000; padding: 6px 10px; font-size: 11px; color: #7a5f00; margin: 4px 0; }
+    .wf-component { border: 1.5px dashed #a3a3a3; border-radius: 2px; padding: 8px 12px; margin: 4px 0; background: #fff; font-size: 12px; color: #6b6b6b; }
+    .wf-section { border: 1px solid #ebebeb; margin: 0; padding: 16px 24px; background: #fff; }
+    .wf-section + .wf-section { border-top: none; }
+    .wf-label { font-size: 9px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: #a3a3a3; margin-bottom: 8px; display: block; }
+    .wf-placeholder { background: #f5f5f5; border: 1px solid #ebebeb; border-radius: 2px; display: flex; align-items: center; justify-content: center; color: #a3a3a3; font-size: 11px; text-align:center; }
+    .row { display: flex; gap: 12px; }
+    .col { flex: 1; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════
+     BACKDROP + DRAWER LAYOUT
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section">
+  <span class="wf-label">Cart drawer — overlay layout (page content behind, drawer right)</span>
+  <div class="wf-note">"use client" component. Rendered in root layout.tsx so it's available on all pages.</div>
+  <div class="wf-note">Animation: translateX(100%) → translateX(0) on open. transition: transform 300ms ease-out.</div>
+
+  <div class="row" style="gap:0; height:560px; border:1px solid #ebebeb">
+
+    <!-- Left: dimmed page content (backdrop) -->
+    <!-- onClick on backdrop: closes drawer -->
+    <div class="col" style="background:rgba(0,0,0,0.18); display:flex; align-items:center; justify-content:center">
+      <div class="wf-component" style="background:rgba(255,255,255,0.7); font-size:11px; text-align:center">
+        Page content visible behind<br>
+        (dimmed via backdrop div)<br>
+        <small>onClick → closes drawer</small>
+      </div>
+    </div>
+
+    <!-- Right: drawer panel — fixed width 340px -->
+    <div style="width:340px; flex-shrink:0; background:#fff; border-left:1px solid #ebebeb; display:flex; flex-direction:column; height:100%">
+
+      <!-- Drawer header -->
+      <div style="padding:16px; border-bottom:1px solid #ebebeb; display:flex; justify-content:space-between; align-items:center; flex-shrink:0">
+        <!-- Title: font-body, text-sm, font-medium -->
+        <span style="font-size:13px; font-weight:500">
+          Cart
+          <!-- Item count: font-mono, text-xs, text-gray-400 -->
+          <span style="font-family:monospace; font-size:10px; color:#a3a3a3; font-weight:400"> (2)</span>
+        </span>
+        <!-- Close button: X icon, 20×20, no border, cursor-pointer -->
+        <!-- onClick: closes drawer -->
+        <div class="wf-component" style="width:24px; height:24px; padding:0; text-align:center; font-size:14px; cursor:pointer">×</div>
+      </div>
+
+      <!-- Scrollable cart items area -->
+      <div style="flex:1; overflow-y:auto; padding:12px 16px">
+
+        <!-- ── CART ITEM 1 ────────────────────────────────── -->
+        <!-- data-testid="cart-item" on each row -->
+        <div style="display:flex; gap:10px; align-items:flex-start; padding:12px 0; border-bottom:1px solid #f5f5f5">
+          <!-- Product thumbnail: 52×52, object-contain, border-gray-100 -->
+          <div class="wf-placeholder" style="width:52px; height:52px; flex-shrink:0">Img</div>
+          <div style="flex:1">
+            <!-- Product name: font-body, text-xs, font-medium, text-gray-900 -->
+            <div style="font-size:12px; font-weight:500; margin-bottom:2px">Brightening Serum</div>
+            <!-- Variant label: font-mono, text-2xs, text-gray-400, uppercase -->
+            <div style="font-size:9px; font-family:monospace; color:#a3a3a3; text-transform:uppercase; margin-bottom:6px">VITAMIN C · 30ML</div>
+            <!-- QuantitySelector: compact variant -->
+            <!-- Props: { value, onChange, min:1, max: variant.stock } -->
+            <div style="display:inline-flex; align-items:center; border:1px solid #ebebeb; border-radius:2px">
+              <div style="padding:4px 8px; border-right:1px solid #ebebeb; font-size:11px; cursor:pointer">−</div>
+              <div style="padding:4px 8px; font-family:monospace; font-size:11px">1</div>
+              <div style="padding:4px 8px; border-left:1px solid #ebebeb; font-size:11px; cursor:pointer">+</div>
+            </div>
+          </div>
+          <div style="text-align:right; flex-shrink:0">
+            <!-- Line price: font-body, text-xs, font-medium -->
+            <div style="font-size:12px; font-weight:500; margin-bottom:6px">₹1,299</div>
+            <!-- Remove link: font-mono, text-2xs, text-gray-400, cursor-pointer -->
+            <!-- onClick: removeItem(variantId) -->
+            <div style="font-size:9px; font-family:monospace; color:#a3a3a3; cursor:pointer; text-decoration:underline">Remove</div>
+          </div>
+        </div>
+
+        <!-- ── CART ITEM 2 ────────────────────────────────── -->
+        <div style="display:flex; gap:10px; align-items:flex-start; padding:12px 0; border-bottom:1px solid #f5f5f5">
+          <div class="wf-placeholder" style="width:52px; height:52px; flex-shrink:0; background:#eff2f0">Img</div>
+          <div style="flex:1">
+            <div style="font-size:12px; font-weight:500; margin-bottom:2px">Pore Refining Toner</div>
+            <div style="font-size:9px; font-family:monospace; color:#a3a3a3; text-transform:uppercase; margin-bottom:6px">NIACINAMIDE · 100ML</div>
+            <div style="display:inline-flex; align-items:center; border:1px solid #ebebeb; border-radius:2px">
+              <div style="padding:4px 8px; border-right:1px solid #ebebeb; font-size:11px">−</div>
+              <div style="padding:4px 8px; font-family:monospace; font-size:11px">1</div>
+              <div style="padding:4px 8px; border-left:1px solid #ebebeb; font-size:11px">+</div>
+            </div>
+          </div>
+          <div style="text-align:right; flex-shrink:0">
+            <div style="font-size:12px; font-weight:500; margin-bottom:6px">₹899</div>
+            <div style="font-size:9px; font-family:monospace; color:#a3a3a3; cursor:pointer; text-decoration:underline">Remove</div>
+          </div>
+        </div>
+
+        <!-- ── UPSELL SLOT ───────────────────────────────────
+             Max 1 product. Hardcoded for MVP — not algorithm-driven.
+             Hide if customer already has this product in cart.
+        ──────────────────────────────────────────────────────── -->
+        <div style="margin-top:12px; background:#fafafa; border:1px solid #ebebeb; padding:10px; border-radius:2px">
+          <div class="wf-note" style="margin-bottom:6px">Upsell slot — 1 product max, hardcoded. Hide if product already in cart.</div>
+          <div style="font-size:9px; font-family:monospace; color:#a3a3a3; text-transform:uppercase; margin-bottom:8px">COMPLETE YOUR ROUTINE</div>
+          <div style="display:flex; gap:8px; align-items:center">
+            <div class="wf-placeholder" style="width:40px; height:40px; flex-shrink:0; background:#f5f0ef; font-size:9px">Img</div>
+            <div style="flex:1">
+              <div style="font-size:11px; font-weight:500">Night Repair Cream</div>
+              <div style="font-size:10px; font-family:monospace; color:#a3a3a3">₹2,499</div>
+            </div>
+            <!-- Add upsell: calls addItem then shows in cart list above -->
+            <div class="wf-component" style="font-size:10px; padding:4px 10px; border:1px solid #d6d6d6; white-space:nowrap; cursor:pointer">Add</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── STICKY FOOTER: ORDER TOTAL + CTA ─────────────── -->
+      <div style="border-top:1px solid #ebebeb; padding:16px; flex-shrink:0; background:#fff">
+        <!-- Subtotal row -->
+        <!-- data-testid="cart-subtotal" -->
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px">
+          <span style="font-size:11px; font-family:monospace; color:#a3a3a3; text-transform:uppercase">Subtotal</span>
+          <span style="font-size:13px; font-weight:500">₹2,198</span>
+        </div>
+        <!-- Shipping note -->
+        <div style="display:flex; justify-content:space-between; margin-bottom:16px">
+          <span style="font-size:11px; font-family:monospace; color:#a3a3a3; text-transform:uppercase">Shipping</span>
+          <!-- Conditional: "Free" if subtotal ≥ ₹999, else "₹XX" -->
+          <span style="font-size:11px; font-family:monospace; color:#4a5e4e; text-transform:uppercase">Free</span>
+        </div>
+        <!-- Primary CTA: full-width btn-primary -->
+        <!-- href="/checkout" — navigates, drawer closes automatically -->
+        <div class="wf-component" style="background:#141414; color:#fff; text-align:center; padding:10px; font-size:11px; font-family:monospace; letter-spacing:.06em; text-transform:uppercase; cursor:pointer; width:100%">
+          Proceed to checkout
+        </div>
+        <!-- Secondary: text link, closes drawer -->
+        <div style="text-align:center; margin-top:8px">
+          <span style="font-size:10px; font-family:monospace; color:#a3a3a3; cursor:pointer; text-decoration:underline">Continue shopping</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     EMPTY STATE (shown when cart.items.length === 0)
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="margin-top:24px">
+  <span class="wf-label">Empty cart state — shown when cart is empty</span>
+  <div class="wf-note">Replace item list with this when items.length === 0. Keep header and footer visible.</div>
+
+  <div style="width:340px; border:1px solid #ebebeb; background:#fff; margin:0 auto">
+    <!-- Header -->
+    <div style="padding:16px; border-bottom:1px solid #ebebeb; display:flex; justify-content:space-between; align-items:center">
+      <span style="font-size:13px; font-weight:500">Cart <span style="font-family:monospace; font-size:10px; color:#a3a3a3">(0)</span></span>
+      <div class="wf-component" style="width:24px; height:24px; padding:0; text-align:center; font-size:14px">×</div>
+    </div>
+    <!-- Empty state body -->
+    <div style="padding:48px 24px; text-align:center">
+      <div class="wf-component" style="font-size:13px; margin-bottom:6px">Your cart is empty.</div>
+      <div class="wf-component" style="font-size:11px; color:#6b6b6b; margin-bottom:20px">Add products from the shop to get started.</div>
+      <!-- Closes drawer and navigates to /products -->
+      <div class="wf-component" style="background:#141414; color:#fff; padding:8px 20px; font-size:11px; display:inline-block; cursor:pointer">Browse products</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

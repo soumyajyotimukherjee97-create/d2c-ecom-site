@@ -1,0 +1,389 @@
+<!--
+  WIREFRAME: Product Detail Page (PDP) — /products/[slug]
+  ============================================================
+  Component file : src/app/(shop)/products/[slug]/page.tsx
+  Auth           : Public
+  Data           : GET /api/products/[slug]
+  Design ref     : DESIGN_SYSTEM.md
+  TDD ref        : Sections 4.2, 6.1
+
+  LAYOUT INTENT
+  ─────────────
+  Two-column layout above the fold: image gallery left, purchase info right.
+  Below the fold: how to use, ingredients (full list), reviews, related products.
+  Ingredient tags are the primary trust signal — must be visible without scrolling on desktop.
+
+  CONSTRAINTS
+  ───────────
+  · Image gallery: square crop, white/offwhite bg, no lifestyle shots in gallery
+  · Variant selector: size pills (not dropdown) — single select
+  · Add to cart: always visible — sticky on mobile (position: sticky bottom)
+  · Ingredient tags: show ALL ingredients — not collapsed by default
+  · Reviews: show 3 by default, load more on click (no pagination)
+  · Related products: exactly 3 cards, hard limit
+  · Breadcrumb: Home > Shop > [product name]
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wireframe — Product Detail Page</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #fafafa; color: #141414; line-height: 1.5; }
+    .wf-note { background: #fffbe6; border-left: 3px solid #f0c000; padding: 6px 10px; font-size: 11px; color: #7a5f00; margin: 4px 0; }
+    .wf-component { border: 1.5px dashed #a3a3a3; border-radius: 2px; padding: 8px 12px; margin: 4px 0; background: #fff; font-size: 12px; color: #6b6b6b; }
+    .wf-section { border: 1px solid #ebebeb; margin: 0; padding: 24px; background: #fff; }
+    .wf-section + .wf-section { border-top: none; }
+    .wf-section.alt { background: #fafafa; }
+    .wf-label { font-size: 9px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: #a3a3a3; margin-bottom: 8px; display: block; }
+    .wf-placeholder { background: #f5f5f5; border: 1px solid #ebebeb; border-radius: 2px; display: flex; align-items: center; justify-content: center; color: #a3a3a3; font-size: 11px; text-align: center; }
+    .row { display: flex; gap: 12px; }
+    .col { flex: 1; }
+    h2 { font-size: 16px; font-weight: 400; margin-bottom: 8px; }
+    h3 { font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+
+<!-- Navbar (shared) -->
+<div class="wf-section">
+  <span class="wf-label">Navbar — shared component</span>
+  <div class="row" style="align-items:center; padding:8px 0">
+    <div class="wf-component" style="width:60px">Brand.</div>
+    <div class="col" style="display:flex;gap:16px;justify-content:center">
+      <div class="wf-component" style="font-weight:600;color:#141414">Shop ←active</div>
+      <div class="wf-component">Ingredients</div>
+      <div class="wf-component">About</div>
+      <div class="wf-component">Journal</div>
+    </div>
+    <div class="row" style="gap:6px;flex:0 0 auto">
+      <div class="wf-component" style="width:28px;height:28px;padding:0;text-align:center">🔍</div>
+      <div class="wf-component" style="width:28px;height:28px;padding:0;text-align:center">👤</div>
+      <div class="wf-component" style="width:28px;height:28px;padding:0;text-align:center">🛍</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     BREADCRUMB
+     Component : inline in page.tsx — not a shared component
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="padding:10px 24px">
+  <span class="wf-label">Breadcrumb — inline, font-mono text-2xs text-gray-400</span>
+  <div class="wf-component" style="font-size:10px; font-family:monospace; color:#a3a3a3; display:inline-block">
+    Home / Shop / Brightening Serum
+    <!-- Use Next.js Link for each segment. Schema.org BreadcrumbList JSON-LD in head -->
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     MAIN: TWO-COLUMN LAYOUT
+     Left  : Image gallery (flex:1)
+     Right : Purchase info (flex:1.2)
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section">
+  <span class="wf-label">PDP main — 2-col: image left, purchase info right</span>
+  <div class="row" style="gap:40px; align-items:flex-start">
+
+    <!-- ── LEFT: IMAGE GALLERY ──────────────────────────────
+         Component: inline in page.tsx (not a shared component)
+         Images: product.variants[0].images[] from API response
+         Main image: large square, click to open lightbox
+         Thumbnails: 4 small squares below, click to swap main
+    ────────────────────────────────────────────────────────── -->
+    <div class="col">
+      <span class="wf-label">Image gallery — main + 4 thumbnails</span>
+      <div class="wf-note">All images square crop (aspect-ratio: 1/1). White/offwhite bg. No lifestyle shots in gallery row.</div>
+
+      <!-- Main image -->
+      <div class="wf-placeholder" style="width:100%; aspect-ratio:1; margin-bottom:8px; font-size:13px">
+        Main product image<br>
+        <small>next/image, fill, object-contain<br>click → lightbox (Phase 2: use simple zoom)</small>
+      </div>
+
+      <!-- Thumbnail row: 4 images, gap-2 -->
+      <div class="row" style="gap:6px">
+        <!-- Active thumbnail: border-gray-900 (2px) -->
+        <!-- Inactive: border-gray-100 (1px) -->
+        <div class="wf-placeholder" style="flex:1; aspect-ratio:1; border:2px solid #141414; font-size:9px">Thumb 1<br>(active)</div>
+        <div class="wf-placeholder" style="flex:1; aspect-ratio:1; background:#f5f0ef; font-size:9px">Thumb 2</div>
+        <div class="wf-placeholder" style="flex:1; aspect-ratio:1; font-size:9px">Thumb 3</div>
+        <div class="wf-placeholder" style="flex:1; aspect-ratio:1; font-size:9px">Thumb 4</div>
+      </div>
+    </div>
+
+    <!-- ── RIGHT: PURCHASE INFO ─────────────────────────────
+         All content in a flex-col stack
+    ────────────────────────────────────────────────────────── -->
+    <div class="col" style="flex:1.2">
+
+      <!-- Category overline: font-mono, text-2xs, uppercase, text-gray-400 -->
+      <div class="wf-component" style="font-size:9px; font-family:monospace; color:#a3a3a3; margin-bottom:6px">
+        VITAMIN C · SERUM
+      </div>
+
+      <!-- Product name: font-heading, text-3xl, font-normal, tracking-tight -->
+      <div class="wf-component" style="font-size:20px; font-family:Georgia; margin-bottom:8px">
+        Brightening Serum
+      </div>
+
+      <!-- Rating summary: stars + count, clickable → scrolls to reviews -->
+      <!-- Component: ReviewBar (src/components/shop/ReviewBar.tsx) -->
+      <!-- Props: { summary: { average: 4.2, count: 84 } } -->
+      <div class="row" style="align-items:center; gap:6px; margin-bottom:12px">
+        <div class="wf-component" style="font-size:11px; padding:4px 8px">★★★★☆ 4.2</div>
+        <div class="wf-component" style="font-size:10px; font-family:monospace; color:#a3a3a3; padding:4px 8px">84 reviews ↓</div>
+      </div>
+
+      <!-- Price: font-heading, text-2xl, font-normal -->
+      <!-- Computed from selected variant: variant.price in paise → display -->
+      <div class="wf-component" style="font-size:18px; font-family:Georgia; margin-bottom:16px">
+        ₹1,299 <span style="font-size:10px; font-family:system-ui; color:#a3a3a3">/ 30ml</span>
+      </div>
+
+      <!-- Variant selector: size pills (single select) -->
+      <!-- Component: inline in page.tsx using useState for selected variant -->
+      <!-- On change: update price display, update add-to-cart variantId -->
+      <div style="margin-bottom:16px">
+        <div class="wf-component" style="font-size:9px; font-family:monospace; color:#a3a3a3; margin-bottom:6px">SIZE</div>
+        <div class="row" style="gap:6px">
+          <!-- Active: bg-gray-900 text-white border-gray-900 -->
+          <!-- Inactive: bg-white text-gray-900 border-gray-200 -->
+          <!-- Out of stock: bg-white text-gray-300 border-gray-100, cursor-not-allowed, strikethrough -->
+          <div class="wf-component" style="background:#141414; color:#fff; padding:6px 14px; font-size:11px; border-color:#141414">30ml</div>
+          <div class="wf-component" style="padding:6px 14px; font-size:11px">60ml — ₹2,299</div>
+        </div>
+      </div>
+
+      <!-- Skin type fit: badge row -->
+      <div style="margin-bottom:16px">
+        <div class="wf-component" style="font-size:9px; font-family:monospace; color:#a3a3a3; margin-bottom:6px">IDEAL FOR</div>
+        <div class="row" style="gap:6px; flex-wrap:wrap">
+          <!-- Badge component: import from @/components/ui/Badge -->
+          <!-- Variants: default (gray-50), mist (eff2f0), blush (f5f0ef) -->
+          <div class="wf-component" style="background:#f5f5f5; font-size:10px; font-family:monospace; padding:3px 8px">All skin types</div>
+          <div class="wf-component" style="background:#eff2f0; font-size:10px; font-family:monospace; padding:3px 8px; color:#4a5e4e">Dullness</div>
+          <div class="wf-component" style="background:#f5f0ef; font-size:10px; font-family:monospace; padding:3px 8px; color:#6b4a47">Uneven tone</div>
+        </div>
+      </div>
+
+      <!-- Add to cart row -->
+      <div class="row" style="gap:8px; margin-bottom:16px; align-items:center">
+        <!-- QuantitySelector component: import from @/components/ui/QuantitySelector -->
+        <!-- Props: { value, onChange, min: 1, max: variant.stock } -->
+        <!-- data-testid="quantity-selector" -->
+        <div class="wf-component" style="display:flex; align-items:center; padding:0; overflow:hidden">
+          <div style="padding:6px 10px; border-right:1px solid #ebebeb; cursor:pointer">−</div>
+          <div style="padding:6px 12px; font-family:monospace; font-size:12px">1</div>
+          <div style="padding:6px 10px; border-left:1px solid #ebebeb; cursor:pointer">+</div>
+        </div>
+        <!-- Add to cart button: btn-primary, flex-1, text-center -->
+        <!-- data-testid="add-to-cart" -->
+        <!-- onClick: addItem(selectedVariant, product, qty) → opens CartDrawer -->
+        <!-- Disabled + "Out of stock" text when variant.stock === 0 -->
+        <div class="wf-component" style="flex:1; background:#141414; color:#fff; text-align:center; padding:8px; font-size:11px; font-family:monospace; letter-spacing:.06em; text-transform:uppercase">
+          Add to cart
+        </div>
+      </div>
+
+      <hr style="border:none; border-top:1px solid #ebebeb; margin:16px 0">
+
+      <!-- Key ingredients — shown in right column above the fold -->
+      <!-- IngredientTag component: import from @/components/ui/IngredientTag -->
+      <!-- Props: { name, concentration?, benefit? } -->
+      <div style="margin-bottom:16px">
+        <div class="wf-component" style="font-size:9px; font-family:monospace; color:#a3a3a3; margin-bottom:8px">KEY INGREDIENTS</div>
+        <!-- IngredientTag: border-left 2px solid gray-900, font-mono text-2xs -->
+        <div class="wf-component" style="border-left:2px solid #141414; padding-left:8px; font-family:monospace; font-size:10px; margin-bottom:4px">
+          L-ASCORBIC ACID · 10.00% · Brightening · antioxidant
+        </div>
+        <div class="wf-component" style="border-left:2px solid #141414; padding-left:8px; font-family:monospace; font-size:10px; margin-bottom:4px">
+          HYALURONIC ACID · 1.50% · Deep hydration
+        </div>
+        <div class="wf-component" style="border-left:2px solid #141414; padding-left:8px; font-family:monospace; font-size:10px; margin-bottom:4px">
+          FERULIC ACID · 0.50% · Stability · potency
+        </div>
+      </div>
+
+      <!-- Science callout: ScienceCallout component -->
+      <!-- Props: { label: "Clinical insight", text: "...", variant: "mist" } -->
+      <!-- Component: import from @/components/ui/ScienceCallout -->
+      <div class="wf-component" style="background:#fafafa; border-left:2px solid #141414; padding:10px 12px">
+        <div style="font-size:9px; font-family:monospace; color:#a3a3a3; text-transform:uppercase; margin-bottom:4px">CLINICAL INSIGHT</div>
+        <div style="font-size:11px; color:#6b6b6b; line-height:1.5">
+          10% L-Ascorbic Acid at pH 3.5 demonstrates maximum bioavailability. Combined with Ferulic Acid, photodegradation is reduced by up to 8×.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION: HOW TO USE
+     Component : inline in page.tsx
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section alt">
+  <span class="wf-label">How to use — numbered steps, inline</span>
+  <h2>How to use</h2>
+  <!-- Steps: numbered list, font-mono index, body text -->
+  <div style="display:flex; flex-direction:column; gap:10px">
+    <div class="row" style="align-items:flex-start; gap:12px">
+      <span class="wf-component" style="font-family:monospace; font-size:10px; color:#a3a3a3; padding:2px 6px; flex-shrink:0">01</span>
+      <span class="wf-component" style="font-size:12px; flex:1">Apply 3–4 drops to clean, dry skin each morning.</span>
+    </div>
+    <div class="row" style="align-items:flex-start; gap:12px">
+      <span class="wf-component" style="font-family:monospace; font-size:10px; color:#a3a3a3; padding:2px 6px; flex-shrink:0">02</span>
+      <span class="wf-component" style="font-size:12px; flex:1">Gently press into skin — do not rub.</span>
+    </div>
+    <div class="row" style="align-items:flex-start; gap:12px">
+      <span class="wf-component" style="font-family:monospace; font-size:10px; color:#a3a3a3; padding:2px 6px; flex-shrink:0">03</span>
+      <span class="wf-component" style="font-size:12px; flex:1">Always follow with SPF. Vitamin C increases photosensitivity.</span>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION: REVIEWS
+     Component : inline in page.tsx
+     Data      : product.reviews + product.reviews_summary from API
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section">
+  <span class="wf-label">Reviews — rating summary + 3 reviews default, load more</span>
+  <div class="wf-note">Show 3 reviews by default. "Load more" button appends next 3. No pagination. Approved reviews only (is_approved = true).</div>
+
+  <h2>Reviews — 4.2 average (84)</h2>
+
+  <!-- Rating summary: 2-col — bars left, big number right -->
+  <div class="row" style="gap:24px; margin-bottom:24px">
+    <div class="col">
+      <!-- Bar chart: 5 rows, each: star number + bar + percentage -->
+      <div style="display:flex; flex-direction:column; gap:4px">
+        <div class="row" style="align-items:center; gap:8px">
+          <span style="font-size:10px; font-family:monospace; color:#a3a3a3; width:10px">5</span>
+          <div style="flex:1; height:4px; background:#ebebeb; border-radius:2px"><div style="width:68%; height:4px; background:#141414; border-radius:2px"></div></div>
+          <span style="font-size:10px; font-family:monospace; color:#a3a3a3">68%</span>
+        </div>
+        <div class="row" style="align-items:center; gap:8px">
+          <span style="font-size:10px; font-family:monospace; color:#a3a3a3; width:10px">4</span>
+          <div style="flex:1; height:4px; background:#ebebeb; border-radius:2px"><div style="width:20%; height:4px; background:#141414; border-radius:2px"></div></div>
+          <span style="font-size:10px; font-family:monospace; color:#a3a3a3">20%</span>
+        </div>
+        <div class="row" style="align-items:center; gap:8px">
+          <span style="font-size:10px; font-family:monospace; color:#a3a3a3; width:10px">3</span>
+          <div style="flex:1; height:4px; background:#ebebeb; border-radius:2px"><div style="width:8%; height:4px; background:#141414; border-radius:2px"></div></div>
+          <span style="font-size:10px; font-family:monospace; color:#a3a3a3">8%</span>
+        </div>
+        <div class="row" style="align-items:center; gap:8px">
+          <span style="font-size:10px; font-family:monospace; color:#a3a3a3; width:10px">2</span>
+          <div style="flex:1; height:4px; background:#ebebeb; border-radius:2px"><div style="width:3%; height:4px; background:#141414; border-radius:2px"></div></div>
+          <span style="font-size:10px; font-family:monospace; color:#a3a3a3">3%</span>
+        </div>
+        <div class="row" style="align-items:center; gap:8px">
+          <span style="font-size:10px; font-family:monospace; color:#a3a3a3; width:10px">1</span>
+          <div style="flex:1; height:4px; background:#ebebeb; border-radius:2px"><div style="width:1%; height:4px; background:#141414; border-radius:2px"></div></div>
+          <span style="font-size:10px; font-family:monospace; color:#a3a3a3">1%</span>
+        </div>
+      </div>
+    </div>
+    <div style="text-align:center; padding:8px 16px; flex-shrink:0">
+      <div style="font-family:Georgia; font-size:32px; line-height:1">4.2</div>
+      <div style="font-size:11px; margin:4px 0">★★★★☆</div>
+      <div style="font-size:10px; font-family:monospace; color:#a3a3a3">84 reviews</div>
+    </div>
+  </div>
+
+  <!-- Review cards -->
+  <div style="display:flex; flex-direction:column; gap:0">
+    <!-- Review 1 -->
+    <div style="padding:16px 0; border-top:1px solid #ebebeb">
+      <div class="row" style="justify-content:space-between; margin-bottom:4px">
+        <!-- Reviewer: show initials only, never full name for privacy -->
+        <span class="wf-component" style="font-size:12px; font-weight:500; padding:2px 6px">Priya M.</span>
+        <span class="wf-component" style="font-size:10px; font-family:monospace; color:#a3a3a3; padding:2px 6px">3 weeks ago</span>
+      </div>
+      <div style="font-size:11px; margin-bottom:6px">★★★★★</div>
+      <div class="wf-component" style="font-size:12px; color:#6b6b6b">"Noticed visible brightness in 2 weeks. No irritation, even on my sensitive skin."</div>
+    </div>
+    <!-- Review 2 -->
+    <div style="padding:16px 0; border-top:1px solid #ebebeb">
+      <div class="row" style="justify-content:space-between; margin-bottom:4px">
+        <span class="wf-component" style="font-size:12px; font-weight:500; padding:2px 6px">Rohan K.</span>
+        <span class="wf-component" style="font-size:10px; font-family:monospace; color:#a3a3a3; padding:2px 6px">1 month ago</span>
+      </div>
+      <div style="font-size:11px; margin-bottom:6px">★★★★☆</div>
+      <div class="wf-component" style="font-size:12px; color:#6b6b6b">"Good formulation. The texture is lighter than I expected — a plus for humid days."</div>
+    </div>
+  </div>
+
+  <!-- Load more: shown when reviews.length < total -->
+  <div style="margin-top:16px">
+    <div class="wf-component" style="display:inline-block; border:1px solid #d6d6d6; padding:6px 16px; font-size:10px; cursor:pointer">
+      Load more reviews
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION: RELATED PRODUCTS
+     Component : uses ProductCard
+     Data      : same category, different slug, limit 3
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section alt">
+  <span class="wf-label">Related products — 3-col ProductCard grid, hard limit 3</span>
+  <div class="row" style="justify-content:space-between; align-items:baseline; margin-bottom:16px">
+    <h2 style="margin-bottom:0">You may also like</h2>
+    <div class="wf-component" style="font-size:10px; font-family:monospace; color:#a3a3a3">View all →</div>
+  </div>
+  <div class="row" style="gap:12px">
+    <div class="wf-component col" style="padding:0; overflow:hidden">
+      <div class="wf-placeholder" style="height:100px; background:#eff2f0">Image</div>
+      <div style="padding:8px">
+        <div style="font-size:9px; color:#a3a3a3; font-family:monospace">NIACINAMIDE</div>
+        <div style="font-size:12px">Pore Refining Toner</div>
+        <div class="row" style="justify-content:space-between; align-items:center; margin-top:6px">
+          <span style="font-size:12px">₹899</span>
+          <div class="wf-component" style="width:22px;height:22px;background:#141414;color:#fff;text-align:center;padding:0;font-size:13px">+</div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-component col" style="padding:0; overflow:hidden">
+      <div class="wf-placeholder" style="height:100px">Image</div>
+      <div style="padding:8px">
+        <div style="font-size:9px; color:#a3a3a3; font-family:monospace">SPF</div>
+        <div style="font-size:12px">Daily Shield SPF50</div>
+        <div class="row" style="justify-content:space-between; align-items:center; margin-top:6px">
+          <span style="font-size:12px">₹1,599</span>
+          <div class="wf-component" style="width:22px;height:22px;background:#141414;color:#fff;text-align:center;padding:0;font-size:13px">+</div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-component col" style="padding:0; overflow:hidden">
+      <div class="wf-placeholder" style="height:100px; background:#f5f0ef">Image</div>
+      <div style="padding:8px">
+        <div style="font-size:9px; color:#a3a3a3; font-family:monospace">RETINOL</div>
+        <div style="font-size:12px">Night Repair Cream</div>
+        <div class="row" style="justify-content:space-between; align-items:center; margin-top:6px">
+          <span style="font-size:12px">₹2,499</span>
+          <div class="wf-component" style="width:22px;height:22px;background:#141414;color:#fff;text-align:center;padding:0;font-size:13px">+</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Footer (shared) -->
+<div class="wf-section">
+  <span class="wf-label">Footer — shared component</span>
+  <div class="wf-component" style="text-align:center; color:#a3a3a3; font-size:11px">Footer component</div>
+</div>
+
+</body>
+</html>

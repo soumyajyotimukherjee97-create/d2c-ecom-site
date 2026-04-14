@@ -1,0 +1,364 @@
+<!--
+  WIREFRAME: Homepage — /
+  ============================================================
+  Component file : src/app/(shop)/page.tsx
+  Auth           : Public
+  Data           : GET /api/products?limit=3&sort=created_at_desc
+  Design ref     : DESIGN_SYSTEM.md
+  TDD ref        : Section 6.1
+
+  LAYOUT INTENT
+  ─────────────
+  Pure text-forward homepage. No hero image, no carousel, no video.
+  Whitespace and typography carry the brand. Six sections top to bottom.
+
+  CONSTRAINTS (do not violate)
+  ─────────────────────────────
+  · No auto-advancing carousel or slider anywhere on this page
+  · No popup or modal on page load
+  · Newsletter capture is inline — never a modal
+  · Featured products: exactly 3, never more
+  · Philosophy strip: exactly 4 items, horizontal, no stacking on desktop
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wireframe — Homepage</title>
+  <style>
+    /* ── Wireframe chrome only — not production styles ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #fafafa; color: #141414; line-height: 1.5; }
+    .wf-note { background: #fffbe6; border-left: 3px solid #f0c000; padding: 6px 10px; font-size: 11px; color: #7a5f00; margin: 4px 0; }
+    .wf-component { border: 1.5px dashed #a3a3a3; border-radius: 2px; padding: 8px 12px; margin: 4px 0; background: #fff; font-size: 12px; color: #6b6b6b; }
+    .wf-section { border: 1px solid #ebebeb; margin: 0; padding: 24px; background: #fff; }
+    .wf-section + .wf-section { border-top: none; }
+    .wf-section.alt { background: #fafafa; }
+    .wf-label { font-size: 9px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: #a3a3a3; margin-bottom: 8px; display: block; }
+    .wf-placeholder { background: #f5f5f5; border: 1px solid #ebebeb; border-radius: 2px; display: flex; align-items: center; justify-content: center; color: #a3a3a3; font-size: 11px; }
+    .row { display: flex; gap: 12px; }
+    .col { flex: 1; }
+    h1 { font-size: 22px; font-weight: 400; }
+    h2 { font-size: 16px; font-weight: 400; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 1: NAVBAR (shared component)
+     Component : src/components/layout/Navbar.tsx
+     Behaviour : Sticky top · transparent on scroll-top, white on scroll-down
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section">
+  <span class="wf-label">Navbar — shared/Navbar.tsx</span>
+  <div class="wf-note">Three zones: brand wordmark (left) · nav links (center) · icon cluster (right)</div>
+  <div class="row" style="align-items:center; padding: 12px 0;">
+    <div class="col" style="flex:0 0 auto">
+      <div class="wf-component" style="width:80px; text-align:center">
+        <!-- font-heading, text-base, font-normal, letter-spacing tight -->
+        Brand.
+      </div>
+    </div>
+    <div class="col" style="display:flex; gap:24px; justify-content:center">
+      <!-- font-body, text-xs, uppercase, tracking-wider, text-gray-600 -->
+      <!-- Active page link: text-gray-900, font-medium -->
+      <div class="wf-component">Shop</div>
+      <div class="wf-component">Ingredients</div>
+      <div class="wf-component">About</div>
+      <div class="wf-component">Journal</div>
+    </div>
+    <div class="col" style="display:flex; gap:8px; justify-content:flex-end; flex:0 0 auto">
+      <!-- Icon buttons: 32x32, border-gray-100, rounded-sm -->
+      <!-- Icons from lucide-react: Search, User, ShoppingBag -->
+      <!-- Cart icon shows item count badge when cart.itemCount() > 0 -->
+      <div class="wf-component" style="width:32px;height:32px;text-align:center">🔍</div>
+      <div class="wf-component" style="width:32px;height:32px;text-align:center">👤</div>
+      <div class="wf-component" style="width:32px;height:32px;text-align:center">🛍</div>
+    </div>
+  </div>
+  <div class="wf-note">Cart icon: import useCartStore · show badge with itemCount() · onClick opens CartDrawer</div>
+  <div class="wf-note">Mobile: hamburger menu collapses nav links · icons always visible</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 2: HERO
+     Component : inline in page.tsx (not a separate component)
+     Height    : min-height 70vh on desktop, auto on mobile
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="text-align:center; padding: 80px 24px;">
+  <span class="wf-label">Hero — static, text-only, no image</span>
+  <div class="wf-note">No background image. No video. Whitespace IS the design.</div>
+
+  <!-- Overline: font-mono, text-2xs, uppercase, tracking-widest, text-gray-400, mb-6 -->
+  <div class="wf-component" style="display:inline-block; margin-bottom:16px">
+    OVERLINE — e.g. "New — Vitamin C Brightening Serum"
+  </div>
+
+  <!-- Headline: font-heading, text-4xl, font-normal, tracking-tight, leading-tight -->
+  <!-- Line 1: normal weight -->
+  <!-- Line 2: italic variant (font-style: italic) -->
+  <div class="wf-component" style="margin-bottom:16px; font-size:18px; line-height:1.2">
+    Skin reduced<br>
+    <em>to its essentials.</em>
+  </div>
+
+  <!-- Subline: font-body, text-base, text-gray-600, max-w-sm, mx-auto, mb-10 -->
+  <div class="wf-component" style="max-width:340px; margin: 0 auto 24px; font-size:13px">
+    Ingredient-led formulas. No filler. No fragrance. Just what your skin needs.
+  </div>
+
+  <!-- CTA row: flex, gap-2, justify-center -->
+  <div class="row" style="justify-content:center; gap:8px">
+    <!-- btn-primary: bg-gray-900, text-white, rounded-sm, text-xs uppercase tracking-wider px-5 py-2 -->
+    <div class="wf-component" style="background:#141414; color:#fff; padding:8px 20px">
+      Shop all products
+    </div>
+    <!-- btn-outline: bg-white, border-gray-200, text-gray-900, same sizing -->
+    <!-- href="/products?quiz=true" — links to PLP with quiz modal trigger -->
+    <div class="wf-component" style="border:1px solid #d6d6d6; padding:8px 20px">
+      Take the skin quiz
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 3: PHILOSOPHY STRIP
+     Component : inline in page.tsx
+     Layout    : 4 equal columns, horizontal dividers between
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section alt">
+  <span class="wf-label">Philosophy strip — 4 columns, border-y gray-100</span>
+  <div class="wf-note">border-top and border-bottom only. No outer border. Columns separated by border-right (not on last).</div>
+  <div class="row" style="border-top:1px solid #ebebeb; border-bottom:1px solid #ebebeb;">
+    <!-- Each item: py-4, text-center, border-right except last -->
+    <!-- Label: font-mono, text-2xs, uppercase, tracking-widest, text-gray-400, mb-1 -->
+    <!-- Value: font-body, text-sm, font-medium, text-gray-900 -->
+    <div class="wf-component col" style="text-align:center; border-right:1px solid #ebebeb">
+      <div style="font-size:9px; color:#a3a3a3; margin-bottom:4px">PHILOSOPHY</div>
+      Ingredient-led
+    </div>
+    <div class="wf-component col" style="text-align:center; border-right:1px solid #ebebeb">
+      <div style="font-size:9px; color:#a3a3a3; margin-bottom:4px">FORMULATION</div>
+      pH-optimised
+    </div>
+    <div class="wf-component col" style="text-align:center; border-right:1px solid #ebebeb">
+      <div style="font-size:9px; color:#a3a3a3; margin-bottom:4px">TESTED</div>
+      Dermatologist approved
+    </div>
+    <div class="wf-component col" style="text-align:center">
+      <div style="font-size:9px; color:#a3a3a3; margin-bottom:4px">PROMISE</div>
+      No fragrance. Ever.
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 4: FEATURED PRODUCTS
+     Component : uses ProductCard (src/components/shop/ProductCard.tsx)
+     Data      : GET /api/products?limit=3&sort=created_at_desc
+     Fetch     : Server component — fetch at build time, ISR revalidate 60s
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section">
+  <span class="wf-label">Featured products — 3-col grid, ProductCard component</span>
+
+  <!-- Section header row -->
+  <div class="row" style="justify-content:space-between; align-items:baseline; margin-bottom:16px">
+    <!-- h2: font-heading, text-2xl, font-normal -->
+    <h2>Featured products</h2>
+    <!-- Link: font-mono, text-2xs, uppercase, tracking-widest, text-gray-400 -->
+    <!-- href="/products" -->
+    <div class="wf-component" style="font-size:10px">View all →</div>
+  </div>
+
+  <!-- Product grid: grid, grid-cols-3, gap-3 -->
+  <div class="row" style="gap:12px">
+    <!-- ProductCard × 3 — import from @/components/shop/ProductCard -->
+    <!-- Props: { product: ProductSummary, showBadge?: boolean } -->
+    <!-- Card 1 -->
+    <div class="wf-component col" style="padding:0; overflow:hidden">
+      <div class="wf-placeholder" style="height:160px; background:#f5f5f5">Product image<br><small>aspect-ratio: 1/1</small></div>
+      <div style="padding:10px">
+        <div style="font-size:9px; color:#a3a3a3; margin-bottom:2px">VITAMIN C · OVERLINE</div>
+        <div style="font-size:13px; margin-bottom:2px">Brightening Serum</div>
+        <div style="font-size:9px; color:#a3a3a3; margin-bottom:8px; font-family:monospace">L-ASCORBIC · 10% · HA</div>
+        <div class="row" style="justify-content:space-between; align-items:center">
+          <span style="font-size:13px">₹1,299</span>
+          <div class="wf-component" style="width:24px;height:24px;background:#141414;color:#fff;text-align:center;font-size:14px;padding:0">+</div>
+        </div>
+      </div>
+    </div>
+    <!-- Card 2 — blush bg variant -->
+    <div class="wf-component col" style="padding:0; overflow:hidden">
+      <div class="wf-placeholder" style="height:160px; background:#f5f0ef">Product image</div>
+      <div style="padding:10px">
+        <div style="font-size:9px; color:#a3a3a3; margin-bottom:2px">RETINOL · OVERLINE</div>
+        <div style="font-size:13px; margin-bottom:2px">Night Repair Cream</div>
+        <div style="font-size:9px; color:#a3a3a3; margin-bottom:8px; font-family:monospace">RETINOL · 0.1% · CERAMIDES</div>
+        <div class="row" style="justify-content:space-between; align-items:center">
+          <span style="font-size:13px">₹2,499</span>
+          <div class="wf-component" style="width:24px;height:24px;background:#141414;color:#fff;text-align:center;font-size:14px;padding:0">+</div>
+        </div>
+      </div>
+    </div>
+    <!-- Card 3 — mist bg variant -->
+    <div class="wf-component col" style="padding:0; overflow:hidden">
+      <div class="wf-placeholder" style="height:160px; background:#eff2f0">Product image</div>
+      <div style="padding:10px">
+        <div style="font-size:9px; color:#a3a3a3; margin-bottom:2px">NIACINAMIDE · OVERLINE</div>
+        <div style="font-size:13px; margin-bottom:2px">Pore Refining Toner</div>
+        <div style="font-size:9px; color:#a3a3a3; margin-bottom:8px; font-family:monospace">NIACINAMIDE · 2% · ZINC</div>
+        <div class="row" style="justify-content:space-between; align-items:center">
+          <span style="font-size:13px">₹899</span>
+          <div class="wf-component" style="width:24px;height:24px;background:#141414;color:#fff;text-align:center;font-size:14px;padding:0">+</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="wf-note">+ button: onClick → useCartStore().addItem(variant, product, 1) · triggers CartDrawer open</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 5: INGREDIENT SPOTLIGHT
+     Component : inline in page.tsx
+     Layout    : 2-col — text left (flex:1.2), image right (fixed 200px)
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section alt">
+  <span class="wf-label">Ingredient spotlight — 2-col, text left, image right</span>
+  <div class="wf-note">Featured ingredient is hardcoded for MVP — not dynamic. Rotate manually via content update.</div>
+  <div class="row" style="gap:40px; align-items:center">
+    <div class="col">
+      <!-- Overline: font-mono text-2xs uppercase tracking-widest text-gray-400 mb-2 -->
+      <div class="wf-component" style="font-size:9px; margin-bottom:8px">INGREDIENT SPOTLIGHT</div>
+      <!-- h2: font-heading, text-2xl, font-normal, leading-snug -->
+      <h2 style="font-size:18px; margin-bottom:8px">Niacinamide —<br>why 2% is the sweet spot.</h2>
+      <!-- body: font-body, text-sm, text-gray-600, mb-4 -->
+      <div class="wf-component" style="font-size:12px; margin-bottom:12px; color:#6b6b6b">
+        At 2%, niacinamide visibly reduces pore size and regulates sebum without irritating sensitive skin. Higher isn't better — it's about precision.
+      </div>
+      <!-- IngredientTag component: import from @/components/ui/IngredientTag -->
+      <!-- Props: { name: "NIACINAMIDE", concentration: "2.00", benefit: "Pore refining · sebum control" } -->
+      <div class="wf-component" style="border-left:2px solid #141414; padding-left:8px; font-family:monospace; font-size:10px; margin-bottom:12px">
+        NIACINAMIDE · 2.00% · Pore refining · sebum control
+      </div>
+      <!-- btn-outline, text-xs, self-start -->
+      <!-- href="/ingredients/niacinamide" — links to ingredient detail page (Phase 2) -->
+      <!-- For now: href="/journal" -->
+      <div class="wf-component" style="display:inline-block; border:1px solid #d6d6d6; padding:6px 14px; font-size:10px">
+        Read the science →
+      </div>
+    </div>
+    <!-- Product image: 200×260px placeholder, bg-offwhite, border-gray-100 -->
+    <div class="wf-placeholder" style="width:200px; height:260px; flex-shrink:0">
+      Product<br>image<br>200×260
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 6: PRESS / SOCIAL PROOF
+     Component : inline in page.tsx
+     Layout    : centered, logo placeholder row
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="text-align:center">
+  <span class="wf-label">Press strip — centered, logo row</span>
+  <div class="wf-note">Logo images stored in /public/press/. Use next/image with grayscale filter CSS. Max 5 logos.</div>
+  <!-- Overline: font-mono, text-2xs, uppercase, text-gray-400, mb-6 -->
+  <div class="wf-component" style="display:inline-block; font-size:9px; margin-bottom:16px">AS SEEN IN</div>
+  <div class="row" style="justify-content:center; align-items:center; gap:40px">
+    <div class="wf-placeholder" style="width:80px; height:20px">Logo 1</div>
+    <div class="wf-placeholder" style="width:80px; height:20px">Logo 2</div>
+    <div class="wf-placeholder" style="width:80px; height:20px">Logo 3</div>
+    <div class="wf-placeholder" style="width:80px; height:20px">Logo 4</div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 7: NEWSLETTER CAPTURE
+     Component : inline in page.tsx — NOT a modal, NOT a popup
+     Behaviour : Inline form. Submit calls POST /api/newsletter (Phase 2).
+                 For MVP: Resend audience add via API route.
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section alt" style="text-align:center; padding:48px 24px">
+  <span class="wf-label">Newsletter — inline form, centered</span>
+  <div class="wf-note">NEVER trigger as popup or modal. This section is always visible, always inline.</div>
+  <!-- Overline -->
+  <div class="wf-component" style="display:inline-block; font-size:9px; margin-bottom:8px">STAY INFORMED</div>
+  <!-- h3: font-heading, text-xl, font-normal, mb-1 -->
+  <h2 style="font-size:16px; margin-bottom:4px">Ingredient updates. Routine edits.</h2>
+  <!-- body: font-body, text-sm, text-gray-600, mb-6 -->
+  <div class="wf-component" style="font-size:12px; margin-bottom:16px">No marketing email. Just skin science.</div>
+  <!-- Form: flex, gap-2, max-w-xs, mx-auto -->
+  <!-- Use React Hook Form + Zod: z.object({ email: z.string().email() }) -->
+  <div class="row" style="justify-content:center; gap:8px; max-width:320px; margin:0 auto">
+    <div class="wf-component" style="flex:1; padding:8px 12px; text-align:left; color:#a3a3a3; font-size:12px">
+      your@email.com
+    </div>
+    <div class="wf-component" style="background:#141414; color:#fff; padding:8px 16px; font-size:10px; white-space:nowrap">
+      Subscribe
+    </div>
+  </div>
+  <div class="wf-note">On success: show inline "You're in." message. On error: show inline error. No toast for this form.</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 8: FOOTER (shared component)
+     Component : src/components/layout/Footer.tsx
+     Layout    : 4-col grid on desktop, stacked on mobile
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section">
+  <span class="wf-label">Footer — shared/Footer.tsx — 4-col grid</span>
+  <div class="row" style="gap:32px; margin-bottom:24px">
+    <!-- Col 1: brand + tagline (flex:2) -->
+    <div class="col" style="flex:2">
+      <div class="wf-component" style="font-size:14px; margin-bottom:6px">Brand. (font-heading, text-base)</div>
+      <div class="wf-component" style="font-size:10px; color:#6b6b6b; line-height:1.6">
+        Ingredient-led skincare.<br>Formulated with precision.<br>Nothing unnecessary.
+      </div>
+    </div>
+    <!-- Col 2: Shop links -->
+    <div class="col">
+      <div class="wf-component" style="font-size:9px; margin-bottom:8px">SHOP</div>
+      <!-- Links: font-body, text-xs, text-gray-600, block, mb-1 -->
+      <div class="wf-component" style="font-size:11px">All products</div>
+      <div class="wf-component" style="font-size:11px">Serums</div>
+      <div class="wf-component" style="font-size:11px">Moisturisers</div>
+      <div class="wf-component" style="font-size:11px">Toners</div>
+    </div>
+    <!-- Col 3: Learn links -->
+    <div class="col">
+      <div class="wf-component" style="font-size:9px; margin-bottom:8px">LEARN</div>
+      <div class="wf-component" style="font-size:11px">Ingredients</div>
+      <div class="wf-component" style="font-size:11px">Skin quiz</div>
+      <div class="wf-component" style="font-size:11px">Journal</div>
+      <div class="wf-component" style="font-size:11px">About us</div>
+    </div>
+    <!-- Col 4: Help links -->
+    <div class="col">
+      <div class="wf-component" style="font-size:9px; margin-bottom:8px">HELP</div>
+      <div class="wf-component" style="font-size:11px">FAQ</div>
+      <div class="wf-component" style="font-size:11px">Shipping</div>
+      <div class="wf-component" style="font-size:11px">Returns</div>
+      <div class="wf-component" style="font-size:11px">Contact</div>
+    </div>
+  </div>
+  <!-- Footer bottom: flex, justify-between, border-t, pt-4 -->
+  <div class="row" style="justify-content:space-between; border-top:1px solid #ebebeb; padding-top:12px">
+    <div class="wf-component" style="font-size:9px; font-family:monospace; color:#a3a3a3">© 2026 Brand. All rights reserved.</div>
+    <div class="row" style="gap:16px">
+      <div class="wf-component" style="font-size:9px; font-family:monospace; color:#a3a3a3">Privacy</div>
+      <div class="wf-component" style="font-size:9px; font-family:monospace; color:#a3a3a3">Terms</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
