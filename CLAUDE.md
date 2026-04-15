@@ -59,6 +59,31 @@ Next.js 14 (App Router) · TypeScript strict · Tailwind CSS · Supabase · Zust
 
 ---
 
+## Commands
+
+```bash
+pnpm dev                           # start dev server
+pnpm build                         # production build
+pnpm typecheck                     # zero type errors — run before every commit
+pnpm lint                          # zero warnings — run before every commit
+
+pnpm vitest                        # unit + component tests (watch)
+pnpm vitest run                    # unit + component tests (CI)
+pnpm vitest run --coverage         # with coverage report
+pnpm vitest run --integration      # integration tests (requires local Supabase)
+pnpm playwright test               # all E2E tests
+pnpm playwright test --headed      # E2E with visible browser
+pnpm playwright test --debug       # E2E step debugger
+
+supabase start                     # spin up local Supabase
+supabase db reset                  # apply migrations + seed test data
+```
+
+**CI order (all steps must pass before merge):**
+`typecheck` → `lint` → `vitest run` → `supabase start + db reset` → `vitest run --integration` → `playwright test`
+
+---
+
 ## Hard rules
 
 **Design**
@@ -188,6 +213,37 @@ A task is not complete unless all of the following are true:
 - [ ] No placeholder or mock data in production code unless explicitly requested
 - [ ] Accessibility requirements met: semantic HTML, keyboard access, labels, focus states
 - [ ] `data-testid` added to all interactive elements
+
+---
+
+## Build progress
+
+| Task | Status | Notes |
+|---|---|---|
+| 1.1 Project scaffold | `[x]` done | Next.js 14, Tailwind, ESLint, Prettier, Vitest, Playwright all configured. `pnpm typecheck`, `lint`, `vitest run` all pass. |
+| 1.2 Supabase schema, RLS, typed client | `[x]` done | Migrations in `supabase/migrations/`. Run `pnpm db:start && pnpm db:reset` (requires Docker). Types hand-authored; regenerate with `pnpm db:types` after first `db:start`. |
+| 1.3 Design system atoms | `[x]` done | Button, Badge, Input, SkeletonCard, Alert, ScienceTag, IngredientTag, ScienceCallout in `components/ui/`. Error color token added to tailwind.config.ts. 62 tests passing. |
+| 1.4 Navbar + Footer | `[x]` done | Navbar (sticky, scroll-aware, mobile hamburger, cart badge stub) + Footer (4-col grid) in `components/layout/`. Shop layout in `app/(shop)/layout.tsx`. 94 tests passing. |
+| 2.1 Inventory API | `[ ]` |  |
+| 2.2 Homepage | `[ ]` |  |
+| 2.3 PLP | `[ ]` |  |
+| 2.4 PDP | `[ ]` |  |
+| 3.1 Cart store + CartDrawer | `[ ]` |  |
+| 3.2 Order API | `[ ]` |  |
+| 3.3 Checkout page | `[ ]` |  |
+| 3.4 Order confirmation | `[ ]` |  |
+| 4.1 Auth (login/signup/middleware) | `[ ]` |  |
+| 4.2 Account page | `[ ]` |  |
+| 5.1 Support ticket API | `[ ]` |  |
+| 5.2 Support form | `[ ]` |  |
+| 6.1 Internal platform scaffold | `[ ]` |  |
+| 6.2 Internal product management | `[ ]` |  |
+| 6.3 Internal order management | `[ ]` |  |
+| 6.4 Internal ticket management | `[ ]` |  |
+| 7.1 Email (Resend + templates) | `[ ]` |  |
+| 8.1 Playwright E2E (6 flows) | `[ ]` |  |
+| 8.2 Sentry | `[ ]` |  |
+| 8.3 Final checklist + deploy | `[ ]` |  |
 
 ---
 

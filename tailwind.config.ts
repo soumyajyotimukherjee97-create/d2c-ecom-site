@@ -8,6 +8,7 @@ const config: Config = {
       colors: {
         white:    '#FFFFFF',
         offwhite: '#FAFAFA',
+        error:    '#B04040',
         gray: {
           50:  '#F5F5F5',
           100: '#EBEBEB',

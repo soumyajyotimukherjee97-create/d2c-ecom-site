@@ -1,0 +1,12 @@
+{
+  "extends": ["next/core-web-vitals"],
+  "rules": {
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "TSTypeAnnotation > TSAnyKeyword",
+        "message": "Do not use `any` — strict: true is required across the whole codebase."
+      }
+    ]
+  }
+}
