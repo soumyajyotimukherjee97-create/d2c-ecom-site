@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Menu, Search, ShoppingBag, User, X } from 'lucide-react'
+import { useCartStore } from '@/lib/store/cart'
 
 const NAV_LINKS = [
   { label: 'Shop', href: '/products' },
@@ -23,8 +24,13 @@ export function Navbar() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Cart item count — connected to useCartStore in Task 3.1
-  const cartCount: number = 0
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+
+  const cartCountRaw = useCartStore((s) => s.itemCount())
+  const openCart     = useCartStore((s) => s.openCart)
+  // Only show persisted count after hydration — prevents server/client HTML mismatch
+  const cartCount = mounted ? cartCountRaw : 0
 
   return (
     <header
@@ -94,6 +100,7 @@ export function Navbar() {
           <button
             aria-label={cartCount > 0 ? `Cart, ${cartCount} item${cartCount !== 1 ? 's' : ''}` : 'Cart'}
             data-testid="navbar-cart"
+            onClick={openCart}
             className="relative w-8 h-8 flex items-center justify-center border border-gray-100 rounded-sm text-gray-600 hover:border-gray-200 hover:text-gray-900 transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2"
           >
             <ShoppingBag size={14} aria-hidden="true" />

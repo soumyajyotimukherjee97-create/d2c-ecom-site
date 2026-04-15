@@ -353,7 +353,22 @@ export type Database = {
       }
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      create_order: {
+        Args: {
+          p_user_id:          string | null
+          p_guest_email:      string | null
+          p_contact_email:    string
+          p_contact_phone:    string | null
+          p_shipping_address: Json
+          p_subtotal:         number
+          p_shipping_total:   number
+          p_total:            number
+          p_items:            Json
+        }
+        Returns: Json
+      }
+    }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>
   }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useCartStore } from '@/lib/store/cart'
 import { Badge } from '@/components/ui/Badge'
 import { IngredientTag } from '@/components/ui/IngredientTag'
 import { ScienceCallout } from '@/components/ui/ScienceCallout'
@@ -33,9 +34,13 @@ export function PDPPurchasePanel({ product }: PDPPurchasePanelProps) {
   const keyIngredients  = product.ingredients.slice(0, 3)
   const scienceNote     = product.ingredients.find((i) => i.science_note)
 
+  const addItem  = useCartStore((s) => s.addItem)
+  const openCart = useCartStore((s) => s.openCart)
+
   function handleAddToCart() {
-    // Task 3.1: useCartStore().addItem(selectedVariant, product, qty)
-    console.log('Add to cart:', { variantId: selectedId, productId: product.id, qty })
+    if (!selectedVariant) return
+    addItem(selectedVariant, product, qty)
+    openCart()
   }
 
   return (

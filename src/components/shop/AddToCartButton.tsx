@@ -1,27 +1,47 @@
 'use client'
 
+import { useState } from 'react'
+import { useCartStore } from '@/lib/store/cart'
+import type { ProductSummary, Variant } from '@/types'
+
 interface AddToCartButtonProps {
-  productId: string
-  productName: string
+  product: ProductSummary
 }
 
-/**
- * Stub until Task 3.1 — will connect to useCartStore().addItem()
- * and trigger CartDrawer open on click.
- */
-export function AddToCartButton({ productId, productName }: AddToCartButtonProps) {
-  function handleClick() {
-    // Task 3.1: useCartStore().addItem(variant, product, 1)
-    console.log('Add to cart:', productId)
+type VariantData = Pick<Variant, 'id' | 'size_ml' | 'price' | 'sku' | 'stock' | 'is_active'>
+
+export function AddToCartButton({ product }: AddToCartButtonProps) {
+  const [loading, setLoading] = useState(false)
+
+  const addItem  = useCartStore((s) => s.addItem)
+  const openCart = useCartStore((s) => s.openCart)
+
+  async function handleClick() {
+    if (loading) return
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/products/${product.slug}`)
+      if (!res.ok) return
+
+      const data = await res.json() as { variants: VariantData[] }
+      const variant = data.variants.find((v) => v.is_active && v.stock > 0)
+      if (!variant) return
+
+      addItem(variant, product, 1)
+      openCart()
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <button
       type="button"
-      aria-label={`Add ${productName} to cart`}
+      aria-label={`Add ${product.name} to cart`}
       data-testid="add-to-cart-button"
       onClick={handleClick}
-      className="w-6 h-6 flex items-center justify-center bg-gray-900 text-white hover:bg-gray-700 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2"
+      disabled={loading}
+      className="w-6 h-6 flex items-center justify-center bg-gray-900 text-white hover:bg-gray-700 disabled:bg-gray-400 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2"
     >
       <span aria-hidden="true" className="text-sm leading-none select-none">+</span>
     </button>

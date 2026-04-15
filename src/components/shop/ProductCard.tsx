@@ -64,7 +64,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
         <div className="flex items-center justify-between">
           <span className="font-body text-sm text-gray-900">{price}</span>
-          <AddToCartButton productId={id} productName={name} />
+          <AddToCartButton product={product} />
         </div>
       </div>
     </article>

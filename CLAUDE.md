@@ -96,6 +96,18 @@ supabase db reset                  # apply migrations + seed test data
 **TypeScript**
 - `strict: true` — no `any`, no `// @ts-ignore`
 
+**Zustand persist + SSR hydration**
+- Any component that reads from a `persist`-ed Zustand store and renders it into the DOM **must** use a `mounted` guard to avoid a hydration mismatch.
+- Pattern (use in every component that renders persisted store values):
+  ```tsx
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  const valueRaw = useStore((s) => s.someValue)
+  const value = mounted ? valueRaw : defaultValue   // 0, null, [], etc.
+  ```
+- Root cause: Zustand's `persist` middleware rehydrates from `localStorage` synchronously on the client's first render. The server has no `localStorage`, so it renders the default. The client renders the real persisted value — mismatch.
+- Affected so far: `Navbar` cart badge (`cartCount`).
+
 **Components**
 - Server components by default — `"use client"` only for state, event handlers, or browser APIs
 - Shared UI components live in `components/ui/` — domain components in `components/shop/` and `components/layout/`
@@ -228,10 +240,10 @@ A task is not complete unless all of the following are true:
 | 2.2 Homepage | `[x]` done | Hero, philosophy strip, featured products (ISR 60s, server component), ingredient spotlight, press strip, newsletter. ProductCard + AddToCartButton stub + NewsletterForm (React state + Zod). 151 tests passing. |
 | 2.3 PLP | `[x]` done | FilterBar (URL-driven, single-select skin_type + concern, sort select), product grid (4-col), pagination, empty state, quiz CTA. EmptyState UI atom added. 174 tests passing. |
 | 2.4 PDP | `[x]` done | Two-column layout, image gallery, PDPPurchasePanel (variant pills, qty, add-to-cart stub), ReviewsSection (load more), full ingredients list, related products. QuantitySelector + ReviewBar atoms added. generateMetadata + JSON-LD breadcrumb. 212 tests passing. |
-| 3.1 Cart store + CartDrawer | `[ ]` |  |
-| 3.2 Order API | `[ ]` |  |
-| 3.3 Checkout page | `[ ]` |  |
-| 3.4 Order confirmation | `[ ]` |  |
+| 3.1 Cart store + CartDrawer | `[x]` done | Zustand store (persist items, not isOpen). CartDrawer: focus trap, backdrop, upsell (Night Repair Cream hardcoded), sticky footer, free shipping ≥ ₹999. AddToCartButton fetches variant on click. PDPPurchasePanel + Navbar wired. 253 tests passing. |
+| 3.2 Order API | `[x]` done | POST/GET /api/orders, GET /api/orders/[id], PATCH /api/orders/[id]/status. Atomic order creation via SECURITY DEFINER RPC (migration 004). Zod schemas in lib/api/schemas/orders.ts. Free shipping ≥ ₹999. Status machine enforced. 285 tests passing. |
+| 3.3 Checkout page | `[x]` done | /checkout: React Hook Form + Zod, minimal navbar, two-col layout (form + sticky summary), state dropdown, promo UI (Phase 2). /order/[id]: server component, hero, info strip, account incentive UI, order items, related products, Footer. `(checkout)` route group with bare layout. Input updated to forwardRef for RHF compatibility. 303 tests passing. |
+| 3.4 Order confirmation | `[x]` done | Covered in 3.3 — /order/[id] page. |
 | 4.1 Auth (login/signup/middleware) | `[ ]` |  |
 | 4.2 Account page | `[ ]` |  |
 | 5.1 Support ticket API | `[ ]` |  |

@@ -1,6 +1,6 @@
 'use client'
 
-import { InputHTMLAttributes } from 'react'
+import { forwardRef, InputHTMLAttributes } from 'react'
 
 export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'id'> {
   id: string
@@ -9,7 +9,10 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
   hint?: string
 }
 
-export function Input({ id, label, error, hint, className = '', ...props }: InputProps) {
+export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
+  { id, label, error, hint, className = '', ...props },
+  ref,
+) {
   const hintId = hint ? `${id}-hint` : undefined
   const errorId = error ? `${id}-error` : undefined
   const describedBy = [hintId, errorId].filter(Boolean).join(' ') || undefined
@@ -21,6 +24,7 @@ export function Input({ id, label, error, hint, className = '', ...props }: Inpu
       </label>
 
       <input
+        ref={ref}
         id={id}
         aria-describedby={describedBy}
         aria-invalid={error ? true : undefined}
@@ -60,4 +64,4 @@ export function Input({ id, label, error, hint, className = '', ...props }: Inpu
       )}
     </div>
   )
-}
+})
