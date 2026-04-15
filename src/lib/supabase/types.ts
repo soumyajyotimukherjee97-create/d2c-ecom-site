@@ -1,12 +1,16 @@
 /**
  * Database type definitions for the D2C skincare platform.
  *
- * This file was authored by hand from TDD.md §3 and matches the migration in
- * supabase/migrations/001_initial_schema.sql.
+ * This file was authored by hand from TDD.md §3 and matches the migrations in
+ * supabase/migrations/.
  *
  * Once local Supabase is running, regenerate with:
  *   pnpm db:types
  *   (runs: supabase gen types typescript --local > src/lib/supabase/types.ts)
+ *
+ * NOTE: Each table requires a `Relationships` field for @supabase/supabase-js v2
+ * generic type inference to work correctly. Without it the client infers `never`
+ * for Insert/Update operations.
  */
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
@@ -23,6 +27,7 @@ export type Database = {
           category: 'serum' | 'moisturiser' | 'toner' | 'spf'
           skin_types: string[]
           concerns: string[]
+          image_url: string | null
           is_active: boolean
           created_at: string
           updated_at: string
@@ -35,6 +40,7 @@ export type Database = {
           category: 'serum' | 'moisturiser' | 'toner' | 'spf'
           skin_types?: string[]
           concerns?: string[]
+          image_url?: string | null
           is_active?: boolean
           created_at?: string
           updated_at?: string
@@ -47,9 +53,11 @@ export type Database = {
           category?: 'serum' | 'moisturiser' | 'toner' | 'spf'
           skin_types?: string[]
           concerns?: string[]
+          image_url?: string | null
           is_active?: boolean
           updated_at?: string
         }
+        Relationships: []
       }
       product_variants: {
         Row: {
@@ -79,6 +87,15 @@ export type Database = {
           stock?: number
           is_active?: boolean
         }
+        Relationships: [
+          {
+            foreignKeyName: 'product_variants_product_id_fkey'
+            columns: ['product_id']
+            isOneToOne: false
+            referencedRelation: 'products'
+            referencedColumns: ['id']
+          },
+        ]
       }
       product_ingredients: {
         Row: {
@@ -108,6 +125,15 @@ export type Database = {
           science_note?: string | null
           display_order?: number
         }
+        Relationships: [
+          {
+            foreignKeyName: 'product_ingredients_product_id_fkey'
+            columns: ['product_id']
+            isOneToOne: false
+            referencedRelation: 'products'
+            referencedColumns: ['id']
+          },
+        ]
       }
       users: {
         Row: {
@@ -130,6 +156,7 @@ export type Database = {
           skin_type?: 'dry' | 'oily' | 'combination' | 'sensitive' | null
           concerns?: string[]
         }
+        Relationships: []
       }
       orders: {
         Row: {
@@ -185,6 +212,7 @@ export type Database = {
           notes?: string | null
           updated_at?: string
         }
+        Relationships: []
       }
       order_items: {
         Row: {
@@ -217,6 +245,22 @@ export type Database = {
           unit_price?: number
           line_total?: number
         }
+        Relationships: [
+          {
+            foreignKeyName: 'order_items_order_id_fkey'
+            columns: ['order_id']
+            isOneToOne: false
+            referencedRelation: 'orders'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'order_items_variant_id_fkey'
+            columns: ['variant_id']
+            isOneToOne: false
+            referencedRelation: 'product_variants'
+            referencedColumns: ['id']
+          },
+        ]
       }
       reviews: {
         Row: {
@@ -248,6 +292,15 @@ export type Database = {
           body?: string | null
           is_approved?: boolean
         }
+        Relationships: [
+          {
+            foreignKeyName: 'reviews_product_id_fkey'
+            columns: ['product_id']
+            isOneToOne: false
+            referencedRelation: 'products'
+            referencedColumns: ['id']
+          },
+        ]
       }
       support_tickets: {
         Row: {
@@ -288,10 +341,20 @@ export type Database = {
           assigned_to?: string | null
           resolved_at?: string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: 'support_tickets_order_id_fkey'
+            columns: ['order_id']
+            isOneToOne: false
+            referencedRelation: 'orders'
+            referencedColumns: ['id']
+          },
+        ]
       }
     }
     Views: Record<string, never>
     Functions: Record<string, never>
     Enums: Record<string, never>
+    CompositeTypes: Record<string, never>
   }
 }

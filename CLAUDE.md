@@ -224,10 +224,10 @@ A task is not complete unless all of the following are true:
 | 1.2 Supabase schema, RLS, typed client | `[x]` done | Migrations in `supabase/migrations/`. Run `pnpm db:start && pnpm db:reset` (requires Docker). Types hand-authored; regenerate with `pnpm db:types` after first `db:start`. |
 | 1.3 Design system atoms | `[x]` done | Button, Badge, Input, SkeletonCard, Alert, ScienceTag, IngredientTag, ScienceCallout in `components/ui/`. Error color token added to tailwind.config.ts. 62 tests passing. |
 | 1.4 Navbar + Footer | `[x]` done | Navbar (sticky, scroll-aware, mobile hamburger, cart badge stub) + Footer (4-col grid) in `components/layout/`. Shop layout in `app/(shop)/layout.tsx`. 94 tests passing. |
-| 2.1 Inventory API | `[ ]` |  |
-| 2.2 Homepage | `[ ]` |  |
-| 2.3 PLP | `[ ]` |  |
-| 2.4 PDP | `[ ]` |  |
+| 2.1 Inventory API | `[x]` done | GET/POST /api/products, GET/PATCH/DELETE /api/products/[id], GET /api/products/[id]/stock, PATCH /api/products/[id]/variants/[variantId]. Zod schemas in lib/api/schemas/products.ts. 34 schema unit tests + integration test suite. |
+| 2.2 Homepage | `[x]` done | Hero, philosophy strip, featured products (ISR 60s, server component), ingredient spotlight, press strip, newsletter. ProductCard + AddToCartButton stub + NewsletterForm (React state + Zod). 151 tests passing. |
+| 2.3 PLP | `[x]` done | FilterBar (URL-driven, single-select skin_type + concern, sort select), product grid (4-col), pagination, empty state, quiz CTA. EmptyState UI atom added. 174 tests passing. |
+| 2.4 PDP | `[x]` done | Two-column layout, image gallery, PDPPurchasePanel (variant pills, qty, add-to-cart stub), ReviewsSection (load more), full ingredients list, related products. QuantitySelector + ReviewBar atoms added. generateMetadata + JSON-LD breadcrumb. 212 tests passing. |
 | 3.1 Cart store + CartDrawer | `[ ]` |  |
 | 3.2 Order API | `[ ]` |  |
 | 3.3 Checkout page | `[ ]` |  |

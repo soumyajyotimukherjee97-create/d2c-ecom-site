@@ -120,6 +120,7 @@ All tables live in a single Supabase Postgres database. UUID primary keys throug
 | `category` | `text` | NOT NULL | `serum \| moisturiser \| toner \| spf` |
 | `skin_types` | `text[]` | | Array: `dry \| oily \| combination \| sensitive \| all` |
 | `concerns` | `text[]` | | Array: `acne \| dullness \| aging \| pores \| redness` |
+| `image_url` | `text` | nullable | Public URL of the product's primary image (Supabase Storage) |
 | `is_active` | `boolean` | default `true` | Controls listing visibility |
 | `created_at` | `timestamptz` | default `now()` | Creation timestamp |
 | `updated_at` | `timestamptz` | default `now()` | Last modified timestamp |
