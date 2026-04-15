@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Menu, Search, ShoppingBag, User, X } from 'lucide-react'
 import { useCartStore } from '@/lib/store/cart'
+import { useAuthUser, getInitials } from '@/lib/hooks/useAuthUser'
 
 const NAV_LINKS = [
   { label: 'Shop', href: '/products' },
@@ -31,6 +32,10 @@ export function Navbar() {
   const openCart     = useCartStore((s) => s.openCart)
   // Only show persisted count after hydration — prevents server/client HTML mismatch
   const cartCount = mounted ? cartCountRaw : 0
+
+  const { user } = useAuthUser()
+  const initials = mounted ? getInitials(user) : ''
+  const isSignedIn = mounted && user !== null
 
   return (
     <header
@@ -88,12 +93,28 @@ export function Navbar() {
 
           {/* Account */}
           <Link
-            href="/account"
-            aria-label="Account"
+            href={isSignedIn ? '/account' : '/login'}
+            aria-label={isSignedIn ? 'Account' : 'Sign in'}
             data-testid="navbar-account"
-            className="w-8 h-8 flex items-center justify-center border border-gray-100 rounded-sm text-gray-600 hover:border-gray-200 hover:text-gray-900 transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2"
+            data-signed-in={isSignedIn ? 'true' : 'false'}
+            className={[
+              'w-8 h-8 flex items-center justify-center rounded-sm transition-colors',
+              'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2',
+              isSignedIn
+                ? 'bg-gray-900 text-white border border-gray-900 hover:bg-gray-700'
+                : 'border border-gray-100 text-gray-600 hover:border-gray-200 hover:text-gray-900',
+            ].join(' ')}
           >
-            <User size={14} aria-hidden="true" />
+            {isSignedIn && initials ? (
+              <span
+                data-testid="navbar-account-initials"
+                className="font-mono text-2xs tracking-wider"
+              >
+                {initials}
+              </span>
+            ) : (
+              <User size={14} aria-hidden="true" />
+            )}
           </Link>
 
           {/* Cart */}

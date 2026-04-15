@@ -172,4 +172,44 @@ describe('useCartStore', () => {
     useCartStore.getState().closeCart()
     expect(useCartStore.getState().isOpen).toBe(false)
   })
+
+  // ── addItems (batch, e.g. reorder) ─────────────────────────────────────────
+
+  it('addItems appends new variants', () => {
+    useCartStore.getState().addItems([
+      {
+        variantId:   'v1',
+        productId:   'prod-1',
+        sku:         'BS-30',
+        productName: 'Brightening Serum',
+        slug:        'brightening-serum',
+        size_ml:     30,
+        price:       129900,
+        quantity:    2,
+        imageUrl:    null,
+      },
+    ])
+    const items = useCartStore.getState().items
+    expect(items).toHaveLength(1)
+    expect(items[0]).toMatchObject({ variantId: 'v1', quantity: 2 })
+  })
+
+  it('addItems merges quantity for existing variants', () => {
+    useCartStore.getState().addItem(mockVariant, mockProduct, 1)
+    useCartStore.getState().addItems([
+      {
+        variantId:   'v1',
+        productId:   'prod-1',
+        sku:         'BS-30',
+        productName: 'Brightening Serum',
+        slug:        'brightening-serum',
+        size_ml:     30,
+        price:       129900,
+        quantity:    3,
+        imageUrl:    null,
+      },
+    ])
+    expect(useCartStore.getState().items).toHaveLength(1)
+    expect(useCartStore.getState().items[0]!.quantity).toBe(4)
+  })
 })

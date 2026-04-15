@@ -24,6 +24,7 @@ interface CartStore {
 
   // Mutations
   addItem:    (variant: Variant, product: ProductSummary, qty: number) => void
+  addItems:   (items: CartItem[]) => void
   removeItem: (variantId: string) => void
   updateQty:  (variantId: string, qty: number) => void
   clearCart:  () => void
@@ -65,6 +66,21 @@ export const useCartStore = create<CartStore>()(
             imageUrl:    product.image_url,
           }
           return { items: [...state.items, newItem] }
+        })
+      },
+
+      addItems(incoming) {
+        set((state) => {
+          const next = [...state.items]
+          for (const item of incoming) {
+            const idx = next.findIndex((i) => i.variantId === item.variantId)
+            if (idx >= 0) {
+              next[idx] = { ...next[idx]!, quantity: next[idx]!.quantity + item.quantity }
+            } else {
+              next.push(item)
+            }
+          }
+          return { items: next }
         })
       },
 

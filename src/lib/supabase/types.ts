@@ -313,6 +313,7 @@ export type Database = {
           status: 'open' | 'in_progress' | 'resolved' | 'closed'
           priority: 'low' | 'normal' | 'high' | 'urgent'
           assigned_to: string | null
+          notes: string | null
           resolved_at: string | null
           created_at: string
         }
@@ -326,6 +327,7 @@ export type Database = {
           status?: 'open' | 'in_progress' | 'resolved' | 'closed'
           priority?: 'low' | 'normal' | 'high' | 'urgent'
           assigned_to?: string | null
+          notes?: string | null
           resolved_at?: string | null
           created_at?: string
         }
@@ -339,6 +341,7 @@ export type Database = {
           status?: 'open' | 'in_progress' | 'resolved' | 'closed'
           priority?: 'low' | 'normal' | 'high' | 'urgent'
           assigned_to?: string | null
+          notes?: string | null
           resolved_at?: string | null
         }
         Relationships: [

@@ -1,7 +1,8 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { Navbar } from '@/components/layout/Navbar'
+import { createClient } from '@/lib/supabase/browser'
 
 // usePathname is mocked in setup.ts → returns '/'
 
@@ -37,9 +38,10 @@ describe('Navbar', () => {
       expect(screen.getByTestId('navbar-cart')).toBeInTheDocument()
     })
 
-    it('account link points to /account', () => {
+    it('account link points to /login when signed out', () => {
       render(<Navbar />)
-      expect(screen.getByTestId('navbar-account')).toHaveAttribute('href', '/account')
+      // Default supabase mock returns { user: null } — treated as signed-out
+      expect(screen.getByTestId('navbar-account')).toHaveAttribute('href', '/login')
     })
   })
 
@@ -116,6 +118,28 @@ describe('Navbar', () => {
       await userEvent.click(screen.getByTestId('navbar-mobile-toggle'))
       await userEvent.click(screen.getByTestId('mobile-nav-link-shop'))
       expect(screen.queryByTestId('navbar-mobile-menu')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('auth state', () => {
+    it('shows initials and links to /account when signed in', async () => {
+      vi.mocked(createClient).mockReturnValueOnce({
+        auth: {
+          getUser: vi.fn().mockResolvedValue({
+            data: { user: { email: 'priya.mehta@example.com', user_metadata: {} } },
+            error: null,
+          }),
+          onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+        },
+        from: vi.fn(),
+      } as never)
+
+      render(<Navbar />)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('navbar-account')).toHaveAttribute('href', '/account')
+      })
+      expect(screen.getByTestId('navbar-account-initials')).toHaveTextContent('PM')
     })
   })
 

@@ -146,6 +146,7 @@ export type SupportTicket = {
   status: TicketStatus
   priority: TicketPriority
   assigned_to: string | null
+  notes: string | null
   resolved_at: string | null
   created_at: string
 }

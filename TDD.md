@@ -230,6 +230,7 @@ All tables live in a single Supabase Postgres database. UUID primary keys throug
 | `status` | `text` | NOT NULL · default `open` | `open \| in_progress \| resolved \| closed` |
 | `priority` | `text` | default `normal` | `low \| normal \| high \| urgent` |
 | `assigned_to` | `uuid` | FK → `auth.users` (staff) | Internal assignee |
+| `notes` | `text` | nullable | Internal staff notes — never returned to customers |
 | `resolved_at` | `timestamptz` | | |
 | `created_at` | `timestamptz` | default `now()` | |
 

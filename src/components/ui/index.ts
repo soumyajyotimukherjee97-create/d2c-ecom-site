@@ -24,5 +24,7 @@ export type { ScienceTagProps } from './ScienceTag'
 export { SkeletonCard } from './SkeletonCard'
 export type { SkeletonCardProps } from './SkeletonCard'
 
+export { StatusBadge } from './StatusBadge'
+
 export { QuantitySelector } from './QuantitySelector'
 export type { QuantitySelectorProps } from './QuantitySelector'

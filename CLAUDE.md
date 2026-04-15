@@ -244,10 +244,10 @@ A task is not complete unless all of the following are true:
 | 3.2 Order API | `[x]` done | POST/GET /api/orders, GET /api/orders/[id], PATCH /api/orders/[id]/status. Atomic order creation via SECURITY DEFINER RPC (migration 004). Zod schemas in lib/api/schemas/orders.ts. Free shipping ≥ ₹999. Status machine enforced. 285 tests passing. |
 | 3.3 Checkout page | `[x]` done | /checkout: React Hook Form + Zod, minimal navbar, two-col layout (form + sticky summary), state dropdown, promo UI (Phase 2). /order/[id]: server component, hero, info strip, account incentive UI, order items, related products, Footer. `(checkout)` route group with bare layout. Input updated to forwardRef for RHF compatibility. 303 tests passing. |
 | 3.4 Order confirmation | `[x]` done | Covered in 3.3 — /order/[id] page. |
-| 4.1 Auth (login/signup/middleware) | `[ ]` |  |
-| 4.2 Account page | `[ ]` |  |
-| 5.1 Support ticket API | `[ ]` |  |
-| 5.2 Support form | `[ ]` |  |
+| 4.1 Auth (login/signup/middleware) | `[x]` done | `(auth)` route group with `/login` + `/signup` (RHF + Zod). `src/middleware.ts` protects `/account/*` via `updateSession` helper; redirects to `/login?next=…`. Navbar account icon shows initials when authed, `/login` when not. useAuthUser hook subscribes to session. 324 tests passing. |
+| 4.2 Account page | `[x]` done | `/account` server component with sidebar (initials, email, Orders, Support, Sign out) + content (order history, restock reminder, skin profile). Orders joined with `order_items`; live variants fetched for reorder. Client islands: `SignOutButton`, `ReorderButton` (uses new `cart.addItems`), editable `SkinProfileForm` → PATCH `/api/account/profile` (admin client update, session-derived id). `StatusBadge` ui atom added. 342 tests passing. |
+| 5.1 Support ticket API | `[x]` done | POST `/api/support` (public — auth or guest; server-derived identity), GET `/api/support` (internal, service-role), PATCH `/api/support/[id]` (internal, stamps/clears `resolved_at`, accepts `notes`). Zod schemas in `lib/api/schemas/support.ts`. Migration 005 adds `support_tickets.notes` (staff-only, never surfaced publicly). Unit + integration test suite covers guest/auth create, service-role gates, status transitions, 404, notes update. |
+| 5.2 Support form | `[x]` done | `/support/new` — server component fetches session + user's orders for dropdown. `SupportForm` client island: RHF + Zod; email readonly when authed, input for guests; order dropdown (authed, sends `order_id` UUID) or text input (guest, prepended as "Order reference:" to body since API rejects guest `order_id`); 5000-char counter; inline success state (no redirect) showing first 8 chars of ticket id. 371 tests passing. |
 | 6.1 Internal platform scaffold | `[ ]` |  |
 | 6.2 Internal product management | `[ ]` |  |
 | 6.3 Internal order management | `[ ]` |  |
