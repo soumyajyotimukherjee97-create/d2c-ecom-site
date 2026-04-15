@@ -1,5 +1,8 @@
+import { withSentryConfig } from '@sentry/nextjs'
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  transpilePackages: ['@d2c/email'],
   images: {
     remotePatterns: [
       {
@@ -11,4 +14,18 @@ const nextConfig = {
   },
 }
 
-export default nextConfig
+const sentryDsn       = process.env.NEXT_PUBLIC_SENTRY_DSN
+const sentryAuthToken = process.env.SENTRY_AUTH_TOKEN
+const sentryOrg       = process.env.SENTRY_ORG
+const sentryProject   = process.env.SENTRY_PROJECT
+
+export default sentryDsn
+  ? withSentryConfig(nextConfig, {
+      silent:       !process.env.CI,
+      org:          sentryOrg,
+      project:      sentryProject,
+      authToken:    sentryAuthToken,
+      sourcemaps:   sentryAuthToken && sentryOrg && sentryProject ? undefined : { disable: true },
+      disableLogger: true,
+    })
+  : nextConfig

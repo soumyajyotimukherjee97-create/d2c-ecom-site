@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { sendOrderShipped, sendOrderDelivered } from '@d2c/email'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireStaff } from '@/lib/actions/auth-guard'
 import {
@@ -35,7 +36,7 @@ export async function updateOrderStatusAction(
 
   const { data: current, error: fetchErr } = await admin
     .from('orders')
-    .select('id, status')
+    .select('id, order_number, status, contact_email')
     .eq('id', id)
     .maybeSingle()
 
@@ -74,6 +75,21 @@ export async function updateOrderStatusAction(
     return { ok: false, code: 'INTERNAL', message: 'Failed to update order.' }
   }
   if (!updated) return { ok: false, code: 'NOT_FOUND', message: 'Order not found.' }
+
+  // ── Fire the right transactional email for this transition (non-blocking) ─
+  const orderNumber  = (current as { order_number: string }).order_number
+  const contactEmail = (current as { contact_email: string }).contact_email
+  if (status === 'shipped' && tracking_id && carrier) {
+    void sendOrderShipped(contactEmail, {
+      order_number: orderNumber,
+      carrier,
+      tracking_id,
+    })
+  } else if (status === 'delivered') {
+    void sendOrderDelivered(contactEmail, {
+      order_number: orderNumber,
+    })
+  }
 
   revalidatePath('/orders')
   revalidatePath(`/orders/${id}`)

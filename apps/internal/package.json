@@ -12,7 +12,9 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@d2c/email": "workspace:*",
     "@hookform/resolvers": "^5.2.2",
+    "@sentry/nextjs": "^8.30.0",
     "@supabase/ssr": "^0.5.0",
     "@supabase/supabase-js": "^2.103.0",
     "lucide-react": "^0.378.0",

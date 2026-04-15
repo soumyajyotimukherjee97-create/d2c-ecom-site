@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { sendTicketResolved } from '@d2c/email'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/actions/auth-guard'
@@ -45,7 +46,7 @@ export async function updateTicketAction(
     .from('support_tickets')
     .update(payload)
     .eq('id', id)
-    .select('id')
+    .select('id, subject, status, guest_email, user_id')
     .maybeSingle()
 
   if (error) {
@@ -54,9 +55,36 @@ export async function updateTicketAction(
   }
   if (!data) return { ok: false, code: 'NOT_FOUND', message: 'Ticket not found.' }
 
+  // Fire ticket-resolved email once, at the transition to "resolved" only.
+  if (parsed.data.status === 'resolved') {
+    const row = data as {
+      id:          string
+      subject:     string
+      guest_email: string | null
+      user_id:     string | null
+    }
+    const recipient = row.guest_email ?? (row.user_id ? await lookupUserEmail(admin, row.user_id) : null)
+    if (recipient) {
+      void sendTicketResolved(recipient, {
+        ticket_id: row.id,
+        subject:   row.subject,
+        resolution_summary: parsed.data.notes ?? undefined,
+      })
+    }
+  }
+
   revalidatePath('/support')
   revalidatePath(`/support/${id}`)
   return { ok: true, data: undefined }
+}
+
+async function lookupUserEmail(admin: ReturnType<typeof createAdminClient>, userId: string): Promise<string | null> {
+  const { data, error } = await admin.auth.admin.getUserById(userId)
+  if (error) {
+    console.error('[updateTicketAction] lookup user', error.message)
+    return null
+  }
+  return data.user?.email ?? null
 }
 
 /** Assign the ticket to the currently signed-in staff user. */

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { sendOrderConfirmation } from '@d2c/email'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isServiceRole } from '@/lib/api/auth'
@@ -147,7 +148,27 @@ export async function POST(request: NextRequest) {
 
   const result = rpcResult as { id: string; order_number: string }
 
-  // ── 8. Build 201 response ─────────────────────────────────────────────────
+  // ── 8. Fire confirmation email (non-blocking) ─────────────────────────────
+  // Failures are swallowed inside sendOrderConfirmation so they cannot delay
+  // or fail the customer response.
+  const orderUrl = `${process.env.NEXT_PUBLIC_BASE_URL ?? ''}/order/${result.id}`
+  void sendOrderConfirmation(contact_email, {
+    order_number:    result.order_number,
+    contact_email,
+    items: enrichedItems.map((i) => ({
+      product_name: i.product_name,
+      variant_sku:  i.variant_sku,
+      quantity:     i.quantity,
+      line_total:   i.line_total,
+    })),
+    subtotal,
+    shipping_total:   shippingTotal,
+    total,
+    shipping_address: shipping_address,
+    order_url:        orderUrl || undefined,
+  })
+
+  // ── 9. Build 201 response ─────────────────────────────────────────────────
   return NextResponse.json(
     {
       id:            result.id,

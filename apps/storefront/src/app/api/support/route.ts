@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { sendTicketOpened } from '@d2c/email'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isServiceRole } from '@/lib/api/auth'
@@ -73,6 +74,16 @@ export async function POST(request: NextRequest) {
   if (error || !ticket) {
     console.error('[POST /api/support] insert', error?.message)
     return Errors.internal()
+  }
+
+  // Fire the confirmation email (non-blocking). Prefer guest_email for guests;
+  // for authed users, fall back to the session email.
+  const recipient = user?.email ?? (guest_email ?? null)
+  if (recipient) {
+    void sendTicketOpened(recipient, {
+      ticket_id: ticket.id,
+      subject,
+    })
   }
 
   return NextResponse.json(
