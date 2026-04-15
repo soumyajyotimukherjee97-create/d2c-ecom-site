@@ -62,21 +62,24 @@ Next.js 14 (App Router) · TypeScript strict · Tailwind CSS · Supabase · Zust
 ## Commands
 
 ```bash
-pnpm dev                           # start dev server
-pnpm build                         # production build
-pnpm typecheck                     # zero type errors — run before every commit
-pnpm lint                          # zero warnings — run before every commit
+# Workspace layout: apps/storefront (port 3000) · apps/internal (port 3001)
+# Shared: supabase/ migrations at repo root (one DB for both apps)
 
-pnpm vitest                        # unit + component tests (watch)
-pnpm vitest run                    # unit + component tests (CI)
-pnpm vitest run --coverage         # with coverage report
-pnpm vitest run --integration      # integration tests (requires local Supabase)
-pnpm playwright test               # all E2E tests
-pnpm playwright test --headed      # E2E with visible browser
-pnpm playwright test --debug       # E2E step debugger
+pnpm dev                                         # start storefront (port 3000)
+pnpm dev:internal                                # start internal console (port 3001)
+pnpm build                                       # build all workspaces
+pnpm typecheck                                   # typecheck all workspaces
+pnpm lint                                        # lint all workspaces
+pnpm test                                        # unit + component tests across workspaces
+pnpm test:integration                            # storefront integration tests (requires local Supabase)
+pnpm e2e                                         # storefront Playwright E2E
 
-supabase start                     # spin up local Supabase
-supabase db reset                  # apply migrations + seed test data
+# Scope a command to one app:
+pnpm -F storefront <script>
+pnpm -F internal <script>
+
+supabase start                                   # spin up local Supabase
+supabase db reset                                # apply migrations + seed test data
 ```
 
 **CI order (all steps must pass before merge):**
@@ -248,10 +251,10 @@ A task is not complete unless all of the following are true:
 | 4.2 Account page | `[x]` done | `/account` server component with sidebar (initials, email, Orders, Support, Sign out) + content (order history, restock reminder, skin profile). Orders joined with `order_items`; live variants fetched for reorder. Client islands: `SignOutButton`, `ReorderButton` (uses new `cart.addItems`), editable `SkinProfileForm` → PATCH `/api/account/profile` (admin client update, session-derived id). `StatusBadge` ui atom added. 342 tests passing. |
 | 5.1 Support ticket API | `[x]` done | POST `/api/support` (public — auth or guest; server-derived identity), GET `/api/support` (internal, service-role), PATCH `/api/support/[id]` (internal, stamps/clears `resolved_at`, accepts `notes`). Zod schemas in `lib/api/schemas/support.ts`. Migration 005 adds `support_tickets.notes` (staff-only, never surfaced publicly). Unit + integration test suite covers guest/auth create, service-role gates, status transitions, 404, notes update. |
 | 5.2 Support form | `[x]` done | `/support/new` — server component fetches session + user's orders for dropdown. `SupportForm` client island: RHF + Zod; email readonly when authed, input for guests; order dropdown (authed, sends `order_id` UUID) or text input (guest, prepended as "Order reference:" to body since API rejects guest `order_id`); 5000-char counter; inline success state (no redirect) showing first 8 chars of ticket id. 371 tests passing. |
-| 6.1 Internal platform scaffold | `[ ]` |  |
-| 6.2 Internal product management | `[ ]` |  |
-| 6.3 Internal order management | `[ ]` |  |
-| 6.4 Internal ticket management | `[ ]` |  |
+| 6.1 Internal platform scaffold | `[x]` done | **Repo is now a pnpm workspace.** Storefront moved to `apps/storefront/`; new `apps/internal/` (Next.js 14, port 3001) with staff auth. Shared `supabase/` migrations stay at repo root (one DB). Internal has its own Supabase client helpers (browser/server/admin/middleware) — untyped for now; extract to `packages/db` when 6.2 needs typed writes. Role gate = `app_metadata.role === 'staff'` OR `user_metadata.role === 'staff'` (per TDD §8.3). `src/middleware.ts` protects every path except `/login`; non-staff → `/login?error=unauthorized`; no session → `/login?next=…`. `/dashboard` placeholder with email display + sign-out + nav cards to Products/Orders/Support. 15 new tests (LoginSchema, `isStaff` helper, `LoginForm`). Root scripts delegate: `pnpm dev` → storefront, `pnpm dev:internal` → internal, `pnpm typecheck`/`lint`/`test` run across the workspace. **Internal needs its own `apps/internal/.env.local`** with `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`. |
+| 6.2 Internal product management | `[x]` done | Internal writes go through **local server actions using the admin client** (no HTTP coupling to storefront). Zod schemas in `apps/internal/src/lib/api/schemas/products.ts` mirror storefront; will extract to `packages/schemas` when a second domain needs them. Server actions (`apps/internal/src/app/products/actions.ts`): `createProductAction`, `updateProductAction`, `toggleProductActiveAction`, `addVariantAction`, `updateVariantAction` — each guarded by `requireStaff()` (defence-in-depth over middleware). SKU uniqueness conflicts map to `CONFLICT`; product creation rolls back on variant-insert failure. Pages: `/products` (server-rendered table · search by name/slug · category + visibility filters · pagination · inline Deactivate/Activate), `/products/new` (RHF + `useFieldArray` for variants, auto-slug on name blur), `/products/[id]/edit` (details form + variants table with inline price/stock/active edits + add-variant form). Shared `ConsoleHeader` extracted; dashboard refactored to use it. 23 new Zod schema tests — total internal 38, storefront 371. |
+| 6.3 Internal order management | `[x]` done | Same pattern as 6.2 — local server action + admin client. `OrderStatusEnum` + `VALID_TRANSITIONS` machine duplicated in `apps/internal/src/lib/api/schemas/orders.ts`; `UpdateOrderStatusSchema` enforces tracking_id + carrier when `status=shipped`. `updateOrderStatusAction` validates the transition server-side before updating; returns `INVALID_TRANSITION` if blocked. Pages: `/orders` (server-rendered table · search by `order_number` or `contact_email` · status filter · pagination · 25/page), `/orders/[id]` (items table with subtotal/shipping/total, customer + shipping-address + fulfilment panels, `StatusTransitionForm` client island that shows only allowed next states from the current status and reveals carrier+tracking inputs when the target is `shipped` or current is shipped). `OrderStatusBadge` + `formatInr(paise)` helpers added. 13 new schema/machine tests — internal 51 total, storefront 371. |
+| 6.4 Internal ticket management | `[x]` done | Local server actions + admin client, same pattern as 6.2/6.3. `apps/internal/src/lib/api/schemas/support.ts` ports `TicketStatusEnum`, `TicketPriorityEnum`, `UpdateTicketSchema` (refine: at least one field), `ListTicketsQuerySchema`. Actions: `updateTicketAction` (stamps `resolved_at` when moving to `resolved`, clears it when reopening to non-closed states — `closed` preserves the last timestamp), `assignToMeAction` (derives staff id from session — never trusts the client), `unassignAction`. Pages: `/support` (server-rendered table · status + priority filters · search on subject / guest_email · pagination · 25/page), `/support/[id]` (message panel with preserved whitespace, linked-order panel that deep-links to `/orders/[id]`, assignment panel, update form with status/priority/notes + counter + Assign-to-me/Unassign). `TicketStatusBadge` + `TicketPriorityBadge` added. 14 new schema tests — internal 65 total, storefront 371. **Phase 6 complete.** |
 | 7.1 Email (Resend + templates) | `[ ]` |  |
 | 8.1 Playwright E2E (6 flows) | `[ ]` |  |
 | 8.2 Sentry | `[ ]` |  |
