@@ -50,12 +50,13 @@ export default async function OrdersListPage({
   const { data, count, error } = await query
 
   if (error) {
-    console.error('[OrdersListPage]', error.message)
+    console.error('[OrdersListPage]', error)
   }
 
   const rows       = ((data ?? []) as unknown as OrderRow[])
   const total      = count ?? 0
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const dbError    = error ? `${error.code ?? 'ERR'} · ${error.message} · hint: ${error.hint ?? '—'} · details: ${error.details ?? '—'}` : null
 
   return (
     <main className="min-h-screen bg-offwhite">
@@ -71,6 +72,15 @@ export default async function OrdersListPage({
         </div>
 
         <OrdersFilterBar defaultQ={q ?? ''} defaultStatus={status ?? ''} />
+
+        {dbError && (
+          <div
+            className="border border-error bg-red-50 rounded-sm p-4 mb-4 font-mono text-2xs text-error"
+            data-testid="orders-db-error"
+          >
+            DB error: {dbError}
+          </div>
+        )}
 
         {rows.length === 0 ? (
           <div className="border border-gray-200 rounded-sm bg-white p-12 text-center" data-testid="orders-empty">
