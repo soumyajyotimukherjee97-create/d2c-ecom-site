@@ -11,7 +11,7 @@ export function QuantitySelector({ value, onChange, min = 1, max = 99 }: Quantit
   return (
     <div
       data-testid="quantity-selector"
-      className="flex border border-gray-100 rounded-sm"
+      className="inline-flex border border-gray-100 rounded-sm"
     >
       <button
         type="button"
