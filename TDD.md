@@ -497,7 +497,7 @@ Base path: `/api/orders` and `/api/support`. Prices always in paise. Status tran
 
 ### 5.1 `POST /api/orders`
 
-**Purpose:** Create a new order. Called from checkout page after address collection. Payment integration is Phase 2 — this endpoint currently creates orders in `confirmed` status directly.
+**Purpose:** Create a new order. Called from checkout page after address collection. Payment integration is Phase 2 — this endpoint currently creates orders in `confirmed` status directly. For the Phase-1 launch the checkout submit button is labelled **"Place order"** and the payment callout advertises **Cash on Delivery** (collect on delivery); no gateway is invoked.
 
 **Request body:**
 
@@ -896,14 +896,14 @@ export const config = { matcher: ['/account/:path*'] }
 ### 9.1 Place order workflow
 
 1. Customer opens cart drawer → client calls `GET /api/products/[id]/stock` to validate current stock.
-2. Customer proceeds to checkout page — address form rendered.
-3. Customer submits form → client-side validation (Zod schema) before API call.
+2. Customer proceeds to checkout page — address form rendered. A **Cash on Delivery** callout appears above the submit button; no payment gateway is invoked (Phase-1 placeholder — Razorpay is Phase 2).
+3. Customer clicks **"Place order"** → client-side validation (Zod schema) before API call.
 4. Client calls `POST /api/orders` with items, address, contact details.
 5. Server validates input, checks stock, opens Postgres transaction.
 6. Transaction: inserts order + items, decrements stock. Commit.
 7. Server triggers Resend email (fire-and-forget — does not block response).
-8. `201` response returned → client clears cart, redirects to `/order/[id]`.
-9. Order confirmation page renders with order summary and account creation prompt.
+8. `201` response returned → client flips a `submitted` flag (to suppress the empty-cart → `/products` redirect), clears the cart, and redirects to `/order/[id]`.
+9. Order confirmation page renders with order summary and account creation prompt. Payment is collected in person at delivery time by the fulfilment partner.
 
 ### 9.2 Order fulfilment workflow (ops)
 

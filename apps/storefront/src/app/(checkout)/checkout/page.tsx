@@ -115,15 +115,18 @@ export default function CheckoutPage() {
 
   const [mounted, setMounted]     = useState(false)
   const [apiError, setApiError]   = useState<string | null>(null)
+  const [submitted, setSubmitted] = useState(false)
 
   useEffect(() => setMounted(true), [])
 
-  // Redirect to products if cart is empty (after hydration)
+  // Redirect to products if cart is empty (after hydration).
+  // Skip once an order has been submitted — clearCart() empties items and would
+  // otherwise race with router.push('/order/[id]').
   useEffect(() => {
-    if (mounted && items.length === 0) {
+    if (mounted && !submitted && items.length === 0) {
       router.replace('/products')
     }
-  }, [mounted, items.length, router])
+  }, [mounted, submitted, items.length, router])
 
   const {
     register,
@@ -168,6 +171,7 @@ export default function CheckoutPage() {
         return
       }
 
+      setSubmitted(true)
       clearCart()
       router.push(`/order/${json.id}`)
     } catch {
@@ -376,10 +380,10 @@ export default function CheckoutPage() {
               data-testid="payment-callout"
             >
               <p className="font-mono text-2xs uppercase tracking-widest text-gray-400 mb-1">
-                Payment — next step
+                COD
               </p>
               <p className="font-body text-xs text-gray-600">
-                We use Razorpay — UPI, cards, net banking, and wallets all supported.
+                Payment to be done at the time of delivery
               </p>
             </div>
 
@@ -392,7 +396,7 @@ export default function CheckoutPage() {
               data-testid="checkout-submit"
               className="w-full mb-2"
             >
-              Continue to payment →
+              Place order →
             </Button>
 
             <p className="font-mono text-2xs text-gray-400 text-center">

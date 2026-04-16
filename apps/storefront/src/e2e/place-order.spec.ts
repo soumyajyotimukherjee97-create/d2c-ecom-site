@@ -8,8 +8,10 @@ import { test, expect } from '@playwright/test'
  */
 const SEEDED_VARIANT = {
   variantId:   'b1000000-0000-0000-0000-000000000001',
+  productId:   'a1000000-0000-0000-0000-000000000001',
   sku:         'BRTSERUM-30',
   productName: 'Brightening Serum',
+  slug:        'brightening-serum',
   size_ml:     30,
   price:       129900,
   quantity:    1,
@@ -18,9 +20,10 @@ const SEEDED_VARIANT = {
 
 test('guest places an order end-to-end', async ({ page }) => {
   // Seed the Zustand persist store before the app boots.
+  // Key must match persist config in lib/store/cart.ts.
   await page.addInitScript((item) => {
     window.localStorage.setItem(
-      'cart-storage',
+      'form-cart',
       JSON.stringify({ state: { items: [item] }, version: 0 }),
     )
   }, SEEDED_VARIANT)
@@ -33,7 +36,7 @@ test('guest places an order end-to-end', async ({ page }) => {
   await page.getByTestId('input-address-line1').fill('1 MG Road')
   await page.getByTestId('input-city').fill('Bengaluru')
   await page.getByTestId('input-pin').fill('560001')
-  await page.getByTestId('input-state').selectOption('KA')
+  await page.getByTestId('input-state').selectOption('Karnataka')
 
   await Promise.all([
     page.waitForURL(/\/order\//, { timeout: 15_000 }),

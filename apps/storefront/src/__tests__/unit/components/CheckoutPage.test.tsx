@@ -103,11 +103,11 @@ describe('CheckoutPage — rendering', () => {
     expect(screen.getByTestId('order-summary')).toBeInTheDocument()
   })
 
-  it('renders the payment callout', () => {
+  it('renders the COD callout', () => {
     setCart([item1])
     render(<CheckoutPage />)
     expect(screen.getByTestId('payment-callout')).toBeInTheDocument()
-    expect(screen.getByText(/Razorpay/)).toBeInTheDocument()
+    expect(screen.getByText(/Payment to be done at the time of delivery/)).toBeInTheDocument()
   })
 
   it('renders cart items in the order summary', () => {
@@ -121,7 +121,7 @@ describe('CheckoutPage — rendering', () => {
   it('shows the submit button', () => {
     setCart([item1])
     render(<CheckoutPage />)
-    expect(screen.getByTestId('checkout-submit')).toHaveTextContent(/Continue to payment/)
+    expect(screen.getByTestId('checkout-submit')).toHaveTextContent(/Place order/)
   })
 
   it('shows the sign-in link for guests', () => {
