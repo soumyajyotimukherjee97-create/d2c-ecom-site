@@ -38,7 +38,7 @@ export default async function OrdersListPage({
 
   let query = supabase
     .from('orders')
-    .select('id, order_number, status, total, contact_email, created_at, order_items(id)', {
+    .select('id, order_number, status, total, contact_email, created_at', {
       count: 'exact',
     })
     .order('created_at', { ascending: false })
@@ -53,7 +53,25 @@ export default async function OrdersListPage({
     console.error('[OrdersListPage]', error)
   }
 
-  const rows       = ((data ?? []) as unknown as OrderRow[])
+  // Separate query for item counts — splits the PostgREST FK discovery issue.
+  const orderIds = (data ?? []).map((o) => (o as { id: string }).id)
+  const itemCounts: Record<string, number> = {}
+  if (orderIds.length > 0) {
+    const { data: itemsData, error: itemsErr } = await supabase
+      .from('order_items')
+      .select('order_id')
+      .in('order_id', orderIds)
+    if (itemsErr) console.error('[OrdersListPage:items]', itemsErr)
+    for (const row of itemsData ?? []) {
+      const oid = (row as { order_id: string }).order_id
+      itemCounts[oid] = (itemCounts[oid] ?? 0) + 1
+    }
+  }
+
+  const rows = ((data ?? []) as unknown as Omit<OrderRow, 'order_items'>[]).map((o) => ({
+    ...o,
+    order_items: Array.from({ length: itemCounts[o.id] ?? 0 }, () => ({ id: '' })),
+  })) as OrderRow[]
   const total      = count ?? 0
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const dbError    = error ? `${error.code ?? 'ERR'} · ${error.message} · hint: ${error.hint ?? '—'} · details: ${error.details ?? '—'}` : null
