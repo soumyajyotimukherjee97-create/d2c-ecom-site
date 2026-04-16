@@ -25,5 +25,8 @@ coverage/
 playwright-report/
 test-results/
 
+# Database dumps
+backup-*.sql
+
 # OS
 .DS_Store
