@@ -1,8 +1,33 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent, within } from '@testing-library/react'
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react'
 import { CartDrawer } from '@/components/shop/CartDrawer'
 import { useCartStore } from '@/lib/store/cart'
 import type { CartItem } from '@/lib/store/cart'
+
+const upsellDbProduct = {
+  id: 'upsell-prod-1',
+  name: 'Upsell Product',
+  slug: 'upsell-product',
+  category: 'serum',
+  skin_types: [],
+  concerns: [],
+  image_url: null,
+  is_active: true,
+  product_variants: [{ id: 'upsell-v1', size_ml: 30, price: 149900, sku: 'UP-30', stock: 10, is_active: true }],
+}
+
+const mockLimit = vi.fn().mockResolvedValue({ data: [upsellDbProduct] })
+vi.mock('@/lib/supabase/browser', () => ({
+  createClient: () => ({
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          limit: mockLimit,
+        }),
+      }),
+    }),
+  }),
+}))
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -203,10 +228,10 @@ describe('CartDrawer', () => {
 
   // ── Upsell slot ────────────────────────────────────────────────────────────
 
-  it('shows upsell when cart has items and upsell product is not in cart', () => {
+  it('shows upsell when cart has items and upsell product is not in cart', async () => {
     openWithItems([item1])
     render(<CartDrawer />)
-    expect(screen.getByTestId('cart-upsell')).toBeDefined()
+    await waitFor(() => expect(screen.getByTestId('cart-upsell')).toBeDefined())
   })
 
   it('hides upsell when cart is empty', () => {
@@ -215,26 +240,26 @@ describe('CartDrawer', () => {
     expect(screen.queryByTestId('cart-upsell')).toBeNull()
   })
 
-  it('hides upsell when the upsell product is already in cart', () => {
+  it('hides upsell when all products in DB are already in cart', async () => {
     const upsellItem: CartItem = {
-      variantId:   'b1000000-0000-0000-0000-000000000003',
-      productId:   'a1000000-0000-0000-0000-000000000002',
-      sku:         'NRCREAM-30',
-      productName: 'Night Repair Cream',
-      slug:        'night-repair-cream',
+      variantId:   'upsell-v1',
+      productId:   'upsell-prod-1',
+      sku:         'UP-30',
+      productName: 'Upsell Product',
+      slug:        'upsell-product',
       size_ml:     30,
-      price:       249900,
+      price:       149900,
       quantity:    1,
       imageUrl:    null,
     }
-    openWithItems([item1, upsellItem])
+    openWithItems([upsellItem])
     render(<CartDrawer />)
-    expect(screen.queryByTestId('cart-upsell')).toBeNull()
+    await waitFor(() => expect(screen.queryByTestId('cart-upsell')).toBeNull())
   })
 
-  it('renders upsell add button', () => {
+  it('renders upsell add button', async () => {
     openWithItems([item1])
     render(<CartDrawer />)
-    expect(screen.getByTestId('cart-upsell-add')).toBeDefined()
+    await waitFor(() => expect(screen.getByTestId('cart-upsell-add')).toBeDefined())
   })
 })

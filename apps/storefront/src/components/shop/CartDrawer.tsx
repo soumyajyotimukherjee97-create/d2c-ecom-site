@@ -1,35 +1,31 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { X } from 'lucide-react'
 import { useCartStore } from '@/lib/store/cart'
 import { QuantitySelector } from '@/components/ui/QuantitySelector'
-import type { Variant, ProductSummary } from '@/types'
+import { createClient } from '@/lib/supabase/browser'
+import type { Variant, ProductSummary, ProductCategory, SkinType, Concern } from '@/types'
 
-// ─── Upsell ───────────────────────────────────────────────────────────────────
-// Hardcoded 1-product upsell for MVP. Hide if the product is already in cart.
-
-const UPSELL_VARIANT: Variant = {
-  id:        'b1000000-0000-0000-0000-000000000003',
-  size_ml:   30,
-  price:     249900,
-  sku:       'NRCREAM-30',
-  stock:     40,
-  is_active: true,
-}
-
-const UPSELL_PRODUCT: ProductSummary = {
-  id:             'a1000000-0000-0000-0000-000000000002',
-  name:           'Night Repair Cream',
-  slug:           'night-repair-cream',
-  category:       'moisturiser',
-  skin_types:     [],
-  concerns:       [],
-  starting_price: 249900,
-  image_url:      null,
-  is_active:      true,
+interface UpsellRow {
+  id: string
+  name: string
+  slug: string
+  category: ProductCategory
+  skin_types: SkinType[]
+  concerns: Concern[]
+  image_url: string | null
+  is_active: boolean
+  product_variants: Array<{
+    id: string
+    size_ml: number
+    price: number
+    sku: string
+    stock: number
+    is_active: boolean
+  }>
 }
 
 const SHIPPING_THRESHOLD = 99900 // ₹999 in paise
@@ -48,10 +44,54 @@ export function CartDrawer() {
 
   const drawerRef = useRef<HTMLDivElement>(null)
 
+  const [upsellProduct, setUpsellProduct] = useState<ProductSummary | null>(null)
+  const [upsellVariant, setUpsellVariant] = useState<Variant | null>(null)
+
+  const cartProductIds = items.map((i) => i.productId)
+
+  const fetchUpsell = useCallback(async () => {
+    const supabase = createClient()
+    const { data: products } = await supabase
+      .from('products')
+      .select('id, name, slug, category, skin_types, concerns, image_url, is_active, product_variants(id, size_ml, price, sku, stock, is_active)')
+      .eq('is_active', true)
+      .limit(10)
+
+    const rows = (products ?? []) as unknown as UpsellRow[]
+    if (rows.length === 0) { setUpsellProduct(null); return }
+
+    const candidates = rows.filter((p) => !cartProductIds.includes(p.id))
+    if (candidates.length === 0) { setUpsellProduct(null); return }
+
+    const pick = candidates[Math.floor(Math.random() * candidates.length)]
+    const activeVariants = (pick.product_variants || []).filter((v) => v.is_active && v.stock > 0)
+    if (activeVariants.length === 0) { setUpsellProduct(null); return }
+
+    const cheapest = activeVariants.sort((a, b) => a.price - b.price)[0]
+
+    setUpsellProduct({
+      id: pick.id,
+      name: pick.name,
+      slug: pick.slug,
+      category: pick.category,
+      skin_types: pick.skin_types ?? [],
+      concerns: pick.concerns ?? [],
+      starting_price: cheapest.price,
+      image_url: pick.image_url,
+      is_active: true,
+    })
+    setUpsellVariant(cheapest)
+  }, [cartProductIds.join(',')])  // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (isOpen && items.length > 0) fetchUpsell()
+    if (items.length === 0) { setUpsellProduct(null); setUpsellVariant(null) }
+  }, [isOpen, items.length, fetchUpsell])
+
   const total         = subtotal()
   const count         = itemCount()
   const isFreeShip    = total >= SHIPPING_THRESHOLD
-  const showUpsell    = items.length > 0 && items.every((i) => i.variantId !== UPSELL_VARIANT.id)
+  const showUpsell    = items.length > 0 && upsellProduct !== null && upsellVariant !== null
 
   // ── Focus trap + Escape key ──────────────────────────────────────────────────
   useEffect(() => {
@@ -218,21 +258,31 @@ export function CartDrawer() {
                 </p>
                 <div className="flex items-center gap-2">
                   <div
-                    className="flex-shrink-0 rounded-sm bg-blush"
+                    className="relative flex-shrink-0 overflow-hidden rounded-sm bg-blush"
                     style={{ width: '40px', height: '40px' }}
-                  />
+                  >
+                    {upsellProduct!.image_url ? (
+                      <Image
+                        src={upsellProduct!.image_url}
+                        alt={upsellProduct!.name}
+                        fill
+                        className="object-contain"
+                        sizes="40px"
+                      />
+                    ) : null}
+                  </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-body text-xs font-medium text-gray-900">
-                      {UPSELL_PRODUCT.name}
+                      {upsellProduct!.name}
                     </p>
                     <p className="font-mono text-2xs text-gray-400">
-                      ₹{Math.round(UPSELL_VARIANT.price / 100).toLocaleString()}
+                      ₹{Math.round(upsellVariant!.price / 100).toLocaleString()}
                     </p>
                   </div>
                   <button
                     type="button"
                     data-testid="cart-upsell-add"
-                    onClick={() => addItem(UPSELL_VARIANT, UPSELL_PRODUCT, 1)}
+                    onClick={() => addItem(upsellVariant!, upsellProduct!, 1)}
                     className="flex-shrink-0 whitespace-nowrap rounded-sm border border-gray-200 px-2.5 py-1 font-mono text-2xs transition-colors hover:border-gray-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900"
                   >
                     Add
