@@ -1,6 +1,6 @@
 import { unstable_cache } from 'next/cache'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { ProductCard } from '@/components/shop/ProductCard'
 import { FilterBar } from '@/components/shop/FilterBar'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -57,7 +57,7 @@ async function fetchProducts(
   offset: number,
 ): Promise<{ items: ProductWithDefault[]; total: number }> {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     let query = supabase
       .from('products')
