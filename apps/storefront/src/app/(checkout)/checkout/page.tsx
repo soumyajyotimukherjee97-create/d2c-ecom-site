@@ -8,9 +8,11 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useCartStore } from '@/lib/store/cart'
+import { formatInr } from '@/lib/money'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
+import { extractApiError, NETWORK_MESSAGE } from '@/lib/api/client'
 import type { CartItem } from '@/lib/store/cart'
 
 // ─── Indian states ────────────────────────────────────────────────────────────
@@ -49,10 +51,6 @@ const FREE_SHIPPING_THRESHOLD = 99900
 const SHIPPING_COST           = 9900
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function fmt(paise: number) {
-  return `₹${Math.round(paise / 100).toLocaleString()}`
-}
 
 function computeShipping(subtotal: number) {
   return subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST
@@ -100,7 +98,7 @@ function OrderSummaryItem({ item }: { item: CartItem }) {
       </div>
 
       <p className="font-body text-xs font-medium text-gray-900 flex-shrink-0">
-        {fmt(item.price * item.quantity)}
+        {formatInr(item.price * item.quantity)}
       </p>
     </div>
   )
@@ -163,19 +161,17 @@ export default function CheckoutPage() {
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(payload),
       })
-      const json = await res.json()
-
       if (!res.ok) {
-        const msg = json?.error?.message ?? 'Something went wrong. Please try again.'
-        setApiError(msg)
+        setApiError(await extractApiError(res))
         return
       }
 
+      const json = await res.json()
       setSubmitted(true)
       clearCart()
       router.push(`/order/${json.id}`)
     } catch {
-      setApiError('Network error. Please check your connection and try again.')
+      setApiError(NETWORK_MESSAGE)
     }
   }
 
@@ -430,7 +426,7 @@ export default function CheckoutPage() {
             <div className="flex justify-between items-center">
               <span className="font-mono text-xs uppercase text-gray-400">Subtotal</span>
               <span className="font-body text-sm text-gray-900" data-testid="checkout-subtotal">
-                {mounted ? fmt(subtotal) : '—'}
+                {mounted ? formatInr(subtotal) : '—'}
               </span>
             </div>
             <div className="flex justify-between items-center">
@@ -440,7 +436,7 @@ export default function CheckoutPage() {
                 data-testid="checkout-shipping"
               >
                 {mounted
-                  ? shipping === 0 ? 'Free' : fmt(shipping)
+                  ? shipping === 0 ? 'Free' : formatInr(shipping)
                   : '—'}
               </span>
             </div>
@@ -450,7 +446,7 @@ export default function CheckoutPage() {
                 className="font-heading text-base text-gray-900"
                 data-testid="checkout-total"
               >
-                {mounted ? fmt(total) : '—'}
+                {mounted ? formatInr(total) : '—'}
               </span>
             </div>
           </div>

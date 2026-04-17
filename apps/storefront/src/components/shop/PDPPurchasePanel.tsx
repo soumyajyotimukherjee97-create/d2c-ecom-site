@@ -7,6 +7,7 @@ import { IngredientTag } from '@/components/ui/IngredientTag'
 import { ScienceCallout } from '@/components/ui/ScienceCallout'
 import { QuantitySelector } from '@/components/ui/QuantitySelector'
 import { ReviewBar } from '@/components/shop/ReviewBar'
+import { formatInr } from '@/lib/money'
 import type { Product, Variant } from '@/types'
 
 interface PDPPurchasePanelProps {
@@ -27,7 +28,7 @@ export function PDPPurchasePanel({ product }: PDPPurchasePanelProps) {
   const selectedVariant = activeVariants.find((v) => v.id === selectedId) ?? activeVariants[0]
   const outOfStock      = !selectedVariant || selectedVariant.stock === 0
   const price           = selectedVariant
-    ? `₹${Math.round(selectedVariant.price / 100).toLocaleString()}`
+    ? formatInr(selectedVariant.price)
     : '—'
 
   // First 3 ingredients (sorted by display_order — already sorted by server)
@@ -101,7 +102,7 @@ export function PDPPurchasePanel({ product }: PDPPurchasePanelProps) {
                   {v.size_ml}ml
                   {!isSelected && !isOos && (
                     <span className="text-gray-400 ml-1">
-                      — ₹{Math.round(v.price / 100).toLocaleString()}
+                      — {formatInr(v.price)}
                     </span>
                   )}
                 </button>

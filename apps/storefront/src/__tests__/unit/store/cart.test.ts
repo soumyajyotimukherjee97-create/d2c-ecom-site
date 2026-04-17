@@ -38,7 +38,7 @@ const mockProduct: ProductSummary = {
 
 describe('useCartStore', () => {
   beforeEach(() => {
-    useCartStore.setState({ items: [], isOpen: false })
+    useCartStore.setState({ items: [], isOpen: false, subtotal: 0, itemCount: 0 })
     localStorage.clear()
   })
 
@@ -136,28 +136,28 @@ describe('useCartStore', () => {
 
   // ── subtotal ───────────────────────────────────────────────────────────────
 
-  it('subtotal() returns 0 for an empty cart', () => {
-    expect(useCartStore.getState().subtotal()).toBe(0)
+  it('subtotal returns 0 for an empty cart', () => {
+    expect(useCartStore.getState().subtotal).toBe(0)
   })
 
-  it('subtotal() sums price × quantity across all items', () => {
+  it('subtotal sums price × quantity across all items', () => {
     useCartStore.getState().addItem(mockVariant, mockProduct, 2)   // 129900 × 2 = 259800
     useCartStore.getState().addItem(mockVariant2, mockProduct, 1)  // 229900 × 1 = 229900
 
-    expect(useCartStore.getState().subtotal()).toBe(259800 + 229900)
+    expect(useCartStore.getState().subtotal).toBe(259800 + 229900)
   })
 
   // ── itemCount ──────────────────────────────────────────────────────────────
 
-  it('itemCount() returns 0 for an empty cart', () => {
-    expect(useCartStore.getState().itemCount()).toBe(0)
+  it('itemCount returns 0 for an empty cart', () => {
+    expect(useCartStore.getState().itemCount).toBe(0)
   })
 
-  it('itemCount() sums quantities across all items', () => {
+  it('itemCount sums quantities across all items', () => {
     useCartStore.getState().addItem(mockVariant, mockProduct, 2)
     useCartStore.getState().addItem(mockVariant2, mockProduct, 3)
 
-    expect(useCartStore.getState().itemCount()).toBe(5)
+    expect(useCartStore.getState().itemCount).toBe(5)
   })
 
   // ── openCart / closeCart ───────────────────────────────────────────────────

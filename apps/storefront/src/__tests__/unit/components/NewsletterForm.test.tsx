@@ -87,7 +87,7 @@ describe('NewsletterForm', () => {
     await waitFor(() => {
       expect(screen.getByTestId('newsletter-error')).toBeDefined()
       expect(
-        screen.getByText('Something went wrong. Please try again.'),
+        screen.getByText('Network error. Please check your connection and try again.'),
       ).toBeDefined()
     })
   })

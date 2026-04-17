@@ -1,6 +1,29 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, type PersistStorage } from 'zustand/middleware'
 import type { ProductSummary, Variant } from '@/types'
+
+// ─── Debounced localStorage adapter ──────────────────────────────────────────
+
+function createDebouncedStorage(delay = 300): PersistStorage<Pick<CartStore, 'items'>> {
+  let timer: ReturnType<typeof setTimeout> | null = null
+
+  return {
+    getItem(name) {
+      const str = localStorage.getItem(name)
+      return str ? JSON.parse(str) : null
+    },
+    setItem(name, value) {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => {
+        localStorage.setItem(name, JSON.stringify(value))
+      }, delay)
+    },
+    removeItem(name) {
+      if (timer) clearTimeout(timer)
+      localStorage.removeItem(name)
+    },
+  }
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -22,6 +45,10 @@ interface CartStore {
   items:   CartItem[]
   isOpen:  boolean
 
+  // Derived (recomputed on every items mutation)
+  subtotal:  number  // paise
+  itemCount: number
+
   // Mutations
   addItem:    (variant: Variant, product: ProductSummary, qty: number) => void
   addItems:   (items: CartItem[]) => void
@@ -30,48 +57,57 @@ interface CartStore {
   clearCart:  () => void
   openCart:   () => void
   closeCart:  () => void
-
-  // Computed
-  subtotal:  () => number  // paise
-  itemCount: () => number
 }
 
 export const useCartStore = create<CartStore>()(
   persist(
-    (set, get) => ({
-      items:  [],
-      isOpen: false,
+    (set, get) => {
+      function deriveFromItems(items: CartItem[]) {
+        return {
+          subtotal:  items.reduce((sum, i) => sum + i.price * i.quantity, 0),
+          itemCount: items.reduce((sum, i) => sum + i.quantity, 0),
+        }
+      }
 
-      addItem(variant, product, qty) {
-        set((state) => {
+      function setItems(items: CartItem[]) {
+        set({ items, ...deriveFromItems(items) })
+      }
+
+      return {
+        items:     [],
+        isOpen:    false,
+        subtotal:  0,
+        itemCount: 0,
+
+        addItem(variant, product, qty) {
+          const state = get()
           const existing = state.items.find((i) => i.variantId === variant.id)
           if (existing) {
-            return {
-              items: state.items.map((i) =>
+            setItems(
+              state.items.map((i) =>
                 i.variantId === variant.id
                   ? { ...i, quantity: i.quantity + qty }
                   : i,
               ),
+            )
+          } else {
+            const newItem: CartItem = {
+              variantId:   variant.id,
+              productId:   product.id,
+              sku:         variant.sku,
+              productName: product.name,
+              slug:        product.slug,
+              size_ml:     variant.size_ml,
+              price:       variant.price,
+              quantity:    qty,
+              imageUrl:    product.image_url,
             }
+            setItems([...state.items, newItem])
           }
-          const newItem: CartItem = {
-            variantId:   variant.id,
-            productId:   product.id,
-            sku:         variant.sku,
-            productName: product.name,
-            slug:        product.slug,
-            size_ml:     variant.size_ml,
-            price:       variant.price,
-            quantity:    qty,
-            imageUrl:    product.image_url,
-          }
-          return { items: [...state.items, newItem] }
-        })
-      },
+        },
 
-      addItems(incoming) {
-        set((state) => {
-          const next = [...state.items]
+        addItems(incoming) {
+          const next = [...get().items]
           for (const item of incoming) {
             const idx = next.findIndex((i) => i.variantId === item.variantId)
             if (idx >= 0) {
@@ -80,47 +116,37 @@ export const useCartStore = create<CartStore>()(
               next.push(item)
             }
           }
-          return { items: next }
-        })
-      },
+          setItems(next)
+        },
 
-      removeItem(variantId) {
-        set((state) => ({
-          items: state.items.filter((i) => i.variantId !== variantId),
-        }))
-      },
+        removeItem(variantId) {
+          setItems(get().items.filter((i) => i.variantId !== variantId))
+        },
 
-      updateQty(variantId, qty) {
-        if (qty < 1) {
-          get().removeItem(variantId)
-          return
-        }
-        set((state) => ({
-          items: state.items.map((i) =>
-            i.variantId === variantId ? { ...i, quantity: qty } : i,
-          ),
-        }))
-      },
+        updateQty(variantId, qty) {
+          if (qty < 1) {
+            get().removeItem(variantId)
+            return
+          }
+          setItems(
+            get().items.map((i) =>
+              i.variantId === variantId ? { ...i, quantity: qty } : i,
+            ),
+          )
+        },
 
-      clearCart() {
-        set({ items: [] })
-      },
+        clearCart() {
+          setItems([])
+        },
 
-      openCart()  { set({ isOpen: true }) },
-      closeCart() { set({ isOpen: false }) },
-
-      subtotal() {
-        return get().items.reduce((sum, i) => sum + i.price * i.quantity, 0)
-      },
-
-      itemCount() {
-        return get().items.reduce((sum, i) => sum + i.quantity, 0)
-      },
-    }),
+        openCart()  { set({ isOpen: true }) },
+        closeCart() { set({ isOpen: false }) },
+      }
+    },
     {
       name: 'form-cart',
-      // Only persist items — isOpen resets on page load
       partialize: (state) => ({ items: state.items }),
+      storage: createDebouncedStorage(300),
     },
   ),
 )

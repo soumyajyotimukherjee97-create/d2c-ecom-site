@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { Alert } from '@/components/ui/Alert'
+import { extractApiError, NETWORK_MESSAGE } from '@/lib/api/client'
 import { SKIN_TYPE_OPTIONS, CONCERN_OPTIONS } from '@/lib/api/schemas/profile'
 import type { SkinType, Concern } from '@/types'
 
@@ -58,14 +59,13 @@ export function SkinProfileForm({ skinType, concerns }: SkinProfileFormProps) {
         body: JSON.stringify({ skin_type: draftSkinType, concerns: draftConcerns }),
       })
       if (!res.ok) {
-        const json = await res.json().catch(() => null)
-        setError(json?.error?.message ?? 'Could not save changes.')
+        setError(await extractApiError(res, 'Could not save changes.'))
         return
       }
       setEditing(false)
       router.refresh()
     } catch {
-      setError('Network error. Please try again.')
+      setError(NETWORK_MESSAGE)
     } finally {
       setSaving(false)
     }

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { formatInr } from '@/lib/money'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { SignOutButton } from '@/components/account/SignOutButton'
 import { ReorderButton } from '@/components/account/ReorderButton'
@@ -45,10 +46,6 @@ type VariantDetail = {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function fmt(paise: number) {
-  return `₹${Math.round(paise / 100).toLocaleString()}`
-}
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-IN', {
@@ -266,7 +263,7 @@ export default async function AccountPage() {
                           {summariseOrder(order.order_items)}
                         </p>
                         <p className="font-mono text-2xs text-gray-400">
-                          {formatDate(order.created_at)} · {fmt(order.total)}
+                          {formatDate(order.created_at)} · {formatInr(order.total)}
                         </p>
                       </div>
 
@@ -307,7 +304,7 @@ export default async function AccountPage() {
               <ReorderButton
                 items={[{ ...restockPrimary, quantity: 1 }]}
                 variant="primary"
-                label={`Reorder now — ${fmt(restockPrimary.price)}`}
+                label={`Reorder now — ${formatInr(restockPrimary.price)}`}
                 data-testid="restock-reorder"
               />
             </section>

@@ -5,7 +5,15 @@ import type { Metadata } from 'next'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Footer } from '@/components/layout/Footer'
 import { ProductCard } from '@/components/shop/ProductCard'
-import type { ProductSummary } from '@/types'
+import { formatInr } from '@/lib/money'
+import type { ProductSummary, Variant } from '@/types'
+
+type VariantData = Pick<Variant, 'id' | 'size_ml' | 'price' | 'sku' | 'stock' | 'is_active'>
+
+type RelatedItem = {
+  product: ProductSummary
+  defaultVariant: VariantData | null
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -44,12 +52,6 @@ export const metadata: Metadata = {
   title: 'Order confirmed — Form.',
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function fmt(paise: number) {
-  return `₹${Math.round(paise / 100).toLocaleString()}`
-}
-
 // ─── Data fetching ────────────────────────────────────────────────────────────
 
 async function getOrder(id: string): Promise<OrderRow | null> {
@@ -70,7 +72,7 @@ async function getOrder(id: string): Promise<OrderRow | null> {
   return data as unknown as OrderRow
 }
 
-async function getRelatedProducts(_excludeSkus: string[]): Promise<ProductSummary[]> {
+async function getRelatedProducts(_excludeSkus: string[]): Promise<RelatedItem[]> {
   const admin = createAdminClient()
 
   const { data } = await admin
@@ -81,35 +83,40 @@ async function getRelatedProducts(_excludeSkus: string[]): Promise<ProductSummar
 
   if (!data) return []
 
-  const products: ProductSummary[] = []
+  const items: RelatedItem[] = []
 
   for (const p of data) {
     const { data: variants } = await admin
       .from('product_variants')
-      .select('price')
+      .select('id, size_ml, price, sku, stock, is_active')
       .eq('product_id', p.id)
       .eq('is_active', true)
       .order('price', { ascending: true })
-      .limit(1)
 
     if (!variants || variants.length === 0) continue
 
-    products.push({
-      id:             p.id,
-      name:           p.name,
-      slug:           p.slug,
-      category:       p.category as ProductSummary['category'],
-      skin_types:     (p.skin_types ?? []) as ProductSummary['skin_types'],
-      concerns:       (p.concerns ?? []) as ProductSummary['concerns'],
-      starting_price: variants[0].price,
-      image_url:      p.image_url ?? null,
-      is_active:      p.is_active,
+    const inStock = variants.filter((v) => v.stock > 0)
+    const defaultVariant: VariantData | null = inStock.length > 0 ? inStock[0] : null
+
+    items.push({
+      product: {
+        id:             p.id,
+        name:           p.name,
+        slug:           p.slug,
+        category:       p.category as ProductSummary['category'],
+        skin_types:     (p.skin_types ?? []) as ProductSummary['skin_types'],
+        concerns:       (p.concerns ?? []) as ProductSummary['concerns'],
+        starting_price: variants[0].price,
+        image_url:      p.image_url ?? null,
+        is_active:      p.is_active,
+      },
+      defaultVariant,
     })
 
-    if (products.length === 3) break
+    if (items.length === 3) break
   }
 
-  return products
+  return items
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -121,7 +128,7 @@ export default async function OrderConfirmationPage({ params }: RouteContext) {
   if (!order) notFound()
 
   const orderSkus    = order.order_items.map((i) => i.variant_sku)
-  const relatedProds = await getRelatedProducts(orderSkus)
+  const relatedItems = await getRelatedProducts(orderSkus)
 
   const emailUser = order.contact_email.split('@')[0]
   const firstName = emailUser.charAt(0).toUpperCase() + emailUser.slice(1)
@@ -209,7 +216,7 @@ export default async function OrderConfirmationPage({ params }: RouteContext) {
               <p className="font-mono text-2xs uppercase tracking-widest text-gray-400 mb-1">
                 Total paid
               </p>
-              <p className="font-body text-sm font-medium text-gray-900">{fmt(order.total)}</p>
+              <p className="font-body text-sm font-medium text-gray-900">{formatInr(order.total)}</p>
             </div>
           </div>
 
@@ -295,7 +302,7 @@ export default async function OrderConfirmationPage({ params }: RouteContext) {
                     </p>
                   </div>
                   <p className="font-body text-sm font-medium text-gray-900 flex-shrink-0">
-                    {fmt(item.line_total)}
+                    {formatInr(item.line_total)}
                   </p>
                 </li>
               ))}
@@ -304,7 +311,7 @@ export default async function OrderConfirmationPage({ params }: RouteContext) {
         </section>
 
         {/* ── Related products ───────────────────────────────────────────────── */}
-        {relatedProds.length > 0 && (
+        {relatedItems.length > 0 && (
           <section
             data-testid="confirmation-related"
             className="px-6 py-8 border-t border-gray-100"
@@ -327,8 +334,8 @@ export default async function OrderConfirmationPage({ params }: RouteContext) {
               </div>
 
               <div className="grid grid-cols-3 gap-4">
-                {relatedProds.map((product) => (
-                  <ProductCard key={product.id} product={product} />
+                {relatedItems.map(({ product, defaultVariant }) => (
+                  <ProductCard key={product.id} product={product} defaultVariant={defaultVariant} />
                 ))}
               </div>
             </div>

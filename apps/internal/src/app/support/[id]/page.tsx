@@ -46,7 +46,7 @@ export default async function TicketDetailPage({
   if (error) console.error('[TicketDetailPage]', error.message)
   if (!data) notFound()
 
-  const ticket = data as unknown as TicketDetail
+  const ticket = data as TicketDetail
 
   // Resolve a linked order (order_number) and the currently signed-in staff
   // user id in parallel; both are cheap one-shot reads.
@@ -60,7 +60,7 @@ export default async function TicketDetailPage({
     })(),
   ])
 
-  const linkedOrderNumber = (orderRes.data as { order_number?: string } | null)?.order_number ?? null
+  const linkedOrderNumber = orderRes.data?.order_number ?? null
   const myId = meRes.data.user?.id ?? null
   const assignedToMe = ticket.assigned_to !== null && ticket.assigned_to === myId
 

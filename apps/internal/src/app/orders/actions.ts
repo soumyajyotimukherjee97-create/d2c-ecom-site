@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { sendOrderShipped, sendOrderDelivered } from '@d2c/email'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireStaff } from '@/lib/actions/auth-guard'
+import type { Database } from '@/lib/supabase/types'
 import {
   UpdateOrderStatusSchema,
   VALID_TRANSITIONS,
@@ -46,7 +47,7 @@ export async function updateOrderStatusAction(
   }
   if (!current) return { ok: false, code: 'NOT_FOUND', message: 'Order not found.' }
 
-  const currentStatus = current.status as OrderStatus
+  const currentStatus = current.status
   const allowed       = VALID_TRANSITIONS[currentStatus]
   if (!allowed.includes(status)) {
     return {
@@ -58,7 +59,7 @@ export async function updateOrderStatusAction(
     }
   }
 
-  const payload: Record<string, string> = { status }
+  const payload: Database['public']['Tables']['orders']['Update'] = { status }
   if (tracking_id !== undefined) payload.tracking_id = tracking_id
   if (carrier     !== undefined) payload.carrier     = carrier
   if (notes       !== undefined) payload.notes       = notes
@@ -77,8 +78,8 @@ export async function updateOrderStatusAction(
   if (!updated) return { ok: false, code: 'NOT_FOUND', message: 'Order not found.' }
 
   // ── Fire the right transactional email for this transition (non-blocking) ─
-  const orderNumber  = (current as { order_number: string }).order_number
-  const contactEmail = (current as { contact_email: string }).contact_email
+  const orderNumber  = current.order_number
+  const contactEmail = current.contact_email
   if (status === 'shipped' && tracking_id && carrier) {
     void sendOrderShipped(contactEmail, {
       order_number: orderNumber,
@@ -93,5 +94,5 @@ export async function updateOrderStatusAction(
 
   revalidatePath('/orders')
   revalidatePath(`/orders/${id}`)
-  return { ok: true, data: { id: updated.id as string, status: updated.status as OrderStatus } }
+  return { ok: true, data: { id: updated.id, status: updated.status } }
 }

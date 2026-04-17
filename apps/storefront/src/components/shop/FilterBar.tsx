@@ -1,5 +1,6 @@
 'use client'
 
+import { useTransition } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -82,34 +83,39 @@ function FilterButton({ label, active, onClick, testId }: FilterButtonProps) {
 // ─── FilterBar ────────────────────────────────────────────────────────────────
 
 export function FilterBar() {
-  const router      = useRouter()
+  const router       = useRouter()
   const searchParams = useSearchParams()
-  const pathname    = usePathname()
+  const pathname     = usePathname()
+  const [isPending, startTransition] = useTransition()
 
   const activeSkinType = searchParams.get('skin_type') ?? ''
   const activeConcern  = searchParams.get('concern')   ?? ''
   const activeSort     = searchParams.get('sort')      ?? 'created_at_desc'
 
+  function navigate(updates: Record<string, string | undefined>) {
+    startTransition(() => {
+      router.push(buildUrl(pathname, searchParams, updates))
+    })
+  }
+
   function setSkinType(value: string) {
-    // Toggle off if already active
     const next = value === activeSkinType ? '' : value
-    router.push(buildUrl(pathname, searchParams, { skin_type: next }))
+    navigate({ skin_type: next })
   }
 
   function setConcern(value: string) {
-    // Toggle off if already active (single-select)
     const next = value === activeConcern ? '' : value
-    router.push(buildUrl(pathname, searchParams, { concern: next }))
+    navigate({ concern: next })
   }
 
   function setSort(value: string) {
-    router.push(buildUrl(pathname, searchParams, { sort: value }))
+    navigate({ sort: value })
   }
 
   return (
     <div
       data-testid="filter-bar"
-      className="border-b border-gray-100 bg-white px-6 py-3"
+      className={`border-b border-gray-100 bg-white px-6 py-3 transition-opacity ${isPending ? 'opacity-60' : ''}`}
     >
       <div className="max-w-6xl mx-auto flex flex-wrap items-center gap-3 justify-between">
 

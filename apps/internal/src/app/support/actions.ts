@@ -5,6 +5,7 @@ import { sendTicketResolved } from '@d2c/email'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { requireStaff } from '@/lib/actions/auth-guard'
+import type { Database } from '@/lib/supabase/types'
 import { UpdateTicketSchema, type UpdateTicketInput } from '@/lib/api/schemas/support'
 
 export type ActionResult<T = undefined> =
@@ -27,7 +28,7 @@ export async function updateTicketAction(
     }
   }
 
-  const payload: Record<string, string | null> = {}
+  const payload: Database['public']['Tables']['support_tickets']['Update'] = {}
   if (parsed.data.status      !== undefined) payload.status      = parsed.data.status
   if (parsed.data.priority    !== undefined) payload.priority    = parsed.data.priority
   if (parsed.data.assigned_to !== undefined) payload.assigned_to = parsed.data.assigned_to
@@ -57,17 +58,11 @@ export async function updateTicketAction(
 
   // Fire ticket-resolved email once, at the transition to "resolved" only.
   if (parsed.data.status === 'resolved') {
-    const row = data as {
-      id:          string
-      subject:     string
-      guest_email: string | null
-      user_id:     string | null
-    }
-    const recipient = row.guest_email ?? (row.user_id ? await lookupUserEmail(admin, row.user_id) : null)
+    const recipient = data.guest_email ?? (data.user_id ? await lookupUserEmail(admin, data.user_id) : null)
     if (recipient) {
       void sendTicketResolved(recipient, {
-        ticket_id: row.id,
-        subject:   row.subject,
+        ticket_id: data.id,
+        subject:   data.subject,
         resolution_summary: parsed.data.notes ?? undefined,
       })
     }

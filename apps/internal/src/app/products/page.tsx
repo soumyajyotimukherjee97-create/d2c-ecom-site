@@ -4,6 +4,7 @@ import { ConsoleHeader } from '@/components/ConsoleHeader'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ListProductsQuerySchema, PAGE_SIZE } from '@/lib/api/schemas/products'
 import { ProductsFilterBar } from './ProductsFilterBar'
+import { Th, Td } from '@/components/ui/Table'
 import { ToggleActiveButton } from './ToggleActiveButton'
 
 export const dynamic = 'force-dynamic'
@@ -153,17 +154,6 @@ export default async function ProductsListPage({
   )
 }
 
-function Th({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return (
-    <th className={`text-left px-4 py-3 font-mono text-2xs uppercase tracking-wider text-gray-600 ${className}`}>
-      {children}
-    </th>
-  )
-}
-
-function Td({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <td className={`px-4 py-3 font-body text-sm text-gray-900 ${className}`}>{children}</td>
-}
 
 function Pagination({
   q, category, visibility, page, totalPages,

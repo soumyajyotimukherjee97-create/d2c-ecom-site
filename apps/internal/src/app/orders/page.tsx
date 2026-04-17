@@ -5,6 +5,7 @@ import { OrderStatusBadge } from '@/components/OrderStatusBadge'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { formatInr } from '@/lib/money'
 import { ListOrdersQuerySchema, PAGE_SIZE, type OrderStatus } from '@/lib/api/schemas/orders'
+import { Th, Td } from '@/components/ui/Table'
 import { OrdersFilterBar } from './OrdersFilterBar'
 
 export const dynamic = 'force-dynamic'
@@ -20,7 +21,7 @@ interface OrderRow {
   total:         number
   contact_email: string
   created_at:    string
-  order_items:   { id: string }[]
+  item_count:    number
 }
 
 export default async function OrdersListPage({
@@ -54,7 +55,7 @@ export default async function OrdersListPage({
   }
 
   // Separate query for item counts — splits the PostgREST FK discovery issue.
-  const orderIds = (data ?? []).map((o) => (o as { id: string }).id)
+  const orderIds = (data ?? []).map((o) => o.id)
   const itemCounts: Record<string, number> = {}
   if (orderIds.length > 0) {
     const { data: itemsData, error: itemsErr } = await supabase
@@ -63,18 +64,17 @@ export default async function OrdersListPage({
       .in('order_id', orderIds)
     if (itemsErr) console.error('[OrdersListPage:items]', itemsErr)
     for (const row of itemsData ?? []) {
-      const oid = (row as { order_id: string }).order_id
-      itemCounts[oid] = (itemCounts[oid] ?? 0) + 1
+      itemCounts[row.order_id] = (itemCounts[row.order_id] ?? 0) + 1
     }
   }
 
-  const rows = ((data ?? []) as unknown as Omit<OrderRow, 'order_items'>[]).map((o) => ({
+  const rows: OrderRow[] = (data ?? []).map((o) => ({
     ...o,
-    order_items: Array.from({ length: itemCounts[o.id] ?? 0 }, () => ({ id: '' })),
-  })) as OrderRow[]
+    status: o.status as OrderStatus,
+    item_count: itemCounts[o.id] ?? 0,
+  }))
   const total      = count ?? 0
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
-  const dbError    = error ? `${error.code ?? 'ERR'} · ${error.message} · hint: ${error.hint ?? '—'} · details: ${error.details ?? '—'}` : null
 
   return (
     <main className="min-h-screen bg-offwhite">
@@ -91,12 +91,12 @@ export default async function OrdersListPage({
 
         <OrdersFilterBar defaultQ={q ?? ''} defaultStatus={status ?? ''} />
 
-        {dbError && (
+        {error && (
           <div
             className="border border-error bg-red-50 rounded-sm p-4 mb-4 font-mono text-2xs text-error"
             data-testid="orders-db-error"
           >
-            DB error: {dbError}
+            Failed to load orders. Check server logs for details.
           </div>
         )}
 
@@ -124,7 +124,7 @@ export default async function OrdersListPage({
                     <Td className="font-mono text-2xs">{o.order_number}</Td>
                     <Td>{new Date(o.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</Td>
                     <Td>{o.contact_email}</Td>
-                    <Td>{o.order_items.length}</Td>
+                    <Td>{o.item_count}</Td>
                     <Td>{formatInr(o.total)}</Td>
                     <Td><OrderStatusBadge status={o.status} /></Td>
                     <Td className="text-right pr-4">
@@ -149,17 +149,6 @@ export default async function OrdersListPage({
   )
 }
 
-function Th({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return (
-    <th className={`text-left px-4 py-3 font-mono text-2xs uppercase tracking-wider text-gray-600 ${className}`}>
-      {children}
-    </th>
-  )
-}
-
-function Td({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <td className={`px-4 py-3 font-body text-sm text-gray-900 ${className}`}>{children}</td>
-}
 
 function Pagination({
   q, status, page, totalPages,

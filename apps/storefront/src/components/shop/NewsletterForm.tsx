@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { z } from 'zod'
 import { Button } from '@/components/ui/Button'
+import { extractApiError, NETWORK_MESSAGE } from '@/lib/api/client'
 
 const EmailSchema = z.object({
   email: z.string().email('Please enter a valid email address.'),
@@ -33,14 +34,13 @@ export function NewsletterForm() {
       })
 
       if (!res.ok) {
-        const json = await res.json().catch(() => null)
-        setError(json?.error?.message ?? 'Something went wrong. Please try again.')
+        setError(await extractApiError(res))
         return
       }
 
       setSuccess(true)
     } catch {
-      setError('Something went wrong. Please try again.')
+      setError(NETWORK_MESSAGE)
     } finally {
       setLoading(false)
     }

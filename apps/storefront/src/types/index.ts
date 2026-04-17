@@ -1,8 +1,7 @@
 // ─── Product ─────────────────────────────────────────────────────────────────
 
-export type ProductCategory = 'serum' | 'moisturiser' | 'toner' | 'spf'
-export type SkinType = 'dry' | 'oily' | 'combination' | 'sensitive' | 'all'
-export type Concern = 'acne' | 'dullness' | 'aging' | 'pores' | 'redness'
+export type { ProductCategory, SkinType, Concern } from '@d2c/schemas'
+import type { ProductCategory, SkinType, Concern } from '@d2c/schemas'
 
 /** Lightweight shape returned by GET /api/products (list view) */
 export type ProductSummary = {
@@ -72,7 +71,8 @@ export type ReviewsSummary = {
 
 // ─── Orders ──────────────────────────────────────────────────────────────────
 
-export type OrderStatus = 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled'
+export type { OrderStatus } from '@d2c/schemas'
+import type { OrderStatus } from '@d2c/schemas'
 
 export type ShippingAddress = {
   line1: string
@@ -133,8 +133,8 @@ export type OrderSummary = {
 
 // ─── Support tickets ─────────────────────────────────────────────────────────
 
-export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed'
-export type TicketPriority = 'low' | 'normal' | 'high' | 'urgent'
+export type { TicketStatus, TicketPriority } from '@d2c/schemas'
+import type { TicketStatus, TicketPriority } from '@d2c/schemas'
 
 export type SupportTicket = {
   id: string

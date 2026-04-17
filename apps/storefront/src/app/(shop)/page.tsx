@@ -3,11 +3,22 @@ import { createClient } from '@/lib/supabase/server'
 import { ProductCard } from '@/components/shop/ProductCard'
 import { NewsletterForm } from '@/components/shop/NewsletterForm'
 import { IngredientTag } from '@/components/ui'
-import type { ProductSummary } from '@/types'
+import type { ProductSummary, Variant } from '@/types'
 
 export const revalidate = 60
 
 // ─── Data fetching ────────────────────────────────────────────────────────────
+
+type VariantData = Pick<Variant, 'id' | 'size_ml' | 'price' | 'sku' | 'stock' | 'is_active'>
+
+type RawVariantRow = {
+  id: string
+  size_ml: number
+  price: number
+  sku: string
+  stock: number
+  is_active: boolean
+}
 
 type RawRow = {
   id: string
@@ -18,17 +29,28 @@ type RawRow = {
   concerns: string[]
   image_url: string | null
   is_active: boolean
-  product_variants: { price: number }[]
+  product_variants: RawVariantRow[]
 }
 
-async function getFeaturedProducts(): Promise<ProductSummary[]> {
+type FeaturedItem = {
+  product: ProductSummary
+  defaultVariant: VariantData | null
+}
+
+function pickDefaultVariant(variants: RawVariantRow[]): VariantData | null {
+  const inStock = variants.filter((v) => v.is_active && v.stock > 0)
+  if (inStock.length === 0) return null
+  return inStock.reduce((cheapest, v) => (v.price < cheapest.price ? v : cheapest))
+}
+
+async function getFeaturedProducts(): Promise<FeaturedItem[]> {
   try {
     const supabase = await createClient()
 
     const { data: rawData, error } = await supabase
       .from('products')
       .select(
-        'id, name, slug, category, skin_types, concerns, image_url, is_active, product_variants!inner(price)',
+        'id, name, slug, category, skin_types, concerns, image_url, is_active, product_variants!inner(id, size_ml, price, sku, stock, is_active)',
       )
       .eq('is_active', true)
       .eq('product_variants.is_active', true)
@@ -42,15 +64,18 @@ async function getFeaturedProducts(): Promise<ProductSummary[]> {
     return rows.map((row) => {
       const prices = row.product_variants.map((v) => v.price)
       return {
-        id:             row.id,
-        name:           row.name,
-        slug:           row.slug,
-        category:       row.category as ProductSummary['category'],
-        skin_types:     row.skin_types as ProductSummary['skin_types'],
-        concerns:       row.concerns as ProductSummary['concerns'],
-        image_url:      row.image_url,
-        is_active:      row.is_active,
-        starting_price: prices.length ? Math.min(...prices) : 0,
+        product: {
+          id:             row.id,
+          name:           row.name,
+          slug:           row.slug,
+          category:       row.category as ProductSummary['category'],
+          skin_types:     row.skin_types as ProductSummary['skin_types'],
+          concerns:       row.concerns as ProductSummary['concerns'],
+          image_url:      row.image_url,
+          is_active:      row.is_active,
+          starting_price: prices.length ? Math.min(...prices) : 0,
+        },
+        defaultVariant: pickDefaultVariant(row.product_variants),
       }
     })
   } catch {
@@ -61,7 +86,7 @@ async function getFeaturedProducts(): Promise<ProductSummary[]> {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function HomePage() {
-  const products = await getFeaturedProducts()
+  const featured = await getFeaturedProducts()
 
   return (
     <>
@@ -142,10 +167,10 @@ export default async function HomePage() {
           </Link>
         </div>
 
-        {products.length > 0 ? (
+        {featured.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
+            {featured.map(({ product, defaultVariant }) => (
+              <ProductCard key={product.id} product={product} defaultVariant={defaultVariant} />
             ))}
           </div>
         ) : (

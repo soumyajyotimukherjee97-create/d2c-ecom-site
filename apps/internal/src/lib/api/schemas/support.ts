@@ -1,12 +1,8 @@
 import { z } from 'zod'
+import { TicketStatusEnum, TicketPriorityEnum } from '@d2c/schemas'
 
-// Mirrors apps/storefront/src/lib/api/schemas/support.ts
-
-export const TicketStatusEnum   = z.enum(['open', 'in_progress', 'resolved', 'closed'])
-export const TicketPriorityEnum = z.enum(['low', 'normal', 'high', 'urgent'])
-
-export type TicketStatus   = z.infer<typeof TicketStatusEnum>
-export type TicketPriority = z.infer<typeof TicketPriorityEnum>
+export { TicketStatusEnum, TicketPriorityEnum }
+export type { TicketStatus, TicketPriority } from '@d2c/schemas'
 
 export const UpdateTicketSchema = z
   .object({

@@ -4,13 +4,14 @@ import { useState } from 'react'
 import { useCartStore } from '@/lib/store/cart'
 import type { ProductSummary, Variant } from '@/types'
 
-interface AddToCartButtonProps {
-  product: ProductSummary
-}
-
 type VariantData = Pick<Variant, 'id' | 'size_ml' | 'price' | 'sku' | 'stock' | 'is_active'>
 
-export function AddToCartButton({ product }: AddToCartButtonProps) {
+interface AddToCartButtonProps {
+  product: ProductSummary
+  defaultVariant?: VariantData | null
+}
+
+export function AddToCartButton({ product, defaultVariant }: AddToCartButtonProps) {
   const [loading, setLoading] = useState(false)
 
   const addItem  = useCartStore((s) => s.addItem)
@@ -18,6 +19,13 @@ export function AddToCartButton({ product }: AddToCartButtonProps) {
 
   async function handleClick() {
     if (loading) return
+
+    if (defaultVariant) {
+      addItem(defaultVariant as Variant, product, 1)
+      openCart()
+      return
+    }
+
     setLoading(true)
     try {
       const res = await fetch(`/api/products/${product.slug}`)
@@ -27,7 +35,7 @@ export function AddToCartButton({ product }: AddToCartButtonProps) {
       const variant = data.variants.find((v) => v.is_active && v.stock > 0)
       if (!variant) return
 
-      addItem(variant, product, 1)
+      addItem(variant as Variant, product, 1)
       openCart()
     } finally {
       setLoading(false)

@@ -1,5 +1,7 @@
 'use client'
 
+import { memo } from 'react'
+
 export interface QuantitySelectorProps {
   value:    number
   onChange: (next: number) => void
@@ -7,7 +9,7 @@ export interface QuantitySelectorProps {
   max?:     number
 }
 
-export function QuantitySelector({ value, onChange, min = 1, max = 99 }: QuantitySelectorProps) {
+export const QuantitySelector = memo(function QuantitySelector({ value, onChange, min = 1, max = 99 }: QuantitySelectorProps) {
   return (
     <div
       data-testid="quantity-selector"
@@ -43,4 +45,4 @@ export function QuantitySelector({ value, onChange, min = 1, max = 99 }: Quantit
       </button>
     </div>
   )
-}
+})

@@ -8,6 +8,7 @@ Before starting any task, read all documents relevant to it:
 2. `TDD.md` — API contracts, schema, workflows, constraints
 3. `tailwind.config.ts` — available design tokens
 4. `wireframes/[page].html` — layout spec for the page being built
+5. `REVIEW.md` — dated code review log; check for open issues that overlap with the current task and address them if relevant
 
 If a file required for the current task is missing, stop and report:
 - the missing file path

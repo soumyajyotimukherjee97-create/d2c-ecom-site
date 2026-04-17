@@ -1,33 +1,46 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { render, screen, fireEvent, within, waitFor } from '@testing-library/react'
 import { CartDrawer } from '@/components/shop/CartDrawer'
 import { useCartStore } from '@/lib/store/cart'
 import type { CartItem } from '@/lib/store/cart'
 
-const upsellDbProduct = {
-  id: 'upsell-prod-1',
-  name: 'Upsell Product',
-  slug: 'upsell-product',
-  category: 'serum',
-  skin_types: [],
-  concerns: [],
-  image_url: null,
-  is_active: true,
-  product_variants: [{ id: 'upsell-v1', size_ml: 30, price: 149900, sku: 'UP-30', stock: 10, is_active: true }],
+const upsellApiResponse = {
+  product: {
+    id: 'upsell-prod-1',
+    name: 'Upsell Product',
+    slug: 'upsell-product',
+    category: 'serum',
+    skin_types: [],
+    concerns: [],
+    starting_price: 149900,
+    image_url: null,
+    is_active: true,
+  },
+  variant: {
+    id: 'upsell-v1',
+    size_ml: 30,
+    price: 149900,
+    sku: 'UP-30',
+    stock: 10,
+    is_active: true,
+  },
 }
 
-const mockLimit = vi.fn().mockResolvedValue({ data: [upsellDbProduct] })
-vi.mock('@/lib/supabase/browser', () => ({
-  createClient: () => ({
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          limit: mockLimit,
-        }),
-      }),
-    }),
-  }),
-}))
+const upsellNullResponse = { product: null, variant: null }
+
+let fetchMock: ReturnType<typeof vi.fn>
+
+beforeEach(() => {
+  fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    json: () => Promise.resolve(upsellApiResponse),
+  })
+  vi.stubGlobal('fetch', fetchMock)
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -57,15 +70,22 @@ const item2: CartItem = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+function deriveFromItems(items: CartItem[]) {
+  return {
+    subtotal:  items.reduce((sum, i) => sum + i.price * i.quantity, 0),
+    itemCount: items.reduce((sum, i) => sum + i.quantity, 0),
+  }
+}
+
 function openWithItems(items: CartItem[]) {
-  useCartStore.setState({ items, isOpen: true })
+  useCartStore.setState({ items, isOpen: true, ...deriveFromItems(items) })
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe('CartDrawer', () => {
   beforeEach(() => {
-    useCartStore.setState({ items: [], isOpen: false })
+    useCartStore.setState({ items: [], isOpen: false, subtotal: 0, itemCount: 0 })
     localStorage.clear()
   })
 
@@ -240,26 +260,30 @@ describe('CartDrawer', () => {
     expect(screen.queryByTestId('cart-upsell')).toBeNull()
   })
 
-  it('hides upsell when all products in DB are already in cart', async () => {
-    const upsellItem: CartItem = {
-      variantId:   'upsell-v1',
-      productId:   'upsell-prod-1',
-      sku:         'UP-30',
-      productName: 'Upsell Product',
-      slug:        'upsell-product',
-      size_ml:     30,
-      price:       149900,
-      quantity:    1,
-      imageUrl:    null,
-    }
-    openWithItems([upsellItem])
+  it('hides upsell when API returns null product', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(upsellNullResponse),
+    })
+    openWithItems([item1])
     render(<CartDrawer />)
-    await waitFor(() => expect(screen.queryByTestId('cart-upsell')).toBeNull())
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    expect(screen.queryByTestId('cart-upsell')).toBeNull()
   })
 
   it('renders upsell add button', async () => {
     openWithItems([item1])
     render(<CartDrawer />)
     await waitFor(() => expect(screen.getByTestId('cart-upsell-add')).toBeDefined())
+  })
+
+  it('calls fetch with correct query params', async () => {
+    openWithItems([item1])
+    render(<CartDrawer />)
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    const url = fetchMock.mock.calls[0][0] as string
+    expect(url).toContain('/api/upsell')
+    expect(url).toContain('exclude=prod-1')
+    expect(url).toContain('cart_key=prod-1')
   })
 })

@@ -2,7 +2,7 @@ import { withSentryConfig } from '@sentry/nextjs'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['@d2c/email'],
+  transpilePackages: ['@d2c/email', '@d2c/schemas'],
   images: {
     remotePatterns: [
       {

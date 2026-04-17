@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { Th, Td } from '@/components/ui/Table'
 import { addVariantAction, updateVariantAction } from '../../actions'
 
 export interface VariantRow {
@@ -88,9 +89,9 @@ function VariantRowForm({ productId, variant }: { productId: string; variant: Va
 
   return (
     <tr className="border-b border-gray-100 last:border-0" data-testid={`variant-row-${variant.sku}`}>
-      <Td>{variant.size_ml} ml</Td>
-      <Td className="font-mono text-2xs">{variant.sku}</Td>
-      <Td>
+      <Td className="align-middle">{variant.size_ml} ml</Td>
+      <Td className="align-middle font-mono text-2xs">{variant.sku}</Td>
+      <Td className="align-middle">
         <input
           type="number"
           min={1}
@@ -101,7 +102,7 @@ function VariantRowForm({ productId, variant }: { productId: string; variant: Va
           className="w-28 border border-gray-200 rounded-sm px-2 py-1 font-body text-sm"
         />
       </Td>
-      <Td>
+      <Td className="align-middle">
         <input
           type="number"
           min={0}
@@ -112,7 +113,7 @@ function VariantRowForm({ productId, variant }: { productId: string; variant: Va
           className="w-24 border border-gray-200 rounded-sm px-2 py-1 font-body text-sm"
         />
       </Td>
-      <Td>
+      <Td className="align-middle">
         <span
           className={
             variant.is_active
@@ -124,7 +125,7 @@ function VariantRowForm({ productId, variant }: { productId: string; variant: Va
         </span>
         {error && <p role="alert" className="font-body text-sm text-error mt-1">{error}</p>}
       </Td>
-      <Td className="text-right pr-4">
+      <Td className="align-middle text-right pr-4">
         <div className="inline-flex items-center gap-2">
           <button
             type="button"
@@ -208,17 +209,6 @@ function AddVariantForm({ productId }: { productId: string }) {
   )
 }
 
-function Th({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return (
-    <th className={`text-left px-4 py-3 font-mono text-2xs uppercase tracking-wider text-gray-600 ${className}`}>
-      {children}
-    </th>
-  )
-}
-
-function Td({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <td className={`px-4 py-3 font-body text-sm text-gray-900 align-middle ${className}`}>{children}</td>
-}
 
 function Sub({ label, className = '', children }: {
   label: string

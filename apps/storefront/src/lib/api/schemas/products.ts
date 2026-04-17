@@ -1,10 +1,7 @@
 import { z } from 'zod'
+import { CategoryEnum, SkinTypeEnum, ConcernEnum } from '@d2c/schemas'
 
-// ─── Shared enums ──────────────────────────────────────────────────────────────
-
-export const CategoryEnum = z.enum(['serum', 'moisturiser', 'toner', 'spf'])
-export const SkinTypeEnum = z.enum(['dry', 'oily', 'combination', 'sensitive', 'all'])
-export const ConcernEnum = z.enum(['acne', 'dullness', 'aging', 'pores', 'redness'])
+export { CategoryEnum, SkinTypeEnum, ConcernEnum }
 export const SortEnum = z.enum(['created_at_desc', 'price_asc', 'price_desc', 'name_asc'])
 
 // ─── GET /api/products — query params ─────────────────────────────────────────

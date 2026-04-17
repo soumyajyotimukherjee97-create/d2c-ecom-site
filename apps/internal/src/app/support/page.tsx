@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ConsoleHeader } from '@/components/ConsoleHeader'
+import { Th, Td } from '@/components/ui/Table'
 import { TicketStatusBadge, TicketPriorityBadge } from '@/components/TicketBadges'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
@@ -56,7 +57,7 @@ export default async function SupportListPage({
   const { data, count, error } = await query
   if (error) console.error('[SupportListPage]', error.message)
 
-  const rows       = ((data ?? []) as unknown as TicketRow[])
+  const rows       = (data ?? []) as TicketRow[]
   const total      = count ?? 0
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
@@ -136,17 +137,6 @@ export default async function SupportListPage({
   )
 }
 
-function Th({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return (
-    <th className={`text-left px-4 py-3 font-mono text-2xs uppercase tracking-wider text-gray-600 ${className}`}>
-      {children}
-    </th>
-  )
-}
-
-function Td({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <td className={`px-4 py-3 font-body text-sm text-gray-900 ${className}`}>{children}</td>
-}
 
 function Pagination({
   q, status, priority, page, totalPages,

@@ -1,13 +1,25 @@
+import { cache } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { ProductCard } from '@/components/shop/ProductCard'
 import { FilterBar } from '@/components/shop/FilterBar'
 import { EmptyState } from '@/components/ui/EmptyState'
-import type { ProductSummary } from '@/types'
+import type { ProductSummary, Variant } from '@/types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type SearchParams = { [key: string]: string | string[] | undefined }
+
+type VariantData = Pick<Variant, 'id' | 'size_ml' | 'price' | 'sku' | 'stock' | 'is_active'>
+
+type RawVariantRow = {
+  id: string
+  size_ml: number
+  price: number
+  sku: string
+  stock: number
+  is_active: boolean
+}
 
 type RawRow = {
   id: string
@@ -18,26 +30,39 @@ type RawRow = {
   concerns: string[]
   image_url: string | null
   is_active: boolean
-  product_variants: { price: number }[]
+  product_variants: RawVariantRow[]
 }
+
+type ProductWithDefault = {
+  product: ProductSummary
+  defaultVariant: VariantData | null
+}
+
+export const revalidate = 60
 
 // ─── Data fetching ────────────────────────────────────────────────────────────
 
 const LIMIT = 20
 
-async function getProducts(params: {
+function pickDefaultVariant(variants: RawVariantRow[]): VariantData | null {
+  const inStock = variants.filter((v) => v.is_active && v.stock > 0)
+  if (inStock.length === 0) return null
+  return inStock.reduce((cheapest, v) => (v.price < cheapest.price ? v : cheapest))
+}
+
+const getProducts = cache(async function getProducts(params: {
   skin_type?: string
   concern?: string
   sort: string
   offset: number
-}): Promise<{ products: ProductSummary[]; total: number }> {
+}): Promise<{ items: ProductWithDefault[]; total: number }> {
   try {
     const supabase = await createClient()
 
     let query = supabase
       .from('products')
       .select(
-        'id, name, slug, category, skin_types, concerns, image_url, is_active, product_variants!inner(price)',
+        'id, name, slug, category, skin_types, concerns, image_url, is_active, product_variants!inner(id, size_ml, price, sku, stock, is_active)',
         { count: 'exact' },
       )
       .eq('is_active', true)
@@ -66,32 +91,35 @@ async function getProducts(params: {
 
     const { data: rawData, count, error } = await query
 
-    if (error || !rawData) return { products: [], total: 0 }
+    if (error || !rawData) return { items: [], total: 0 }
 
     const rows = rawData as RawRow[]
-    let products = rows.map((row) => {
+    let items = rows.map((row) => {
       const prices = row.product_variants.map((v) => v.price)
       return {
-        id:             row.id,
-        name:           row.name,
-        slug:           row.slug,
-        category:       row.category as ProductSummary['category'],
-        skin_types:     row.skin_types as ProductSummary['skin_types'],
-        concerns:       row.concerns as ProductSummary['concerns'],
-        image_url:      row.image_url,
-        is_active:      row.is_active,
-        starting_price: prices.length ? Math.min(...prices) : 0,
+        product: {
+          id:             row.id,
+          name:           row.name,
+          slug:           row.slug,
+          category:       row.category as ProductSummary['category'],
+          skin_types:     row.skin_types as ProductSummary['skin_types'],
+          concerns:       row.concerns as ProductSummary['concerns'],
+          image_url:      row.image_url,
+          is_active:      row.is_active,
+          starting_price: prices.length ? Math.min(...prices) : 0,
+        },
+        defaultVariant: pickDefaultVariant(row.product_variants),
       }
     })
 
-    if (params.sort === 'price_asc')  products.sort((a, b) => a.starting_price - b.starting_price)
-    if (params.sort === 'price_desc') products.sort((a, b) => b.starting_price - a.starting_price)
+    if (params.sort === 'price_asc')  items.sort((a, b) => a.product.starting_price - b.product.starting_price)
+    if (params.sort === 'price_desc') items.sort((a, b) => b.product.starting_price - a.product.starting_price)
 
-    return { products, total: count ?? 0 }
+    return { items, total: count ?? 0 }
   } catch {
-    return { products: [], total: 0 }
+    return { items: [], total: 0 }
   }
-}
+})
 
 // ─── Pagination component ─────────────────────────────────────────────────────
 
@@ -176,7 +204,7 @@ export default async function ProductsPage({
   const sort     = typeof searchParams.sort      === 'string' ? searchParams.sort      : 'created_at_desc'
   const offset   = typeof searchParams.offset    === 'string' ? Math.max(0, parseInt(searchParams.offset, 10) || 0) : 0
 
-  const { products, total } = await getProducts({ skin_type: skinType, concern, sort, offset })
+  const { items, total } = await getProducts({ skin_type: skinType, concern, sort, offset })
 
   const hasActiveFilters = Boolean(skinType || concern)
 
@@ -194,14 +222,14 @@ export default async function ProductsPage({
           <span className="font-mono text-xs text-gray-400">({total})</span>
         </div>
 
-        {products.length > 0 ? (
+        {items.length > 0 ? (
           <>
             <div
               data-testid="product-grid"
               className="grid grid-cols-2 md:grid-cols-4 gap-3"
             >
-              {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
+              {items.map(({ product, defaultVariant }) => (
+                <ProductCard key={product.id} product={product} defaultVariant={defaultVariant} />
               ))}
             </div>
 

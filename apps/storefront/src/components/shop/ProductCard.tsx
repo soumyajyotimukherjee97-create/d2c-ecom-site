@@ -1,10 +1,14 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import type { ProductSummary } from '@/types'
+import type { ProductSummary, Variant } from '@/types'
+import { formatInr } from '@/lib/money'
 import { AddToCartButton } from './AddToCartButton'
+
+type VariantData = Pick<Variant, 'id' | 'size_ml' | 'price' | 'sku' | 'stock' | 'is_active'>
 
 interface ProductCardProps {
   product: ProductSummary
+  defaultVariant?: VariantData | null
 }
 
 const categoryBg: Record<string, string> = {
@@ -14,9 +18,9 @@ const categoryBg: Record<string, string> = {
   spf:         'bg-gray-50',
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, defaultVariant }: ProductCardProps) {
   const { id, name, slug, category, concerns, image_url, starting_price } = product
-  const price = `₹${Math.round(starting_price / 100).toLocaleString()}`
+  const price = formatInr(starting_price)
   const imageBg = categoryBg[category] ?? 'bg-gray-50'
   const concernsText = concerns.length
     ? concerns.map((c) => c.toUpperCase()).join(' · ')
@@ -64,7 +68,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
         <div className="flex items-center justify-between">
           <span className="font-body text-sm text-gray-900">{price}</span>
-          <AddToCartButton product={product} />
+          <AddToCartButton product={product} defaultVariant={defaultVariant} />
         </div>
       </div>
     </article>

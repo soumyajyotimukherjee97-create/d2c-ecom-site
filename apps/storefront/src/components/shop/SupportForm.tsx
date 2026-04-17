@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
+import { extractApiError, NETWORK_MESSAGE } from '@/lib/api/client'
 
 const BODY_MAX = 5000
 const SUBJECT_MAX = 200
@@ -95,19 +96,18 @@ export function SupportForm({ userEmail, orders }: SupportFormProps) {
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(payload),
       })
-      const json = await res.json()
-
       if (!res.ok) {
-        setApiError(json?.error?.message ?? 'Something went wrong. Please try again.')
+        setApiError(await extractApiError(res))
         return
       }
 
+      const json = await res.json()
       setSuccess({
         id:    json.id,
         email: isAuthed ? (userEmail as string) : values.email,
       })
     } catch {
-      setApiError('Network error. Please check your connection and try again.')
+      setApiError(NETWORK_MESSAGE)
     }
   }
 

@@ -1,11 +1,7 @@
 import { z } from 'zod'
+import { CategoryEnum, SkinTypeEnum, ConcernEnum } from '@d2c/schemas'
 
-// ─── Shared enums (must stay in sync with apps/storefront) ───────────────────
-// TODO(packages/schemas): extract once a second internal domain needs these.
-
-export const CategoryEnum = z.enum(['serum', 'moisturiser', 'toner', 'spf'])
-export const SkinTypeEnum = z.enum(['dry', 'oily', 'combination', 'sensitive', 'all'])
-export const ConcernEnum  = z.enum(['acne', 'dullness', 'aging', 'pores', 'redness'])
+export { CategoryEnum, SkinTypeEnum, ConcernEnum }
 
 const SlugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 

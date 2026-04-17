@@ -1,16 +1,8 @@
 import { z } from 'zod'
+import { OrderStatusEnum, type OrderStatus } from '@d2c/schemas'
 
-// ─── Status enum + machine ───────────────────────────────────────────────────
-// Mirrors apps/storefront/src/lib/api/schemas/orders.ts and TDD §5.4.
-
-export const OrderStatusEnum = z.enum([
-  'confirmed',
-  'processing',
-  'shipped',
-  'delivered',
-  'cancelled',
-])
-export type OrderStatus = z.infer<typeof OrderStatusEnum>
+export { OrderStatusEnum }
+export type { OrderStatus }
 
 export const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   confirmed:  ['processing', 'cancelled'],

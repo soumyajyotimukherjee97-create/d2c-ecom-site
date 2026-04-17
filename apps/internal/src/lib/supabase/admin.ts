@@ -1,4 +1,5 @@
 import { createClient as _createClient } from '@supabase/supabase-js'
+import type { Database } from './types'
 
 /**
  * Admin Supabase client — uses SERVICE_ROLE_KEY which bypasses RLS entirely.
@@ -11,7 +12,7 @@ export function createAdminClient() {
     throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set.')
   }
 
-  return _createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey, {
+  return _createClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 }

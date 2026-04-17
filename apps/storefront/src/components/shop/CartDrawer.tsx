@@ -1,32 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { X } from 'lucide-react'
-import { useCartStore } from '@/lib/store/cart'
+import { useCartStore, type CartItem } from '@/lib/store/cart'
 import { QuantitySelector } from '@/components/ui/QuantitySelector'
-import { createClient } from '@/lib/supabase/browser'
-import type { Variant, ProductSummary, ProductCategory, SkinType, Concern } from '@/types'
-
-interface UpsellRow {
-  id: string
-  name: string
-  slug: string
-  category: ProductCategory
-  skin_types: SkinType[]
-  concerns: Concern[]
-  image_url: string | null
-  is_active: boolean
-  product_variants: Array<{
-    id: string
-    size_ml: number
-    price: number
-    sku: string
-    stock: number
-    is_active: boolean
-  }>
-}
+import { formatInr } from '@/lib/money'
+import type { Variant, ProductSummary } from '@/types'
 
 const SHIPPING_THRESHOLD = 99900 // ₹999 in paise
 
@@ -47,51 +28,51 @@ export function CartDrawer() {
   const [upsellProduct, setUpsellProduct] = useState<ProductSummary | null>(null)
   const [upsellVariant, setUpsellVariant] = useState<Variant | null>(null)
 
-  const cartProductIds = items.map((i) => i.productId)
-
-  const fetchUpsell = useCallback(async () => {
-    const supabase = createClient()
-    const { data: products } = await supabase
-      .from('products')
-      .select('id, name, slug, category, skin_types, concerns, image_url, is_active, product_variants(id, size_ml, price, sku, stock, is_active)')
-      .eq('is_active', true)
-      .limit(10)
-
-    const rows = (products ?? []) as unknown as UpsellRow[]
-    if (rows.length === 0) { setUpsellProduct(null); return }
-
-    const candidates = rows.filter((p) => !cartProductIds.includes(p.id))
-    if (candidates.length === 0) { setUpsellProduct(null); return }
-
-    const pick = candidates[Math.floor(Math.random() * candidates.length)]
-    const activeVariants = (pick.product_variants || []).filter((v) => v.is_active && v.stock > 0)
-    if (activeVariants.length === 0) { setUpsellProduct(null); return }
-
-    const cheapest = activeVariants.sort((a, b) => a.price - b.price)[0]
-
-    setUpsellProduct({
-      id: pick.id,
-      name: pick.name,
-      slug: pick.slug,
-      category: pick.category,
-      skin_types: pick.skin_types ?? [],
-      concerns: pick.concerns ?? [],
-      starting_price: cheapest.price,
-      image_url: pick.image_url,
-      is_active: true,
-    })
-    setUpsellVariant(cheapest)
-  }, [cartProductIds.join(',')])  // eslint-disable-line react-hooks/exhaustive-deps
+  const cartProductIdKey = useMemo(() => items.map((i) => i.productId).join(','), [items])
 
   useEffect(() => {
-    if (isOpen && items.length > 0) fetchUpsell()
-    if (items.length === 0) { setUpsellProduct(null); setUpsellVariant(null) }
-  }, [isOpen, items.length, fetchUpsell])
+    if (!isOpen || items.length === 0) {
+      setUpsellProduct(null)
+      setUpsellVariant(null)
+      return
+    }
 
-  const total         = subtotal()
-  const count         = itemCount()
+    let stale = false
+
+    async function fetchUpsell() {
+      const params = new URLSearchParams({
+        exclude:  cartProductIdKey,
+        cart_key: cartProductIdKey,
+      })
+      const res = await fetch(`/api/upsell?${params}`)
+      if (stale || !res.ok) return
+
+      const { product, variant } = (await res.json()) as {
+        product: ProductSummary | null
+        variant: Variant | null
+      }
+
+      if (stale) return
+      setUpsellProduct(product)
+      setUpsellVariant(variant)
+    }
+
+    fetchUpsell()
+    return () => { stale = true }
+  }, [isOpen, items.length, cartProductIdKey])
+
+  const handleQuantityChange = useCallback(
+    (variantId: string, qty: number) => updateQty(variantId, qty),
+    [updateQty],
+  )
+  const handleRemoveItem = useCallback(
+    (variantId: string) => removeItem(variantId),
+    [removeItem],
+  )
+
+  const total         = subtotal
+  const count         = itemCount
   const isFreeShip    = total >= SHIPPING_THRESHOLD
-  const showUpsell    = items.length > 0 && upsellProduct !== null && upsellVariant !== null
 
   // ── Focus trap + Escape key ──────────────────────────────────────────────────
   useEffect(() => {
@@ -192,103 +173,21 @@ export function CartDrawer() {
 
             {/* Cart items */}
             {items.map((item) => (
-              <div
+              <CartItemRow
                 key={item.variantId}
-                data-testid="cart-item"
-                className="flex items-start gap-2.5 border-b border-gray-50 py-3"
-              >
-                {/* Thumbnail */}
-                <div
-                  className="relative flex-shrink-0 overflow-hidden rounded-sm border border-gray-100 bg-gray-50"
-                  style={{ width: '52px', height: '52px' }}
-                >
-                  {item.imageUrl ? (
-                    <Image
-                      src={item.imageUrl}
-                      alt={item.productName}
-                      fill
-                      className="object-contain"
-                      sizes="52px"
-                    />
-                  ) : null}
-                </div>
-
-                {/* Details */}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-body text-xs font-medium text-gray-900 mb-0.5">
-                    {item.productName}
-                  </p>
-                  <p className="font-mono text-2xs uppercase text-gray-400 mb-1.5">
-                    {item.sku} · {item.size_ml}ml
-                  </p>
-                  <QuantitySelector
-                    value={item.quantity}
-                    onChange={(qty) => updateQty(item.variantId, qty)}
-                    min={1}
-                    max={99}
-                  />
-                </div>
-
-                {/* Price + remove */}
-                <div className="flex-shrink-0 text-right">
-                  <p className="font-body text-xs font-medium text-gray-900 mb-1.5">
-                    ₹{Math.round((item.price * item.quantity) / 100).toLocaleString()}
-                  </p>
-                  <button
-                    type="button"
-                    aria-label={`Remove ${item.productName} from cart`}
-                    data-testid="cart-item-remove"
-                    onClick={() => removeItem(item.variantId)}
-                    className="font-mono text-2xs text-gray-400 underline transition-colors hover:text-gray-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900"
-                  >
-                    Remove
-                  </button>
-                </div>
-              </div>
+                item={item}
+                onQuantityChange={handleQuantityChange}
+                onRemove={handleRemoveItem}
+              />
             ))}
 
             {/* Upsell slot */}
-            {showUpsell && (
-              <div
-                data-testid="cart-upsell"
-                className="mt-3 rounded-sm border border-gray-100 bg-gray-50 p-2.5"
-              >
-                <p className="font-mono text-2xs uppercase text-gray-400 mb-2">
-                  Complete your routine
-                </p>
-                <div className="flex items-center gap-2">
-                  <div
-                    className="relative flex-shrink-0 overflow-hidden rounded-sm bg-blush"
-                    style={{ width: '40px', height: '40px' }}
-                  >
-                    {upsellProduct!.image_url ? (
-                      <Image
-                        src={upsellProduct!.image_url}
-                        alt={upsellProduct!.name}
-                        fill
-                        className="object-contain"
-                        sizes="40px"
-                      />
-                    ) : null}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-body text-xs font-medium text-gray-900">
-                      {upsellProduct!.name}
-                    </p>
-                    <p className="font-mono text-2xs text-gray-400">
-                      ₹{Math.round(upsellVariant!.price / 100).toLocaleString()}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    data-testid="cart-upsell-add"
-                    onClick={() => addItem(upsellVariant!, upsellProduct!, 1)}
-                    className="flex-shrink-0 whitespace-nowrap rounded-sm border border-gray-200 px-2.5 py-1 font-mono text-2xs transition-colors hover:border-gray-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900"
-                  >
-                    Add
-                  </button>
-                </div>
-              </div>
+            {upsellProduct && upsellVariant && (
+              <UpsellSlot
+                product={upsellProduct}
+                variant={upsellVariant}
+                onAdd={() => addItem(upsellVariant, upsellProduct, 1)}
+              />
             )}
           </div>
         )}
@@ -301,7 +200,7 @@ export function CartDrawer() {
               className="font-body text-sm font-medium text-gray-900"
               data-testid="cart-subtotal"
             >
-              ₹{Math.round(total / 100).toLocaleString()}
+              {formatInr(total)}
             </span>
           </div>
           <div className="mb-4 flex items-baseline justify-between">
@@ -335,5 +234,119 @@ export function CartDrawer() {
 
       </div>
     </>
+  )
+}
+
+const CartItemRow = memo(function CartItemRow({
+  item,
+  onQuantityChange,
+  onRemove,
+}: {
+  item: CartItem
+  onQuantityChange: (variantId: string, qty: number) => void
+  onRemove: (variantId: string) => void
+}) {
+  const handleQty = useCallback(
+    (qty: number) => onQuantityChange(item.variantId, qty),
+    [item.variantId, onQuantityChange],
+  )
+  const handleRemove = useCallback(
+    () => onRemove(item.variantId),
+    [item.variantId, onRemove],
+  )
+
+  return (
+    <div
+      data-testid="cart-item"
+      className="flex items-start gap-2.5 border-b border-gray-50 py-3"
+    >
+      <div
+        className="relative flex-shrink-0 overflow-hidden rounded-sm border border-gray-100 bg-gray-50"
+        style={{ width: '52px', height: '52px' }}
+      >
+        {item.imageUrl ? (
+          <Image
+            src={item.imageUrl}
+            alt={item.productName}
+            fill
+            className="object-contain"
+            sizes="52px"
+          />
+        ) : null}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-body text-xs font-medium text-gray-900 mb-0.5">
+          {item.productName}
+        </p>
+        <p className="font-mono text-2xs uppercase text-gray-400 mb-1.5">
+          {item.sku} · {item.size_ml}ml
+        </p>
+        <QuantitySelector
+          value={item.quantity}
+          onChange={handleQty}
+          min={1}
+          max={99}
+        />
+      </div>
+      <div className="flex-shrink-0 text-right">
+        <p className="font-body text-xs font-medium text-gray-900 mb-1.5">
+          {formatInr(item.price * item.quantity)}
+        </p>
+        <button
+          type="button"
+          aria-label={`Remove ${item.productName} from cart`}
+          data-testid="cart-item-remove"
+          onClick={handleRemove}
+          className="font-mono text-2xs text-gray-400 underline transition-colors hover:text-gray-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900"
+        >
+          Remove
+        </button>
+      </div>
+    </div>
+  )
+})
+
+function UpsellSlot({ product, variant, onAdd }: { product: ProductSummary; variant: Variant; onAdd: () => void }) {
+  return (
+    <div
+      data-testid="cart-upsell"
+      className="mt-3 rounded-sm border border-gray-100 bg-gray-50 p-2.5"
+    >
+      <p className="font-mono text-2xs uppercase text-gray-400 mb-2">
+        Complete your routine
+      </p>
+      <div className="flex items-center gap-2">
+        <div
+          className="relative flex-shrink-0 overflow-hidden rounded-sm bg-blush"
+          style={{ width: '40px', height: '40px' }}
+        >
+          {product.image_url ? (
+            <Image
+              src={product.image_url}
+              alt={product.name}
+              fill
+              className="object-contain"
+              sizes="40px"
+            />
+          ) : null}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-body text-xs font-medium text-gray-900">
+            {product.name}
+          </p>
+          <p className="font-mono text-2xs text-gray-400">
+            {formatInr(variant.price)}
+          </p>
+        </div>
+        <button
+          type="button"
+          data-testid="cart-upsell-add"
+          onClick={onAdd}
+          className="flex-shrink-0 whitespace-nowrap rounded-sm border border-gray-200 px-2.5 py-1 font-mono text-2xs transition-colors hover:border-gray-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900"
+        >
+          Add
+        </button>
+      </div>
+    </div>
   )
 }

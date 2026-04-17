@@ -28,7 +28,7 @@ export function Navbar() {
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
 
-  const cartCountRaw = useCartStore((s) => s.itemCount())
+  const cartCountRaw = useCartStore((s) => s.itemCount)
   const openCart     = useCartStore((s) => s.openCart)
   // Only show persisted count after hydration — prevents server/client HTML mismatch
   const cartCount = mounted ? cartCountRaw : 0
