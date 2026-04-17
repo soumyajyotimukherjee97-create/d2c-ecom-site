@@ -1,4 +1,4 @@
-import { cache } from 'react'
+import { unstable_cache } from 'next/cache'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { ProductCard } from '@/components/shop/ProductCard'
@@ -50,12 +50,12 @@ function pickDefaultVariant(variants: RawVariantRow[]): VariantData | null {
   return inStock.reduce((cheapest, v) => (v.price < cheapest.price ? v : cheapest))
 }
 
-const getProducts = cache(async function getProducts(params: {
-  skin_type?: string
-  concern?: string
-  sort: string
-  offset: number
-}): Promise<{ items: ProductWithDefault[]; total: number }> {
+async function fetchProducts(
+  skin_type: string,
+  concern: string,
+  sort: string,
+  offset: number,
+): Promise<{ items: ProductWithDefault[]; total: number }> {
   try {
     const supabase = await createClient()
 
@@ -68,14 +68,14 @@ const getProducts = cache(async function getProducts(params: {
       .eq('is_active', true)
       .eq('product_variants.is_active', true)
 
-    if (params.skin_type) {
-      query = query.contains('skin_types', [params.skin_type])
+    if (skin_type) {
+      query = query.contains('skin_types', [skin_type])
     }
-    if (params.concern) {
-      query = query.contains('concerns', [params.concern])
+    if (concern) {
+      query = query.contains('concerns', [concern])
     }
 
-    switch (params.sort) {
+    switch (sort) {
       case 'name_asc':
         query = query.order('name', { ascending: true })
         break
@@ -87,7 +87,7 @@ const getProducts = cache(async function getProducts(params: {
         query = query.order('created_at', { ascending: false })
     }
 
-    query = query.range(params.offset, params.offset + LIMIT - 1)
+    query = query.range(offset, offset + LIMIT - 1)
 
     const { data: rawData, count, error } = await query
 
@@ -112,14 +112,20 @@ const getProducts = cache(async function getProducts(params: {
       }
     })
 
-    if (params.sort === 'price_asc')  items.sort((a, b) => a.product.starting_price - b.product.starting_price)
-    if (params.sort === 'price_desc') items.sort((a, b) => b.product.starting_price - a.product.starting_price)
+    if (sort === 'price_asc')  items.sort((a, b) => a.product.starting_price - b.product.starting_price)
+    if (sort === 'price_desc') items.sort((a, b) => b.product.starting_price - a.product.starting_price)
 
     return { items, total: count ?? 0 }
   } catch {
     return { items: [], total: 0 }
   }
-})
+}
+
+const getProducts = unstable_cache(
+  fetchProducts,
+  ['plp-products'],
+  { revalidate: 60, tags: ['products'] },
+)
 
 // ─── Pagination component ─────────────────────────────────────────────────────
 
@@ -204,7 +210,7 @@ export default async function ProductsPage({
   const sort     = typeof searchParams.sort      === 'string' ? searchParams.sort      : 'created_at_desc'
   const offset   = typeof searchParams.offset    === 'string' ? Math.max(0, parseInt(searchParams.offset, 10) || 0) : 0
 
-  const { items, total } = await getProducts({ skin_type: skinType, concern, sort, offset })
+  const { items, total } = await getProducts(skinType ?? '', concern ?? '', sort, offset)
 
   const hasActiveFilters = Boolean(skinType || concern)
 

@@ -182,3 +182,30 @@ Storefront UX jank investigation: slow add-to-cart, laggy quantity changes in Ca
 `apps/storefront/src/app/(shop)/products/loading.tsx` — The loading fallback renders skeleton cards but does not include the FilterBar. During navigation the filter context disappears, making the transition feel disorienting — the user loses sight of which filter they just selected.
 
 > **✅ Fixed** — Loading skeleton now renders `<FilterBar />` above the skeleton grid. The filter bar stays visible with its current active state (read from URL search params) during navigation, so the user never loses context.
+
+---
+
+## 2026-04-17 — Filter Tab Responsiveness (follow-up)
+
+### Scope
+
+Despite P4–P6 fixes, PLP filter tabs still feel laggy. Root cause investigation revealed three interacting issues.
+
+### HIGH
+
+**F1. `loading.tsx` overrides `useTransition` stale-UI behaviour**
+`apps/storefront/src/app/(shop)/products/loading.tsx` — `useTransition` is designed to keep the current UI visible (with `isPending` feedback) until the server finishes. But `loading.tsx` creates an automatic `<Suspense>` boundary around `page.tsx`. When the server component starts rendering, Next.js shows the `loading.tsx` fallback *inside* that boundary — replacing the product grid with skeletons even though the transition is trying to keep the old content. Result: two visual disruptions (dim → skeleton flash → results) instead of one smooth transition.
+
+> **✅ Fixed** — Removed `loading.tsx`. With `useTransition` in FilterBar, the old product grid stays visible (with opacity dim) until the server render completes — no skeleton flash.
+
+**F2. Active filter highlight doesn't update optimistically**
+`apps/storefront/src/components/shop/FilterBar.tsx:91-93` — FilterBar reads its active state from `searchParams` (the committed URL). When wrapped in `startTransition`, the URL doesn't update until the server render completes. The user clicks "Dry", sees the bar dim, but the "Dry" button stays un-highlighted for the full server round-trip (~200–400ms). Looks like the click didn't register.
+
+> **✅ Fixed** — Added optimistic local state (`optimisticSkinType`, `optimisticConcern`, `optimisticSort`) that updates instantly on click. During `isPending`, button highlights use the optimistic values; once the transition commits, `useEffect` syncs back to the committed `searchParams`. The clicked filter highlights immediately.
+
+### MEDIUM
+
+**F3. `React.cache()` doesn't persist across navigations**
+`apps/storefront/src/app/(shop)/products/page.tsx:53` — `React.cache()` deduplicates calls within a single server request, not across navigations. Toggling "Dry" → "Oily" → "Dry" still makes three separate Supabase queries. `revalidate = 60` helps at the CDN level but each unique `?skin_type=X` combination is a separate ISR cache entry requiring a server round-trip on first hit.
+
+> **✅ Fixed** — Replaced `React.cache()` with `unstable_cache` from `next/cache` (`keyParts: ['plp-products']`, `revalidate: 60`, `tags: ['products']`). Cache persists across navigations — toggling "Dry" → "Oily" → "Dry" serves the third request from cache instantly. The `products` tag allows on-demand invalidation when the internal app modifies products.

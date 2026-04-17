@@ -1,6 +1,6 @@
 'use client'
 
-import { useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -88,9 +88,21 @@ export function FilterBar() {
   const pathname     = usePathname()
   const [isPending, startTransition] = useTransition()
 
-  const activeSkinType = searchParams.get('skin_type') ?? ''
-  const activeConcern  = searchParams.get('concern')   ?? ''
-  const activeSort     = searchParams.get('sort')      ?? 'created_at_desc'
+  const committedSkinType = searchParams.get('skin_type') ?? ''
+  const committedConcern  = searchParams.get('concern')   ?? ''
+  const committedSort     = searchParams.get('sort')      ?? 'created_at_desc'
+
+  const [optimisticSkinType, setOptimisticSkinType] = useState(committedSkinType)
+  const [optimisticConcern, setOptimisticConcern]   = useState(committedConcern)
+  const [optimisticSort, setOptimisticSort]         = useState(committedSort)
+
+  useEffect(() => { setOptimisticSkinType(committedSkinType) }, [committedSkinType])
+  useEffect(() => { setOptimisticConcern(committedConcern) }, [committedConcern])
+  useEffect(() => { setOptimisticSort(committedSort) }, [committedSort])
+
+  const activeSkinType = isPending ? optimisticSkinType : committedSkinType
+  const activeConcern  = isPending ? optimisticConcern  : committedConcern
+  const activeSort     = isPending ? optimisticSort     : committedSort
 
   function navigate(updates: Record<string, string | undefined>) {
     startTransition(() => {
@@ -100,15 +112,18 @@ export function FilterBar() {
 
   function setSkinType(value: string) {
     const next = value === activeSkinType ? '' : value
+    setOptimisticSkinType(next)
     navigate({ skin_type: next })
   }
 
   function setConcern(value: string) {
     const next = value === activeConcern ? '' : value
+    setOptimisticConcern(next)
     navigate({ concern: next })
   }
 
   function setSort(value: string) {
+    setOptimisticSort(value)
     navigate({ sort: value })
   }
 
