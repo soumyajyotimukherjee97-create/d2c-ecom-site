@@ -13,5 +13,6 @@ test('guest submits a support ticket and sees the confirmation state', async ({ 
   await page.getByTestId('support-submit').click()
 
   await expect(page.getByTestId('support-success')).toBeVisible({ timeout: 15_000 })
-  await expect(page.getByTestId('support-ticket-id')).toHaveText(/#[0-9a-f]{8}/)
+  // V2 ticket format: TKT-XXXXXXXX (uppercase 8-char UUID prefix).
+  await expect(page.getByTestId('support-ticket-id')).toHaveText(/TKT-[0-9A-F]{8}/)
 })

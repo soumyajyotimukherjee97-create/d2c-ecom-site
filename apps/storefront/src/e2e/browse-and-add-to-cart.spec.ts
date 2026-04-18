@@ -3,10 +3,13 @@ import { test, expect } from '@playwright/test'
 test('customer browses PLP, opens a PDP, adds to cart, cart drawer opens', async ({ page }) => {
   await page.goto('/products')
 
-  // The PLP renders at least one product card (seeded data).
-  const firstCard = page.getByTestId('product-card').first()
-  await expect(firstCard).toBeVisible()
-  await firstCard.click()
+  // V2 split the tile: PLP uses `product-tile`, Home uses `product-card`.
+  const firstTile = page.getByTestId('product-tile').first()
+  await expect(firstTile).toBeVisible()
+  // Click the link explicitly — the `+` button is absolutely positioned on
+  // top of the tile, so clicking the tile center without this lands on the
+  // button rather than navigating to the PDP.
+  await page.getByTestId('product-tile-link').first().click()
 
   // Landed on a PDP — URL and the add-to-cart button confirm.
   await expect(page).toHaveURL(/\/products\/[a-z0-9-]+/)
