@@ -42,9 +42,9 @@ test-infra fix on `main` whenever convenient.
 
 ---
 
-## E2E tests — 5 storefront-facing flows green
+## E2E tests — all 6 flows green
 
-**Result on storefront-v2:** 5 passed, 1 failed. The failure is pre-existing on `main`.
+**Result on storefront-v2:** 6 passed, 0 failed.
 
 | Spec | Status | Notes |
 |---|---|---|
@@ -53,13 +53,12 @@ test-infra fix on `main` whenever convenient.
 | `account-order-history.spec.ts` | ✅ | Needed empty-state copy regex update (V2: "no consignments yet") |
 | `support-ticket.spec.ts` | ✅ | Needed ticket ref regex update (V2: `TKT-XXXXXXXX`) |
 | `internal-process-order.spec.ts` | ✅ | Staff walks order confirmed → processing → shipped |
-| `internal-add-product.spec.ts` | ❌ pre-existing | Times out on new-product submit on :3001. **Identical failure on `main`** — verified by checkout + rerun. Filed as a post-cutover internal-console follow-up. Internal console is out of V2 scope per CLAUDE.md. |
+| `internal-add-product.spec.ts` | ✅ | Fixed two real bugs (commit `eb3ca27`): auto-slug race on name-blur, and image_url schema rejecting empty string. Both are customer-observable on the staff-facing form — a fast tabbing user would hit them in prod. |
 
-**All 5 storefront-facing flows exercise the real stack — Next dev
-servers, Supabase, the atomic order RPC, status transitions, and the
-email side-effects (Resend logs show templates firing as expected; the
-401 responses in logs are just the missing local Resend key — not a
-test failure).**
+**All 6 flows exercise the real stack — Next dev servers, Supabase, the
+atomic order RPC, status transitions, and the email side-effects
+(Resend logs show templates firing; the 401s are just the missing local
+Resend key — not a test failure).**
 
 ---
 

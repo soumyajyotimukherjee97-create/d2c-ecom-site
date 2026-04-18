@@ -459,7 +459,7 @@
 - [x] Commerce invariants unchanged — `/api/orders` POST payload shape byte-identical to main (verified by test; confirmed by payload-shape assertion still green)
 
 **Automated browser checks (done)**
-- [x] `pnpm e2e` — **5 storefront flows green** (browse-and-add-to-cart · place-order · account-order-history · support-ticket · internal-process-order). The 6th (`internal-add-product`) times out identically on `main` — filed as a post-cutover internal-console issue. Three specs updated to match intentional V2 drift (commit `62ddf9a`).
+- [x] `pnpm e2e` — **all 6 flows green** (browse-and-add-to-cart · place-order · account-order-history · support-ticket · internal-process-order · internal-add-product). Three specs updated to match intentional V2 drift (commit `62ddf9a`). Two real bugs in the internal new-product form diagnosed + fixed (commit `eb3ca27`): auto-slug race on name-blur; `image_url` schema rejecting the empty string default value. Both were production-observable for staff users — a fast tabbing user would hit them.
 
 **Manual checklist (founder-in-browser)**
 - [ ] Responsive — every page at 1440 / 1280 / 1024 / 768 / 640 widths
