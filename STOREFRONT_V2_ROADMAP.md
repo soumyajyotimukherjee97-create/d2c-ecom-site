@@ -23,7 +23,7 @@
 | 3 | Shared chrome — Navbar + Footer | ✅ | medium |
 | 4 | Cart drawer (overlay re-skin) | ✅ | medium |
 | 5 | **Pilot page: About** (new route) | ✅ | low |
-| 6 | Home page | ☐ | medium |
+| 6 | Home page | ✅ | medium |
 | 7 | PLP (`/products`) | ☐ | medium |
 | 8 | PDP (`/products/[slug]`) | ☐ | medium |
 | 9 | Ingredients page (new route, MDX) | ☐ | medium |
@@ -199,24 +199,34 @@
 
 ---
 
-## Chunk 6 — Home page
+## Chunk 6 — Home page ✅
 
-- **Prereqs**: Chunks 2, 3, 4, 5
-- **Scope**: re-skin `src/app/(shop)/page.tsx` per `wireframes-storefront-v2/Home.html`:
-  - Hero (12-col split, specimen art R)
-  - Featured formulas (3-up product grid, server-fetched, ISR 60s)
-  - Know-your-ingredient Spotlight (client tab selector, 4 hardcoded ingredients until Ingredients page content exists)
-  - Principles (4-up bordered grid, inline SVG icons)
-  - Reviews (3-up arrow carousel, client island)
-  - Press (6-cell typographic strip)
-  - Newsletter (2-col, inline form, RHF + Zod).
+- **Prereqs**: Chunks 2, 3, 4, 5 ✅
+- **Scope**: re-skinned `src/app/(shop)/page.tsx` per `wireframes-storefront-v2/Home.html`:
+  - Hero (12-col split, specimen art R linking to top-ranked featured product). ✅
+  - Featured formulas (3-up product grid, server-fetched, ISR 60s). ✅
+  - Know-your-ingredient Spotlight (new client island `HomeSpotlight.tsx` — 4 hardcoded ingredients). ✅
+  - Principles (4-up bordered grid, inline 1px SVG icons, no icon libraries). ✅
+  - Reviews (new client island `HomeReviewsCarousel.tsx` — 3-up arrow-nav carousel, 6 hardcoded reviews across 2 pages). ✅
+  - Press (6-cell typographic strip). ✅
+  - Newsletter (2-col, inline form on paper-2). ✅
 - **Done when**:
-  - Every section matches wireframe and `DESIGN_SYSTEM_V2.md`.
-  - ISR still 60s on featured products.
-  - Newsletter submission works (retain existing backend behaviour).
-  - All existing home tests pass or are updated.
-- **Tests**: update home.test.tsx; add tests for Spotlight tabs and Reviews carousel (arrow nav only).
-- **Risk**: medium — many sections, lots of surface area.
+  - Every section matches wireframe and `DESIGN_SYSTEM_V2.md`. ✅
+  - ISR still 60s on featured products (`export const revalidate = 60`). ✅
+  - Newsletter submission still works (POST /api/newsletter behaviour preserved). ✅
+  - All existing home-touching tests pass; new ones cover the two client islands. ✅
+- **Tests**: 456/456 (was 435; +21).
+- **Risk**: medium — many sections, lots of surface area. Retained all data-flow; only chrome and markup changed.
+- **Delivered commits**:
+  - `dbd90ce` — feat(storefront-v2): Chunk 6 — Home page re-skin + 2 new client islands
+- **Notes**:
+  - `ProductCard` re-skinned to matter tile and made context-aware (`showAddButton`, `index`, `placeholderTone`). Home uses `showAddButton={false}` + sequential `index` + rotating `mineral / default / ink` tones. PLP will keep `showAddButton={true}` (default) in Chunk 7.
+  - `AddToCartButton` re-skinned to a 32px ink square (matches the Cart upsell button in Chunk 4). Added `e.preventDefault(); e.stopPropagation()` so the `+` click never bubbles to the full-card link.
+  - Newsletter form swapped to matter markup: hairline ink-bordered input with `ELECTRONIC ADDRESS` uppercase placeholder, inline ink `ENROL →` button. Success and error states stay inline mono captions (no toast, no modal). Added a "Dispatched quarterly · 2,814 subscribers" footnote.
+  - Principles SVG icons are hand-drawn per handoff: `currentColor`, `stroke-width: 1`, square linecaps — no icon libraries per wireframe constraint.
+  - Reviews carousel uses arrow navigation only (no auto-advance, no dots) with wrap-around. Page counter in mono caps; assay-green verified dot on reviewer names.
+  - Spotlight tab selector uses `role="tablist"` + `role="tab"` + `aria-selected`; `aria-selected={selected}` flips the ink/paper inversion. `2%`, `0.05%`, `largest`, `plants` rendered in italic `<em>` inside the display headline.
+  - 4 new testids: `home-hero`, `home-featured`, `home-spotlight`, `home-principles`, `home-reviews`, `home-press`, `home-newsletter`, plus the per-element ones inside islands.
 
 ---
 
@@ -447,3 +457,4 @@ _Update when chunks complete or scope shifts._
 - `2026-04-18` — **Chunk 3 complete** at `540e669`. Navbar + Footer re-skinned to matter chrome. Wordmark "Form." → "matter." Nav: Shop · Ingredients · SkinInsight · About. Search button removed (unwired). 407/407 tests green (+2).
 - `2026-04-18` — **Chunk 5 complete** (Chunk 4 deferred — pilot page prioritised to validate atoms + chrome + tokens end-to-end on a real page before touching the cart overlay). `/about` shipped as a server component with `AboutHero` + `Manifesto` per handoff. `wireframes-storefront-v2/About.html` added for V2 consistency. 421/421 tests (+14). 17 routes build (was 16; `/about` is static `○`).
 - `2026-04-18` — **Chunk 4 complete** at `8c1d5e0`. CartDrawer re-skinned to matter. Drawer widened to 480px. New free-ship progress block with assay-green unlock state; new trust strip; new formulas/items header format; new empty-state quiz CTA. Upsell eyebrow renamed to § FREQUENTLY ADDED. `Continue shopping` button removed (redundant with Esc/×/backdrop). 435/435 tests (+14).
+- `2026-04-18` — **Chunk 6 complete** at `dbd90ce`. Home page rebuilt for matter — hero, featured, spotlight (new client island), principles (hand-drawn 1px SVGs), reviews carousel (new client island), press 6-cell, newsletter. ProductCard re-skinned and made home/PLP-aware via props (`showAddButton`, `index`, `placeholderTone`). NewsletterForm re-skinned to matter inline (ELECTRONIC ADDRESS + ENROL →, assay-green success, oxblood errors). 456/456 tests (+21).
