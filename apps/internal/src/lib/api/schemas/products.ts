@@ -17,6 +17,16 @@ export type VariantInput = z.infer<typeof VariantInputSchema>
 
 // ─── Create product ──────────────────────────────────────────────────────────
 
+// Optional URL field that also accepts the empty string. React Hook Form
+// defaults an unfilled URL input to `''` (HTML inputs can't hold
+// `undefined`); without accepting `''`, an empty image_url fails
+// `z.string().url()` validation and blocks the form from submitting.
+// Callers should still map `''` → `null` before persisting.
+const OptionalUrl = z
+  .union([z.string().url(), z.literal('')])
+  .nullable()
+  .optional()
+
 export const CreateProductSchema = z.object({
   name:        z.string().trim().min(1),
   slug:        z.string().trim().min(1).max(100).regex(SlugRegex, 'Slug must be lowercase letters, numbers, and hyphens only'),
@@ -24,7 +34,7 @@ export const CreateProductSchema = z.object({
   category:    CategoryEnum,
   skin_types:  z.array(SkinTypeEnum).min(1, 'Select at least one skin type'),
   concerns:    z.array(ConcernEnum).optional().default([]),
-  image_url:   z.string().url().nullable().optional(),
+  image_url:   OptionalUrl,
   variants:    z.array(VariantInputSchema).min(1, 'Add at least one variant'),
 })
 export type CreateProductInput = z.infer<typeof CreateProductSchema>
@@ -38,7 +48,7 @@ export const UpdateProductSchema = z
     category:    CategoryEnum.optional(),
     skin_types:  z.array(SkinTypeEnum).min(1).optional(),
     concerns:    z.array(ConcernEnum).optional(),
-    image_url:   z.string().url().nullable().optional(),
+    image_url:   OptionalUrl,
     is_active:   z.boolean().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {

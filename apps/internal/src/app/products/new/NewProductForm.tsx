@@ -52,10 +52,15 @@ export function NewProductForm() {
 
   const { fields, append, remove } = useFieldArray({ control, name: 'variants' })
 
-  // Auto-suggest slug from name (only until user touches slug)
-  const name     = watch('name')
+  // Auto-suggest slug from name on blur. Guards to avoid racing users who
+  // tab straight from name into slug: (1) skip when the user is focusing
+  // INTO the slug input (`relatedTarget`), (2) skip when the slug is non-
+  // empty so we never clobber a typed/pasted value.
+  const name      = watch('name')
   const slugDraft = watch('slug')
-  function onNameBlur() {
+  function onNameBlur(e: React.FocusEvent<HTMLInputElement>) {
+    const next = e.relatedTarget as HTMLElement | null
+    if (next?.getAttribute('data-testid') === 'product-slug') return
     if (!slugDraft && name) setValue('slug', slugify(name), { shouldValidate: true })
   }
 
