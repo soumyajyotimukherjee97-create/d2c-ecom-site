@@ -18,7 +18,7 @@
 | # | Chunk | Status | Risk |
 |---|---|---|---|
 | 0 | Branch + infra setup | ✅ | low |
-| 1 | Design tokens + fonts | ☐ | low |
+| 1 | Design tokens + fonts | ✅ | low |
 | 2 | UI atoms (re-skin + new primitives) | ☐ | low |
 | 3 | Shared chrome — Navbar + Footer | ☐ | medium |
 | 4 | Cart drawer (overlay re-skin) | ☐ | medium |
@@ -60,21 +60,29 @@
 
 ---
 
-## Chunk 1 — Design tokens + fonts
+## Chunk 1 — Design tokens + fonts ✅
 
-- **Prereqs**: Chunk 0
+- **Prereqs**: Chunk 0 ✅
 - **Scope**:
-  - Rewrite `apps/storefront/tailwind.config.ts` with the matter palette (paper/ink/hairline family + accent + oxblood), spacing scale, and zero-radius rules.
-  - Wire `Instrument Serif`, `Inter Tight`, and `JetBrains Mono` via `next/font/google` with CSS variable exports.
-  - Add font-feature settings (`ss01, cv11`) globally.
-  - Update `globals.css` — body bg, base font, link reset, `.m-inverted` helper class.
-  - Remove V1-specific color tokens that no longer apply (blush, mist, etc.) or alias them temporarily if pages still reference them.
+  - Rewrite `apps/storefront/tailwind.config.ts` with the matter palette. ✅
+  - Wire `Instrument Serif`, `Inter Tight`, and `JetBrains Mono` via `next/font/google`. ✅
+  - Add font-feature settings (`ss01, cv11`) globally. ✅
+  - Update `globals.css` — body bg, base font, `.m-inverted` helper class. ✅
+  - Alias V1-specific color tokens (gray/mist/blush/offwhite/error) to matter values rather than remove, so V1 component classes keep resolving. ✅
 - **Done when**:
-  - `pnpm -F storefront typecheck` passes.
-  - `pnpm -F storefront build` passes.
-  - Opening any V1 page in dev renders in V1 layout but with the new palette. Broken visual state is expected and fine at this stage.
-- **Tests**: no new tests. Existing visual snapshots (if any) will drift — accept.
+  - `pnpm -F storefront typecheck` passes. ✅
+  - `pnpm -F storefront build` passes (16 routes). ✅
+  - `pnpm -F storefront lint` clean. ✅ (added to self-check)
+  - `pnpm -F storefront test` — 372/372 green. ✅ (added to self-check)
+- **Tests**: no new tests. Existing tests continued to pass with no changes — class-based assertions had no regressions since V1 class names still resolve.
 - **Risk**: low — purely additive/reconfigurative.
+- **Delivered commits**:
+  - `38096be` — feat(storefront-v2): Chunk 1 — matter design tokens + fonts
+- **Notes**:
+  - `font-heading` aliased to the Instrument Serif variable; V1 code using `font-heading` now renders in display font automatically.
+  - Radius override is aggressive — every Tailwind radius key (`sm` … `3xl`) is 0. Only `rounded-full` remains (for circular dots/avatars). Any V1 component using `rounded-sm` or `rounded-md` is now square, which matches the V2 rule.
+  - Spacing additions: keys `18` (72px) and `30` (120px) for matter's vertical rhythm.
+  - Letter-spacing additions: `mono` (0.18em) and `ultra` (0.22em) — matter's mono-caption tracking.
 
 ---
 
@@ -392,3 +400,4 @@ _Update when chunks complete or scope shifts._
 
 - `2026-04-18` — Roadmap drafted.
 - `2026-04-18` — **Chunk 0 complete.** `storefront-v2` cut from `main` at `4da9d9c`. GitHub Actions CI added (was missing entirely). Planning docs + handoff landed on `main` at `bf61957`; CI workflow at `092be5d`. Both branches green.
+- `2026-04-18` — **Chunk 1 complete** at `38096be`. Matter tokens + fonts (`next/font/google`) applied. V1 class names back-compat-aliased to matter values; 372/372 tests still pass. V1 pages now render in V1 layouts with matter palette/typography as expected.
