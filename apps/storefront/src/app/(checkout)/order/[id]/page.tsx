@@ -2,7 +2,9 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { Navbar } from '@/components/layout/Navbar'
 import { Footer } from '@/components/layout/Footer'
+import { CartDrawer } from '@/components/shop/CartDrawer'
 import { ProductCard } from '@/components/shop/ProductCard'
 import { formatInr } from '@/lib/money'
 import type { ProductSummary, Variant } from '@/types'
@@ -175,6 +177,12 @@ export default async function OrderConfirmationPage({ params }: RouteContext) {
 
   return (
     <div className="min-h-screen bg-paper">
+      {/* Shared nav + cart drawer — the (checkout) route group has a bare
+          layout to keep /checkout focused, but once an order is placed the
+          user is re-entering the site and needs the full shop chrome. */}
+      <Navbar />
+      <CartDrawer />
+
       {/* ── Broadsheet masthead ────────────────────────────────────────────── */}
       <header
         data-testid="confirmation-masthead"
