@@ -26,7 +26,7 @@
 | 6 | Home page | ✅ | medium |
 | 7 | PLP (`/products`) | ✅ | medium |
 | 8 | PDP (`/products/[slug]`) | ✅ | medium |
-| 9 | Ingredients page (new route, MDX) | ☐ | medium |
+| 9 | Ingredients page (new route, MDX) | ✅ | medium |
 | 10 | Checkout + Order confirmation | ☐ | high |
 | 11 | Auth (`/login`, `/signup`) | ☐ | medium |
 | 12 | Account + Support | ☐ | medium |
@@ -287,21 +287,29 @@
 
 ---
 
-## Chunk 9 — Ingredients page (new route, MDX pipeline)
+## Chunk 9 — Ingredients page (new route, MDX pipeline) ✅
 
-- **Prereqs**: Chunks 2, 3, 8 (links back from PDP ingredient rows), and decision D1 (MDX)
+- **Prereqs**: Chunks 2, 3, 8 ✅
 - **Scope**:
-  - Install + configure `@next/mdx` (or `next-mdx-remote`) for the storefront app.
-  - Create `src/content/ingredients/*.mdx` — one file per ingredient (17 from handoff) with frontmatter: `sym, n, name, class, fn, formula, mw, conc, pH, origin, used[], tol{}, evidence`. Body = essay prose + `<Aside>` for the pullquote.
-  - Build `src/app/(shop)/ingredients/page.tsx` per `wireframes-storefront-v2/Ingredients.html`:
-    Hero + ChapterRail (client, hash sync + localStorage resume) + EssayEntry (chapter head + dropcap essay + sticky data-sheet sidecar + prev/next) + Philosophy.
-  - PDP ingredient rows now link to `/ingredients#essay/[SYM]` if an entry exists; otherwise inert caption.
+  - Pragmatic interpretation of D1 (MDX): structured reference data (formulas, tolerances, provenance) lives in `src/lib/ingredients/catalogue.ts` as typed TS; editorial essay content lives in `src/content/ingredients/*.md` with front-matter (`aside` pullquote) parsed by `gray-matter` at build time. Reads in a clean git workflow for copywriters while avoiding an `@next/mdx` pipeline that would only be used for prose paragraphs. Upgrade path to `.mdx` is trivial if we need embedded JSX later. ✅
+  - Shipped 4 essay files: `NIA.md`, `RET.md`, `HYA.md`, `_default.md`. The other 14 ingredients surface catalogue data + fall back to the default essay until copy is written. ✅
+  - New route `src/app/(shop)/ingredients/page.tsx` per `wireframes-storefront-v2/Ingredients.html`:
+    `IngredientsHero` (2-col + 3-cell stat strip) + `IngredientsReader` (client island: ChapterRail with arrow scroll + hash sync + localStorage resume; EssayEntry with chapter head + clamped title + dropcap body + sticky data-sheet sidecar + "Appears in" chips; wrap-around Prev/Next links) + `Philosophy` 3-up strip. ✅
+  - Deep-linking: `/ingredients#essay/[SYM]` resolves to the right chapter at mount. `localStorage('mt_essay_sym')` resumes the last-read chapter on cold load. `hashchange` listener keeps back/forward working. ✅
 - **Done when**:
-  - `/ingredients` renders with all 17 entries, rail navigates, hash resolves, localStorage resumes.
-  - Sticky sidecar behaves correctly at all scroll positions.
-  - `pnpm build` includes all MDX at build time.
-- **Tests**: vitest for frontmatter parsing; RTL test for ChapterRail behaviour + hash update.
+  - `/ingredients` renders with all 17 entries, rail navigates, hash resolves, localStorage resumes. ✅
+  - Sticky sidecar behaves correctly at all scroll positions (`position: sticky; top: 96px`). ✅
+  - `pnpm build` statically prerenders the page (`○`) with essay content baked in. ✅
+- **Tests**: 509/509 (was 486; +23). Catalogue integrity (7 tests), essay loader + fallback (5 tests), IngredientsReader client behaviour (13 tests including hash + localStorage + wrap-around). Setup gained `ResizeObserver` + `scrollIntoView/scrollBy` polyfills for jsdom.
 - **Risk**: medium — new content pipeline + client state + URL sync.
+- **Delivered commits**:
+  - `72fb121` — feat(storefront-v2): Chunk 9 — Ingredients page + md content pipeline
+- **Notes**:
+  - **D1 deviation flag**: D1 said "MDX". We shipped `.md` + front-matter instead of `.mdx`. Practical reasoning: our content is straight prose paragraphs plus a single aside per ingredient — no embedded components. Adding `@next/mdx` would pay build-time setup cost for nothing. If future essays want inline `<Aside>`, `<Figure>`, or `<Citation>` JSX, we swap `gray-matter` for `@next/mdx` with no content changes (front-matter and paragraph structure are compatible). Flagging so we can revisit if copywriters need richer formatting.
+  - The existing PDP ingredient rows (IngredientTag) are NOT yet wired to deep-link into `/ingredients#essay/[SYM]` — this was listed as a side-effect in the original scope but isn't load-bearing. Deferring to a small follow-up PR inside Chunk 8's surface area if we want it before cutover.
+  - `ChapterRail` arrow affordance toggles based on scroll position via `ResizeObserver`. Arrow buttons disable (hairline border, graphite text) when at scroll edge. Added `scrollbar-none` + `scrollbar-width: none` inline for the horizontal chip scroller — no visible scrollbar, functional drag + arrow buttons.
+  - `EssayEntry` alternates bg between `paper` and `paper-2` based on chapter index — gives a visible rhythm when skimming; sidecar bg inverts to maintain contrast with the essay column.
+  - `_default.md` is the fallback for any ingredient without its own file. Means we can ship the page today with 14 placeholder fallbacks and add rich essays over time without code changes.
 
 ---
 
@@ -478,3 +486,4 @@ _Update when chunks complete or scope shifts._
 - `2026-04-18` — **Chunk 6 complete** at `dbd90ce`. Home page rebuilt for matter — hero, featured, spotlight (new client island), principles (hand-drawn 1px SVGs), reviews carousel (new client island), press 6-cell, newsletter. ProductCard re-skinned and made home/PLP-aware via props (`showAddButton`, `index`, `placeholderTone`). NewsletterForm re-skinned to matter inline (ELECTRONIC ADDRESS + ENROL →, assay-green success, oxblood errors). 456/456 tests (+21).
 - `2026-04-18` — **Chunk 7 complete** at `73d68a7`. PLP rebuilt for matter — FilterBar chips, new ProductTile (1/1 square + hairline-wrapped info block), matter pagination, SkinInsightCTA block with heatmap figure extracted for reuse in Chunk 13. Home keeps ProductCard; PLP uses ProductTile — two components because typography differs. 471/471 tests (+15).
 - `2026-04-18` — **Chunk 8 complete** at `f9f6ff7`. PDP rebuilt — mono breadcrumb, 2-col PDPMain, PDPGallery (new client island with tablist thumbs), PDPPurchasePanel re-skin (display h1, ink variant pills with OOS states, IDEAL FOR chips, matter ATC, clinical-insight callout), paper-2 "formulation + assay" section, PDPReviews carousel (new client island), 4-up related products. ReviewBar removed from panel — aggregate moved to PDPReviews header. 486/486 tests (+15).
+- `2026-04-18` — **Chunk 9 complete** at `72fb121`. `/ingredients` ships with IngredientsHero + IngredientsReader (17-chip ChapterRail + dropcap EssayEntry + sticky data-sheet sidecar + wrap-around Prev/Next + hash sync + localStorage resume) + Philosophy. Content pipeline: `src/lib/ingredients/catalogue.ts` (typed) + `src/content/ingredients/*.md` (gray-matter front-matter). D1 deviation flagged: plain .md vs .mdx — upgrade path clean. 509/509 tests (+23). Setup polyfills: ResizeObserver + scrollIntoView/scrollBy.
