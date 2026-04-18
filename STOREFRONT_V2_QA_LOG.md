@@ -42,16 +42,24 @@ test-infra fix on `main` whenever convenient.
 
 ---
 
-## E2E tests — not executed in this pass
+## E2E tests — 5 storefront-facing flows green
 
-**Reason:** Playwright needs both storefront (:3000) + internal (:3001)
-running concurrently with Supabase. The current environment has Supabase
-up, but running Playwright alongside would be a separate, longer session.
+**Result on storefront-v2:** 5 passed, 1 failed. The failure is pre-existing on `main`.
 
-**Recommendation for founder:** run `pnpm e2e` locally before merging.
-All 6 flows should pass — the data-testid parity check above confirms
-every selector the suite uses is still present in V2 source. One testid
-drift was caught and fixed in this chunk (`confirmation-order-meta`).
+| Spec | Status | Notes |
+|---|---|---|
+| `browse-and-add-to-cart.spec.ts` | ✅ | Needed `product-card` → `product-tile` testid update (V2 split the tile) + explicit link click (the `+` button overlays the tile) |
+| `place-order.spec.ts` | ✅ | Guest checkout end-to-end — the money flow verified live |
+| `account-order-history.spec.ts` | ✅ | Needed empty-state copy regex update (V2: "no consignments yet") |
+| `support-ticket.spec.ts` | ✅ | Needed ticket ref regex update (V2: `TKT-XXXXXXXX`) |
+| `internal-process-order.spec.ts` | ✅ | Staff walks order confirmed → processing → shipped |
+| `internal-add-product.spec.ts` | ❌ pre-existing | Times out on new-product submit on :3001. **Identical failure on `main`** — verified by checkout + rerun. Filed as a post-cutover internal-console follow-up. Internal console is out of V2 scope per CLAUDE.md. |
+
+**All 5 storefront-facing flows exercise the real stack — Next dev
+servers, Supabase, the atomic order RPC, status transitions, and the
+email side-effects (Resend logs show templates firing as expected; the
+401 responses in logs are just the missing local Resend key — not a
+test failure).**
 
 ---
 
@@ -109,7 +117,7 @@ Widths: 1440 · 1280 · 1024 · 768 · 640.
 
 ### E2E + integration
 
-- [ ] `pnpm e2e` — all 6 flows green
+- [x] `pnpm e2e` — 5 storefront flows green (see table above); 1 internal flow is a pre-existing main-branch failure
 - [ ] (Optional, non-blocker) `pnpm test:integration` — the 23 pre-existing failures can be investigated as a separate task; do NOT gate cutover on them
 
 ---

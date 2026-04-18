@@ -458,13 +458,15 @@
 - [x] Dead code purged — removed `ReviewsSection.tsx` + its test (replaced by `PDPReviews` + `HomeReviewsCarousel`)
 - [x] Commerce invariants unchanged — `/api/orders` POST payload shape byte-identical to main (verified by test; confirmed by payload-shape assertion still green)
 
+**Automated browser checks (done)**
+- [x] `pnpm e2e` — **5 storefront flows green** (browse-and-add-to-cart · place-order · account-order-history · support-ticket · internal-process-order). The 6th (`internal-add-product`) times out identically on `main` — filed as a post-cutover internal-console issue. Three specs updated to match intentional V2 drift (commit `62ddf9a`).
+
 **Manual checklist (founder-in-browser)**
 - [ ] Responsive — every page at 1440 / 1280 / 1024 / 768 / 640 widths
 - [ ] axe-clean on every route (no blocking issues)
 - [ ] Keyboard-only walkthroughs: cart · checkout · login · support · /account
 - [ ] Visual review vs `wireframes-storefront-v2/*.html` — every page
 - [ ] End-to-end test order in test mode (guest + authed)
-- [ ] `pnpm e2e` — 6 Playwright flows green
 
 **Known blockers not caused by V2**
 - `pnpm test:integration` shows 36 / 23 pass/fail. **Same** pass/fail on `main` — this is a pre-existing Next 14 `request-async-storage` test-infra problem. Not a V2 blocker.
