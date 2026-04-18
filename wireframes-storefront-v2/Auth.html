@@ -1,0 +1,170 @@
+<!--
+  WIREFRAME V2: Auth — /login + /signup
+  ============================================================
+  App            : apps/storefront
+  Component files: src/app/(auth)/login/page.tsx   → LoginView (Suspense)
+                   src/app/(auth)/signup/page.tsx  → SignupView (Suspense)
+  Auth           : Public (redirects to /account if already signed in)
+  Data           : POST /api/auth/login · /api/auth/signup (Supabase auth)
+  Design refs    : DESIGN_SYSTEM_V2.md · (no matter mockup — extrapolated)
+  TDD ref        : Section 8.3
+
+  LAYOUT INTENT
+  ─────────────
+  Typographic-only. No illustration, no specimen art — matches matter's
+  About-page restraint. Centered single column, max-width 480px.
+  Broadsheet masthead + editorial headline + minimal form.
+  Login and Signup share the same shell — the form body differs.
+
+  CONSTRAINTS (do not violate)
+  ─────────────────────────────
+  · Minimal chrome — wordmark only (links to /). No nav, no footer on
+    auth pages. Matches (checkout) pattern.
+  · RHF + Zod. Inline errors under each field (oxblood mono caption).
+  · Password: min 8 chars (server enforces). Show/hide toggle optional.
+  · Server components with Suspense wrappers (fixes useSearchParams
+    prerender issue — preserved from V1 fix in commit history).
+  · After login: router.push(searchParams.get('next') || '/account').
+  · After signup: same, but may attach pending order id from ?order=.
+  · NO social login in MVP — Google/Apple are Phase 2.
+  · NO magic link in MVP — email+password per current auth setup.
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1440">
+  <title>Wireframe V2 — Auth</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #F4F1EB; color: #121210; line-height: 1.5; font-size: 13px; }
+    .wf-note { background: #fffbe6; border-left: 3px solid #f0c000; padding: 6px 10px; font-size: 11px; color: #7a5f00; margin: 6px 0; }
+    .wf-component { border: 1.5px dashed #BFBAAD; padding: 8px 12px; margin: 4px 0; background: #F4F1EB; font-size: 12px; color: #55534C; }
+    .wf-section { border-bottom: 1px solid #BFBAAD; padding: 32px; background: #F4F1EB; }
+    .wf-section.paper-2 { background: #EDE9E1; }
+    .wf-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: #55534C; margin-bottom: 8px; display: block; }
+    .row { display: flex; gap: 12px; }
+    .mono { font-family: 'JetBrains Mono', monospace; letter-spacing: 0.02em; }
+    .display { font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; letter-spacing: -0.025em; line-height: 1; }
+    .field { border: 1px solid #BFBAAD; background: transparent; padding: 14px 16px; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #121210; width: 100%; display: block; }
+    .field-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C; margin-bottom: 8px; display: block; }
+  </style>
+</head>
+<body>
+
+<!-- MINIMAL CHROME -->
+<div class="wf-section" style="padding: 24px 32px">
+  <span class="wf-label">Minimal chrome — wordmark only, no nav, no footer</span>
+  <div class="row" style="justify-content: space-between; align-items: center">
+    <div class="wf-component display" style="font-size: 22px; padding: 4px 10px">matter<em style="font-style:italic">.</em></div>
+    <div class="wf-component mono" style="font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C">§ ACCESS · VERIFIED</div>
+  </div>
+</div>
+
+
+<!-- ═══════════ ROUTE A: /login ═══════════ -->
+<div class="wf-section paper-2" style="padding: 96px 32px; min-height: 720px">
+  <span class="wf-label">═══ /LOGIN — RETURNING SUBJECT ═══</span>
+
+  <div style="max-width: 480px; margin: 0 auto">
+    <!-- HEADER -->
+    <div style="text-align: center; margin-bottom: 48px">
+      <div class="wf-component mono" style="display: inline-block; font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #55534C">§ RETURNING SUBJECT</div>
+      <div class="wf-component display" style="font-size: clamp(48px, 5vw, 72px); padding: 16px; margin: 20px auto 0; line-height: 0.98">Welcome <em style="font-style:italic">back</em>.</div>
+      <div class="wf-component" style="font-size: 14px; color: #26251F; margin-top: 20px">Access your dossier to track consignments and reorder.</div>
+    </div>
+
+    <!-- FORM -->
+    <form style="border-top: 2px solid #121210; padding-top: 24px">
+      <div style="margin-bottom: 20px">
+        <span class="field-label">EMAIL ADDRESS</span>
+        <div class="wf-component field">you@domain.com</div>
+      </div>
+      <div style="margin-bottom: 8px">
+        <div class="row" style="justify-content: space-between">
+          <span class="field-label">PASSWORD</span>
+          <span class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; border-bottom: 1px solid #BFBAAD; padding-bottom: 2px; color: #55534C">FORGOT?</span>
+        </div>
+        <div class="wf-component field">••••••••</div>
+      </div>
+      <div class="wf-note">Show/hide toggle: mono-caps "SHOW" / "HIDE" link aligned right inside the field. Keyboard-accessible, aria-pressed state.</div>
+      <div class="wf-note">Inline error state: under each field, oxblood mono caption "— INVALID EMAIL" or "— PASSWORD MUST BE 8+ CHARACTERS". Generic "Wrong email or password" shown as a top-of-form alert on 401.</div>
+
+      <div class="wf-component mono" style="background: #121210; color: #F4F1EB; padding: 16px; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; text-align: center; margin-top: 28px">SIGN IN →</div>
+      <div class="wf-note">During submit: button shows "SIGNING IN…", disabled. On success: router.push(next || '/account'). On error: inline alert at top of form.</div>
+    </form>
+
+    <!-- SWITCH TO SIGNUP -->
+    <div style="text-align: center; margin-top: 40px; padding-top: 24px; border-top: 1px solid rgba(191,186,173,0.5)">
+      <span class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">NEW HERE?</span>
+      <span class="mono" style="font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; margin-left: 10px; border-bottom: 1px solid #121210; padding-bottom: 2px">CREATE A DOSSIER →</span>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════ ROUTE B: /signup ═══════════ -->
+<div class="wf-section" style="padding: 20px 32px; margin-top: 48px; border-top: 1px dashed #BFBAAD">
+  <span class="wf-label">═══ /SIGNUP — NEW SUBJECT ═══</span>
+</div>
+
+<div class="wf-section paper-2" style="padding: 96px 32px; min-height: 720px">
+  <div style="max-width: 480px; margin: 0 auto">
+    <!-- HEADER -->
+    <div style="text-align: center; margin-bottom: 48px">
+      <div class="wf-component mono" style="display: inline-block; font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #55534C">§ NEW SUBJECT — ENROLL</div>
+      <div class="wf-component display" style="font-size: clamp(48px, 5vw, 72px); padding: 16px; margin: 20px auto 0; line-height: 0.98">Create your <em style="font-style:italic">dossier</em>.</div>
+      <div class="wf-component" style="font-size: 14px; color: #26251F; margin-top: 20px">30 seconds. Email and a password. No loyalty scheme, no marketing drip.</div>
+    </div>
+
+    <!-- FORM -->
+    <form style="border-top: 2px solid #121210; padding-top: 24px">
+      <div class="row" style="gap: 16px; margin-bottom: 20px">
+        <div style="flex: 1">
+          <span class="field-label">FIRST NAME</span>
+          <div class="wf-component field">Aarti</div>
+        </div>
+        <div style="flex: 1">
+          <span class="field-label">LAST NAME</span>
+          <div class="wf-component field">Kapoor</div>
+        </div>
+      </div>
+      <div style="margin-bottom: 20px">
+        <span class="field-label">EMAIL ADDRESS</span>
+        <div class="wf-component field">you@domain.com</div>
+      </div>
+      <div style="margin-bottom: 20px">
+        <span class="field-label">PASSWORD · 8+ CHARACTERS</span>
+        <div class="wf-component field">••••••••</div>
+      </div>
+      <div class="wf-note">Password strength meter: optional — 3 mono caption labels (WEAK · GOOD · STRONG) under the field. Color: graphite → ink → assay-green. No colored bars.</div>
+
+      <label class="row" style="gap: 10px; margin-top: 10px; font-size: 12px; color: #26251F; align-items: flex-start">
+        <input type="checkbox" style="margin-top: 3px"/>
+        <span>I agree to the <span class="mono" style="border-bottom: 1px solid #121210; padding-bottom: 1px; font-size: 11px">TERMS</span> and <span class="mono" style="border-bottom: 1px solid #121210; padding-bottom: 1px; font-size: 11px">PRIVACY POLICY</span>.</span>
+      </label>
+
+      <div class="wf-component mono" style="background: #121210; color: #F4F1EB; padding: 16px; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; text-align: center; margin-top: 28px">CREATE DOSSIER →</div>
+    </form>
+
+    <!-- SWITCH -->
+    <div style="text-align: center; margin-top: 40px; padding-top: 24px; border-top: 1px solid rgba(191,186,173,0.5)">
+      <span class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">RETURNING?</span>
+      <span class="mono" style="font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; margin-left: 10px; border-bottom: 1px solid #121210; padding-bottom: 2px">SIGN IN →</span>
+    </div>
+  </div>
+</div>
+
+<!-- SHARED NOTES -->
+<div class="wf-section">
+  <span class="wf-label">Cross-cutting behaviour</span>
+  <div class="wf-note">Both pages: server component page.tsx wraps client View in &lt;Suspense&gt; (prevents prerender error with useSearchParams, per 8.3 deploy fix in CLAUDE.md).</div>
+  <div class="wf-note">Middleware: if already signed in, redirect away from /login and /signup to /account (or ?next if present).</div>
+  <div class="wf-note">No social login in MVP. No magic link in MVP. Those are explicit Phase 2 per TDD — don't sneak them in.</div>
+  <div class="wf-note">Signup with ?order=ORD-… query param: after account creation, claim the order's user_id via server action (requires matching contact_email).</div>
+  <div class="wf-note">Accessibility: every &lt;input&gt; has &lt;label&gt; + aria-describedby to error span. Enter submits. Caps-lock detected on password → inline mono caption "— CAPS LOCK IS ON".</div>
+</div>
+
+</body>
+</html>

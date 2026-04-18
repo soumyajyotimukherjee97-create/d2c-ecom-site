@@ -1,0 +1,336 @@
+<!--
+  WIREFRAME V2: Account + Support
+  ============================================================
+  App            : apps/storefront
+  Routes         : /account  ·  /support/new
+  Component files: src/app/(shop)/account/page.tsx
+                   src/app/(shop)/support/new/page.tsx
+  Auth           : /account — required (middleware redirects to /login?next=…)
+                   /support/new — public (authed OR guest)
+  Data           : /account — getServerSession + orders (joined with order_items)
+                   /support/new — getServerSession + user's orders (for dropdown)
+  Design refs    : DESIGN_SYSTEM_V2.md · (no matter mockup — extrapolated)
+  TDD ref        : Section 9, 10
+
+  LAYOUT INTENT
+  ─────────────
+  Two-column dossier. Left sidebar (subject header + nav), right
+  content panel. Editorial, not app-like. Order history as a data
+  table, skin profile as a clinical "subject profile", signout in
+  sidebar footer.
+
+  SECTIONS
+    /account:
+      1. Nav (shared)
+      2. Page header — "Your dossier" + subject id
+      3. Sidebar (L, 280px) — subject card + nav (Orders · Support · Skin profile · Sign out)
+      4. Content (R, flex) — Orders (default) · Skin profile · Restock reminder
+    /support/new:
+      1. Minimal chrome (same as checkout)
+      2. Broadsheet form masthead ("File correspondence")
+      3. Form — RHF + Zod, 5000 char counter
+      4. Inline success state (no redirect)
+
+  CONSTRAINTS (do not violate)
+  ─────────────────────────────
+  · Sidebar nav is `<nav>` semantic element. No accordion.
+  · Orders table: hairline rows. ALL prices from snapshots in order_items,
+    never recomputed on display.
+  · StatusBadge: re-skinned to mono-cap square chip (no radius).
+  · Reorder: POST to cart with each order_item.variant_id + quantity
+    (fetches live variants first; if unavailable, shows oxblood caption).
+  · Skin profile: PATCH /api/account/profile — user_id server-derived
+    from session, never trust client.
+  · Support form: if authed, email read-only; order dropdown shows
+    user's orders. If guest, email is editable, no order dropdown
+    (API rejects guest order_id for privacy).
+  · Support success: inline state (no redirect, no toast). Shows
+    first 8 chars of ticket id in mono.
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1440">
+  <title>Wireframe V2 — Account + Support</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #F4F1EB; color: #121210; line-height: 1.5; font-size: 13px; }
+    .wf-note { background: #fffbe6; border-left: 3px solid #f0c000; padding: 6px 10px; font-size: 11px; color: #7a5f00; margin: 6px 0; }
+    .wf-component { border: 1.5px dashed #BFBAAD; padding: 8px 12px; margin: 4px 0; background: #F4F1EB; font-size: 12px; color: #55534C; }
+    .wf-section { border-bottom: 1px solid #BFBAAD; padding: 32px; background: #F4F1EB; }
+    .wf-section.paper-2 { background: #EDE9E1; }
+    .wf-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: #55534C; margin-bottom: 8px; display: block; }
+    .row { display: flex; gap: 12px; }
+    .col { flex: 1; }
+    .mono { font-family: 'JetBrains Mono', monospace; letter-spacing: 0.02em; }
+    .display { font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; letter-spacing: -0.025em; line-height: 1; }
+    .field { border: 1px solid #BFBAAD; background: transparent; padding: 12px 14px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #121210; width: 100%; display: block; }
+    .field-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C; margin-bottom: 8px; display: block; }
+    .status-chip { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; padding: 4px 8px; border: 1px solid; display: inline-block; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════
+     ROUTE A: /account
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="padding: 18px 32px">
+  <span class="wf-label">Nav — shared</span>
+  <div class="wf-component">&lt;Nav active="account" /&gt; — shows initials badge (28px square paper-3, 1px hairline) when authed</div>
+</div>
+
+
+<!-- PAGE HEADER -->
+<div class="wf-section" style="padding: 48px 32px 40px; background: #EDE9E1">
+  <span class="wf-label">Page header — broadsheet-lite</span>
+  <div class="row" style="justify-content: space-between; align-items: end">
+    <div>
+      <div class="mono" style="font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #55534C">§ YOUR DOSSIER · SUBJECT AK-0026</div>
+      <div class="display" style="font-size: clamp(48px, 5vw, 80px); margin-top: 14px; line-height: 1">Good afternoon, <em style="font-style:italic">Aarti</em>.</div>
+    </div>
+    <div class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">MEMBER SINCE · MAR 2026</div>
+  </div>
+</div>
+
+
+<!-- TWO-COL LAYOUT -->
+<div class="row" style="gap: 0; border-bottom: 1px solid #BFBAAD">
+
+  <!-- ═══════════ LEFT SIDEBAR ═══════════ -->
+  <div style="width: 280px; border-right: 1px solid #BFBAAD; padding: 32px 24px; display: flex; flex-direction: column; min-height: 600px">
+    <span class="wf-label">Sidebar — subject card + section nav + sign out (footer)</span>
+
+    <!-- subject card -->
+    <div class="wf-component" style="padding: 20px; background: #EDE9E1; border: 1px solid #BFBAAD">
+      <div class="row" style="gap: 14px; align-items: center">
+        <div style="width: 48px; height: 48px; background: #E4E0D6; border: 1px solid #BFBAAD; display: flex; align-items: center; justify-content: center" class="display">AK</div>
+        <div>
+          <div style="font-size: 14px; font-weight: 500">Aarti Kapoor</div>
+          <div class="mono" style="font-size: 10px; color: #55534C; margin-top: 2px">aarti@example.com</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- section nav -->
+    <nav style="margin-top: 28px; display: flex; flex-direction: column; gap: 0; border-top: 1px solid rgba(191,186,173,0.5)">
+      <div class="wf-component" style="padding: 14px 0; border-bottom: 1px solid rgba(191,186,173,0.5); background: transparent; border-left: 3px solid #121210; padding-left: 14px">
+        <div class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase">01 · ORDERS <span style="color:#55534C; margin-left: 8px">(4)</span></div>
+      </div>
+      <div class="wf-component" style="padding: 14px 16px; border-bottom: 1px solid rgba(191,186,173,0.5); background: transparent; border: 0">
+        <div class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">02 · SKIN PROFILE</div>
+      </div>
+      <div class="wf-component" style="padding: 14px 16px; border-bottom: 1px solid rgba(191,186,173,0.5); background: transparent; border: 0">
+        <div class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">03 · SUPPORT</div>
+      </div>
+    </nav>
+
+    <!-- spacer + sign-out -->
+    <div style="flex: 1"></div>
+    <div class="wf-component mono" style="padding: 12px 0; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C; border-top: 1px solid rgba(191,186,173,0.5); border-bottom: 0; text-align: left; background: transparent; border-left: 0; border-right: 0">SIGN OUT →</div>
+    <div class="wf-note">Sign out: server action that clears session. Returns to / on success.</div>
+  </div>
+
+  <!-- ═══════════ RIGHT CONTENT PANEL ═══════════ -->
+  <div style="flex: 1; padding: 40px 32px">
+    <span class="wf-label">Content panel — default: Orders table</span>
+
+    <!-- ORDERS SECTION -->
+    <div class="row" style="justify-content: space-between; align-items: end; margin-bottom: 32px">
+      <div>
+        <div class="mono" style="font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #55534C">§ 01 — ORDERS</div>
+        <div class="display" style="font-size: 40px; margin-top: 8px">Your consignments.</div>
+      </div>
+      <div class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">4 ORDERS · ₹21,482 LIFETIME</div>
+    </div>
+
+    <!-- orders table -->
+    <div style="border-top: 1px solid #121210">
+      <!-- header row -->
+      <div class="mono" style="display: grid; grid-template-columns: 120px 1fr 120px 120px 120px 80px; padding: 12px 0; border-bottom: 1px solid #BFBAAD; font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C">
+        <span>ORDER ID</span>
+        <span>FORMULAS</span>
+        <span>STATUS</span>
+        <span>DISPATCHED</span>
+        <span style="text-align:right">TOTAL</span>
+        <span></span>
+      </div>
+
+      <!-- rows -->
+      <div class="wf-component" style="display: grid; grid-template-columns: 120px 1fr 120px 120px 120px 80px; padding: 20px 0; border-bottom: 1px solid rgba(191,186,173,0.5); background: none; align-items: baseline">
+        <span class="mono" style="font-size: 12px; font-variant-numeric: tabular-nums">ORD-MT-0026</span>
+        <div><div style="font-size: 13px">Night Repair, Brightening Serum</div><div class="mono" style="font-size: 10px; color: #55534C; margin-top: 4px">3 ITEMS</div></div>
+        <span class="status-chip" style="color: #2A6B45; border-color: #2A6B45">● SHIPPED</span>
+        <span class="mono" style="font-size: 11px">18 APR 2026</span>
+        <span class="mono" style="font-size: 13px; text-align: right; font-variant-numeric: tabular-nums">₹5,097</span>
+        <span class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; text-align: right">VIEW →</span>
+      </div>
+      <div class="wf-component" style="display: grid; grid-template-columns: 120px 1fr 120px 120px 120px 80px; padding: 20px 0; border-bottom: 1px solid rgba(191,186,173,0.5); background: none; align-items: baseline">
+        <span class="mono" style="font-size: 12px; font-variant-numeric: tabular-nums">ORD-MT-0018</span>
+        <div><div style="font-size: 13px">The Corrective</div><div class="mono" style="font-size: 10px; color: #55534C; margin-top: 4px">1 ITEM</div></div>
+        <span class="status-chip" style="color: #55534C; border-color: #BFBAAD">● DELIVERED</span>
+        <span class="mono" style="font-size: 11px">02 APR 2026</span>
+        <span class="mono" style="font-size: 13px; text-align: right; font-variant-numeric: tabular-nums">₹1,299</span>
+        <span class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; text-align: right">VIEW →</span>
+      </div>
+      <div class="wf-component" style="display: grid; grid-template-columns: 120px 1fr 120px 120px 120px 80px; padding: 20px 0; border-bottom: 1px solid rgba(191,186,173,0.5); background: none; align-items: baseline">
+        <span class="mono" style="font-size: 12px; font-variant-numeric: tabular-nums">ORD-MT-0011</span>
+        <div><div style="font-size: 13px">The Reservoir, The Morning</div><div class="mono" style="font-size: 10px; color: #55534C; margin-top: 4px">2 ITEMS</div></div>
+        <span class="status-chip" style="color: #55534C; border-color: #BFBAAD">● DELIVERED</span>
+        <span class="mono" style="font-size: 11px">15 MAR 2026</span>
+        <span class="mono" style="font-size: 13px; text-align: right; font-variant-numeric: tabular-nums">₹3,598</span>
+        <span class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; text-align: right">VIEW →</span>
+      </div>
+    </div>
+    <div class="wf-note">Status chip variants: CONFIRMED (ink), PROCESSING (graphite), SHIPPED (assay-green), DELIVERED (hairline graphite), CANCELLED (oxblood). Each is a mono-caps square chip, no radius.</div>
+
+    <!-- REORDER CTA -->
+    <div class="row" style="gap: 12px; margin-top: 32px">
+      <div class="wf-component mono" style="padding: 13px 20px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase">REORDER ORD-MT-0018 →</div>
+      <div class="wf-component mono" style="padding: 13px 20px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase">DOWNLOAD INVOICE</div>
+    </div>
+    <div class="wf-note">Reorder: Client island — fetches live variants for every order_item, adds to cart via cart.addItems([...]). If variant no longer sells → oxblood mono caption: "— N items unavailable, skipped." Then opens drawer.</div>
+
+    <!-- RESTOCK REMINDER -->
+    <div class="wf-component paper-2" style="margin-top: 48px; padding: 24px; border: 1px solid #BFBAAD; background: #EDE9E1">
+      <div class="row" style="gap: 24px; align-items: center">
+        <div class="col">
+          <div class="mono" style="font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #55534C">§ RESTOCK REMINDER</div>
+          <div class="display" style="font-size: 24px; margin-top: 8px">You typically finish a 30ml serum in 42 days.</div>
+          <div style="font-size: 13px; color: #26251F; margin-top: 8px">The Corrective — last ordered 02 Apr. Est. empty around 14 May.</div>
+        </div>
+        <div class="wf-component mono" style="background: #121210; color: #F4F1EB; padding: 13px 20px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase">REORDER NOW</div>
+      </div>
+    </div>
+    <div class="wf-note">Reminder is heuristic (based on order cadence). Omit when user has only 1 order or their cadence is unknown.</div>
+
+    <!-- SKIN PROFILE (preview of other section) -->
+    <div style="margin-top: 64px">
+      <div class="mono" style="font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #55534C">§ 02 — SKIN PROFILE</div>
+      <div class="display" style="font-size: 36px; margin-top: 8px; margin-bottom: 24px">Subject profile.</div>
+      <div style="border-top: 1px solid #BFBAAD">
+        <div class="wf-component" style="display: grid; grid-template-columns: 200px 1fr auto; gap: 20px; padding: 16px 0; border-bottom: 1px solid rgba(191,186,173,0.5); background: none; align-items: center">
+          <span class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">SKIN TYPE</span>
+          <span style="font-size: 13px">Combination · drier in winter</span>
+          <span class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; border-bottom: 1px solid #BFBAAD">EDIT</span>
+        </div>
+        <div class="wf-component" style="display: grid; grid-template-columns: 200px 1fr auto; gap: 20px; padding: 16px 0; border-bottom: 1px solid rgba(191,186,173,0.5); background: none; align-items: center">
+          <span class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">PRIMARY CONCERNS</span>
+          <div class="row" style="flex-wrap:wrap; gap: 6px">
+            <span class="status-chip" style="color: #55534C; border-color: #BFBAAD">PIGMENTATION</span>
+            <span class="status-chip" style="color: #55534C; border-color: #BFBAAD">PORES</span>
+          </div>
+          <span class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; border-bottom: 1px solid #BFBAAD">EDIT</span>
+        </div>
+        <div class="wf-component" style="display: grid; grid-template-columns: 200px 1fr auto; gap: 20px; padding: 16px 0; border-bottom: 1px solid rgba(191,186,173,0.5); background: none; align-items: center">
+          <span class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">AVOID</span>
+          <span style="font-size: 13px">Fragrance · alcohol denat</span>
+          <span class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; border-bottom: 1px solid #BFBAAD">EDIT</span>
+        </div>
+      </div>
+      <div class="wf-note">Each field edits inline (SkinProfileForm client island). PATCH /api/account/profile with Zod-validated diff. Optimistic UI — rollback on error.</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     ROUTE B: /support/new
+     apps/storefront/src/app/(shop)/support/new/page.tsx
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="padding: 20px 32px; margin-top: 48px; border-top: 1px dashed #BFBAAD">
+  <span class="wf-label">═══ /SUPPORT/NEW — SUPPORT TICKET FORM ═══</span>
+</div>
+
+<!-- BROADSHEET MASTHEAD -->
+<div class="wf-section" style="padding: 28px 48px 18px; border-bottom: 3px double #121210">
+  <div class="row" style="justify-content: space-between; align-items: center">
+    <span class="mono" style="font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #55534C">VOL. I · NO. 01</span>
+    <span class="mono" style="font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase">SUPPORT · FILE A NOTE</span>
+    <span class="mono" style="font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #55534C">RESP. UNDER 24H</span>
+  </div>
+</div>
+
+<!-- FORM HERO -->
+<div class="wf-section" style="padding: 72px 32px 32px; text-align: center">
+  <span class="wf-label">Form header — editorial, centered</span>
+  <div class="wf-component mono" style="display: inline-block; font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #55534C">§ CORRESPONDENCE — INCOMING</div>
+  <div class="wf-component display" style="font-size: clamp(56px, 6vw, 96px); padding: 16px; line-height: 0.96; max-width: 14ch; margin: 20px auto 0">How can we <em style="font-style:italic">help</em>?</div>
+  <div class="wf-component" style="font-size: 15px; color: #26251F; max-width: 520px; margin: 24px auto 0">Queries on formulas, dispatch status, or account — dispatch them here. We reply within 24 hours, weekdays.</div>
+</div>
+
+<!-- FORM -->
+<div class="wf-section" style="padding: 32px 32px 96px">
+  <div style="max-width: 640px; margin: 0 auto">
+    <span class="wf-label">Form — RHF + Zod · 5000 char body</span>
+
+    <!-- EMAIL -->
+    <div style="margin-bottom: 24px">
+      <span class="field-label">EMAIL ADDRESS</span>
+      <div class="wf-component field" style="color: #55534C">aarti@example.com <span style="margin-left:8px; color:#2A6B45">✓ SIGNED IN</span></div>
+    </div>
+    <div class="wf-note">If authed: read-only, prefilled from session. If guest: editable input — this becomes guest_email on the ticket. Zod: z.string().email().</div>
+
+    <!-- ORDER -->
+    <div style="margin-bottom: 24px">
+      <span class="field-label">RELATED ORDER · OPTIONAL</span>
+      <div class="wf-component field" style="display:flex; justify-content:space-between">NONE — GENERAL QUERY <span>▾</span></div>
+    </div>
+    <div class="wf-note">Authed user: dropdown lists their orders (ORD-MT-0026 · 18 Apr, etc). Sends `order_id` (UUID). Guest user: single text input — gets prepended as "Order reference: XYZ" to body (API rejects guest order_id).</div>
+
+    <!-- SUBJECT -->
+    <div style="margin-bottom: 24px">
+      <span class="field-label">SUBJECT</span>
+      <div class="wf-component field">Night Repair Cream — question on layering</div>
+    </div>
+
+    <!-- PRIORITY -->
+    <div style="margin-bottom: 24px">
+      <span class="field-label">PRIORITY</span>
+      <div class="row" style="gap: 4px">
+        <span class="status-chip" style="color: #55534C; border-color: #BFBAAD">LOW</span>
+        <span class="status-chip" style="color: #F4F1EB; background: #121210; border-color: #121210">NORMAL</span>
+        <span class="status-chip" style="color: #55534C; border-color: #BFBAAD">HIGH</span>
+        <span class="status-chip" style="color: #55534C; border-color: #BFBAAD">URGENT</span>
+      </div>
+    </div>
+
+    <!-- BODY -->
+    <div style="margin-bottom: 24px">
+      <div class="row" style="justify-content: space-between; margin-bottom: 8px">
+        <span class="field-label" style="margin-bottom: 0">MESSAGE · MARKDOWN SUPPORTED</span>
+        <span class="mono" style="font-size: 10px; color: #55534C; font-variant-numeric: tabular-nums">0 / 5000</span>
+      </div>
+      <div class="wf-component field" style="min-height: 180px; color: #55534C">Describe the issue. What's happening, what you expected, any order or product references.</div>
+    </div>
+    <div class="wf-note">Char counter updates live. At 4800+ → color shifts to --graphite. At 5000 → oxblood "— Limit reached." Cannot submit above limit.</div>
+
+    <!-- SUBMIT -->
+    <div class="row" style="gap: 12px; margin-top: 32px">
+      <div class="wf-component mono" style="background: #121210; color: #F4F1EB; padding: 14px 28px; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase">DISPATCH NOTE →</div>
+      <div class="wf-component mono" style="padding: 14px 20px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase">CANCEL</div>
+    </div>
+  </div>
+</div>
+
+<!-- SUCCESS STATE (replaces form on submit) -->
+<div class="wf-section paper-2" style="padding: 72px 32px; text-align: center">
+  <span class="wf-label">Success state — INLINE replacement, no redirect, no toast</span>
+  <div class="wf-component mono" style="display: inline-block; font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #2A6B45">§ FILED — TKT-8C42A9B1</div>
+  <div class="wf-component display" style="font-size: clamp(48px, 5vw, 72px); padding: 16px; margin: 20px auto 0; max-width: 16ch">Your note is <em style="font-style:italic">on file</em>.</div>
+  <div class="wf-component" style="font-size: 15px; color: #26251F; max-width: 480px; margin: 24px auto 0">We've acknowledged ticket <span class="mono" style="font-size: 13px; font-variant-numeric: tabular-nums">TKT-8C42A9B1</span>. Response within 24 hours to the email on file.</div>
+  <div class="row" style="gap: 12px; justify-content: center; margin-top: 32px">
+    <div class="wf-component mono" style="padding: 13px 20px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase">FILE ANOTHER</div>
+    <div class="wf-component mono" style="padding: 13px 20px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase">RETURN HOME</div>
+  </div>
+  <div class="wf-note" style="max-width:640px; margin: 24px auto 0; text-align: left">8-char prefix of ticket UUID shown (not full id — privacy). "FILE ANOTHER" resets form state. No redirect — keeps user in context. Triggers ticket-opened email via packages/email (non-blocking).</div>
+</div>
+
+<div class="wf-section">
+  <span class="wf-label">Footer — see Home.html</span>
+  <div class="wf-component">&lt;Footer /&gt;</div>
+</div>
+
+</body>
+</html>

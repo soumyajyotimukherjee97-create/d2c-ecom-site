@@ -1,0 +1,309 @@
+/* ═══════════════════════════════════════════════════════════════
+   matter — design tokens
+   scientific-modernist luxury skincare
+   ═══════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter+Tight:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap');
+
+:root {
+  /* palette — warm bone & ink */
+  --paper:     #F4F1EB;
+  --paper-2:   #EDE9E1;
+  --paper-3:   #E4E0D6;
+  --mineral:   #D6D2C6;
+  --hairline:  #BFBAAD;
+  --graphite:  #55534C;
+  --ink-2:     #26251F;
+  --ink:       #121210;
+
+  /* single accent — clinical green for actives/in-stock */
+  --assay:     oklch(0.56 0.08 148);
+  --assay-ink: oklch(0.34 0.06 148);
+
+  /* alarms (sparingly) */
+  --oxblood:   oklch(0.46 0.12 30);
+
+  /* type */
+  --f-display: 'Instrument Serif', 'Times New Roman', serif;
+  --f-body:    'Inter Tight', -apple-system, system-ui, sans-serif;
+  --f-mono:    'JetBrains Mono', ui-monospace, monospace;
+
+  --rule: 1px solid var(--hairline);
+  --rule-soft: 1px solid color-mix(in oklab, var(--hairline) 50%, transparent);
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "ss01", "cv11";
+}
+
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+img { max-width: 100%; display: block; }
+
+/* ─── typography ─────────────────────────────────────────── */
+.m-wordmark {
+  font-family: var(--f-display);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  font-size: 22px;
+  line-height: 1;
+}
+.m-display {
+  font-family: var(--f-display);
+  font-weight: 400;
+  letter-spacing: -0.025em;
+  line-height: 0.95;
+}
+.m-display em { font-style: italic; }
+.m-eyebrow {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--graphite);
+}
+.m-mono { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.02em; }
+.m-num  { font-family: var(--f-mono); font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
+
+/* ─── structural elements ────────────────────────────────── */
+.m-rule      { height: 1px; background: var(--hairline); border: 0; }
+.m-rule-soft { height: 1px; background: color-mix(in oklab, var(--hairline) 50%, transparent); border: 0; }
+
+.m-container {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+/* 12-col grid with numbered gutters */
+.m-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  column-gap: 24px;
+}
+
+/* ─── lab-style column index (purely decorative ruler) ──── */
+.m-ruler {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  column-gap: 24px;
+  font-family: var(--f-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: color-mix(in oklab, var(--graphite) 60%, transparent);
+  padding: 6px 0;
+  border-top: var(--rule-soft);
+  border-bottom: var(--rule-soft);
+}
+.m-ruler span { text-transform: uppercase; }
+
+/* ─── buttons ────────────────────────────────────────────── */
+.m-btn {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 13px 20px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  transition: background 0.2s, color 0.2s;
+}
+.m-btn:hover { background: var(--ink-2); }
+.m-btn--ghost {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--ink);
+}
+.m-btn--ghost:hover { background: var(--ink); color: var(--paper); }
+.m-btn--hair {
+  background: transparent;
+  color: var(--ink);
+  border-color: var(--hairline);
+}
+.m-btn--hair:hover { border-color: var(--ink); }
+
+/* ─── chips / tags ──────────────────────────────────────── */
+.m-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 6px 10px;
+  border: 1px solid var(--hairline);
+  color: var(--graphite);
+  background: transparent;
+}
+.m-chip--ink    { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.m-chip--assay  { color: var(--assay-ink); border-color: var(--assay); }
+.m-chip--filled { background: var(--paper-2); }
+
+/* ─── assay block (ingredient spec) ──────────────────────── */
+.m-assay {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  gap: 0 16px;
+  padding: 14px 0;
+  border-bottom: var(--rule-soft);
+  align-items: baseline;
+}
+.m-assay:last-child { border-bottom: 0; }
+.m-assay__idx { font-family: var(--f-mono); font-size: 10px; color: var(--graphite); letter-spacing: 0.1em; }
+.m-assay__name { font-family: var(--f-body); font-size: 14px; font-weight: 500; color: var(--ink); }
+.m-assay__name small { display: block; font-weight: 400; color: var(--graphite); font-size: 11px; margin-top: 3px; font-family: var(--f-body); letter-spacing: 0; text-transform: none; }
+.m-assay__pct {
+  font-family: var(--f-mono); font-size: 12px;
+  color: var(--ink); font-variant-numeric: tabular-nums;
+}
+
+/* ─── placeholder art (striped tonal blocks) ─────────────── */
+.m-ph {
+  position: relative;
+  background:
+    repeating-linear-gradient(135deg,
+      transparent 0 14px,
+      color-mix(in oklab, var(--hairline) 25%, transparent) 14px 15px),
+    var(--paper-2);
+  border: 1px solid var(--hairline);
+  overflow: hidden;
+}
+.m-ph--ink {
+  background:
+    repeating-linear-gradient(135deg,
+      transparent 0 14px,
+      color-mix(in oklab, var(--paper) 10%, transparent) 14px 15px),
+    var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.m-ph--mineral {
+  background:
+    repeating-linear-gradient(135deg,
+      transparent 0 14px,
+      color-mix(in oklab, var(--graphite) 18%, transparent) 14px 15px),
+    var(--mineral);
+}
+.m-ph__label {
+  position: absolute;
+  bottom: 12px; left: 12px; right: 12px;
+  display: flex; justify-content: space-between; gap: 8px;
+  font-family: var(--f-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--graphite);
+}
+.m-ph--ink .m-ph__label { color: color-mix(in oklab, var(--paper) 70%, transparent); }
+
+/* ─── product card shape ─────────────────────────────────── */
+.m-card {
+  display: flex; flex-direction: column;
+  border-top: var(--rule);
+  padding-top: 18px;
+}
+
+/* ─── data table ─────────────────────────────────────────── */
+.m-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--f-mono);
+  font-size: 11px;
+}
+.m-table th, .m-table td {
+  text-align: left;
+  padding: 10px 0;
+  border-bottom: var(--rule-soft);
+  vertical-align: baseline;
+  letter-spacing: 0.02em;
+}
+.m-table th {
+  font-weight: 400; color: var(--graphite);
+  text-transform: uppercase; letter-spacing: 0.12em; font-size: 10px;
+}
+.m-table td.num { font-variant-numeric: tabular-nums; text-align: right; }
+
+/* ─── marquee / ticker ───────────────────────────────────── */
+.m-ticker {
+  overflow: hidden;
+  border-top: var(--rule);
+  border-bottom: var(--rule);
+  padding: 14px 0;
+}
+.m-ticker__track {
+  display: flex; gap: 48px;
+  animation: m-scroll 60s linear infinite;
+  white-space: nowrap;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--graphite);
+}
+.m-ticker__track span { display: inline-flex; align-items: center; gap: 48px; }
+.m-ticker__track span::after { content: "·"; }
+@keyframes m-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* ─── inputs ─────────────────────────────────────────────── */
+.m-input {
+  font-family: var(--f-mono);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  padding: 12px 14px;
+  background: transparent;
+  border: 1px solid var(--hairline);
+  color: var(--ink);
+  width: 100%;
+  outline: none;
+}
+.m-input:focus { border-color: var(--ink); }
+.m-input::placeholder { color: var(--graphite); text-transform: uppercase; letter-spacing: 0.12em; font-size: 10px; }
+
+/* ─── utility ────────────────────────────────────────────── */
+.m-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.m-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--assay); }
+
+/* ─── inverted sections (dark bg) ────────────────────────── */
+.m-inverted {
+  color: var(--paper) !important;
+}
+.m-inverted .m-eyebrow,
+.m-inverted .m-mono { color: color-mix(in oklab, var(--paper) 65%, transparent); }
+.m-inverted .m-display em { color: var(--paper); }
+.m-inverted p { color: color-mix(in oklab, var(--paper) 80%, transparent); }
+.m-inverted hr,
+.m-inverted [style*="border-top"],
+.m-inverted [style*="border-bottom"],
+.m-inverted [style*="border-right"],
+.m-inverted [style*="borderTop"],
+.m-inverted [style*="borderBottom"] {
+  border-color: color-mix(in oklab, var(--paper) 25%, transparent) !important;
+}
+.m-inverted .m-btn {
+  border-color: var(--paper);
+  color: var(--paper);
+}
+.m-inverted .m-btn:hover {
+  background: var(--paper);
+  color: var(--ink);
+}
+.m-inverted a[style*="border-bottom"],
+.m-inverted a[style*="borderBottom"] { border-color: var(--paper) !important; }
+.m-inverted .m-input { border-color: color-mix(in oklab, var(--paper) 40%, transparent); color: var(--paper); }
+.m-inverted .m-input::placeholder { color: color-mix(in oklab, var(--paper) 50%, transparent); }
+.m-inverted input { color: var(--paper); }
+.m-inverted form[style*="border-bottom"] { border-color: var(--paper) !important; }

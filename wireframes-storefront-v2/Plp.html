@@ -1,0 +1,225 @@
+<!--
+  WIREFRAME V2: Product Listing Page — /products
+  ============================================================
+  App            : apps/storefront
+  Component file : src/app/(shop)/products/page.tsx
+  Auth           : Public
+  Data           : GET /api/products?skin_type=…&concern=…&sort=…&page=…
+  Design refs    : DESIGN_SYSTEM_V2.md · design_agent_handoff/project/Shop.html
+  Token source   : design_agent_handoff/project/assets/matter.css
+  TDD ref        : Section 6.2
+
+  LAYOUT INTENT
+  ─────────────
+  Horizontal filter bar (inline, sticky below nav) over a 4-up product
+  grid on paper-2. Below the fold: "SkinInsight" quiz CTA block with
+  a scientific concern-density heatmap (purely decorative, no data).
+
+  SECTIONS
+    1. Nav (shared)
+    2. FilterBar — skin_type pills (L) · concern pills (C) · sort select (R)
+    3. ProductGrid — 4-col, 24px gap, on paper-2
+    4. QuizCTA (SkinInsight) — 2-col: heatmap (L) · copy+CTA (R)
+    5. Footer (shared)
+
+  CONSTRAINTS (do not violate)
+  ─────────────────────────────
+  · Filters drive the URL (searchParams), never local state only
+  · Single-select: one skin_type, one concern (matches V1 & current impl)
+  · All money values computed server-side (price in paise → ₹)
+  · Grid is exactly 4 columns on desktop. No masonry. No drag-reorder.
+  · QuizCTA heatmap is decorative art. No user data is analysed here —
+    the SkinInsight feature is Phase 2 per TDD. Link → /products#skininsight
+  · Pagination is URL-driven (?page=N), server-rendered.
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1440">
+  <title>Wireframe V2 — PLP</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #F4F1EB; color: #121210; line-height: 1.5; font-size: 13px; }
+    .wf-note { background: #fffbe6; border-left: 3px solid #f0c000; padding: 6px 10px; font-size: 11px; color: #7a5f00; margin: 6px 0; }
+    .wf-component { border: 1.5px dashed #BFBAAD; padding: 8px 12px; margin: 4px 0; background: #F4F1EB; font-size: 12px; color: #55534C; }
+    .wf-section { border-bottom: 1px solid #BFBAAD; padding: 32px; background: #F4F1EB; }
+    .wf-section.paper-2 { background: #EDE9E1; }
+    .wf-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: #55534C; margin-bottom: 8px; display: block; }
+    .wf-ph { background: repeating-linear-gradient(135deg, transparent 0 14px, rgba(191,186,173,0.35) 14px 15px), #EDE9E1; border: 1px solid #BFBAAD; display: flex; align-items: flex-end; justify-content: space-between; padding: 12px; color: #55534C; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; font-family: 'JetBrains Mono', monospace; }
+    .wf-ph.mineral { background: repeating-linear-gradient(135deg, transparent 0 14px, rgba(85,83,76,0.18) 14px 15px), #D6D2C6; }
+    .row { display: flex; gap: 12px; }
+    .col { flex: 1; }
+    .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+    .mono { font-family: 'JetBrains Mono', monospace; letter-spacing: 0.02em; }
+    .display { font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; letter-spacing: -0.025em; line-height: 1; }
+    .chip-pill { display: inline-block; padding: 6px 12px; border: 1px solid #BFBAAD; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #26251F; background: transparent; }
+    .chip-pill.on { background: #121210; color: #F4F1EB; border-color: #121210; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 1: NAV (shared — see Home.html wireframe)
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="padding: 18px 32px">
+  <span class="wf-label">Nav — see Home.html · active="shop"</span>
+  <div class="wf-component">&lt;Nav active="shop" /&gt;</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 2: FILTER BAR
+     URL-driven — searchParams, never local state
+     Matter ref: shop-sections.jsx → function FilterBar()
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="padding: 20px 32px">
+  <span class="wf-label">FilterBar — 3-zone grid · URL-driven · sticky (optional)</span>
+  <div class="row" style="align-items: center; justify-content: space-between; gap: 40px">
+    <!-- SKIN TYPE -->
+    <div class="row" style="align-items: center; gap: 12px; flex: 0 0 auto">
+      <span class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">SKIN TYPE:</span>
+      <div class="row" style="gap: 4px">
+        <span class="chip-pill on">ALL</span>
+        <span class="chip-pill">DRY</span>
+        <span class="chip-pill">OILY</span>
+        <span class="chip-pill">COMBINATION</span>
+        <span class="chip-pill">SENSITIVE</span>
+      </div>
+    </div>
+    <!-- CONCERN -->
+    <div class="row" style="align-items: center; gap: 12px; flex: 1; justify-content: center">
+      <span class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">CONCERN:</span>
+      <div class="row" style="gap: 4px">
+        <span class="chip-pill">ACNE</span>
+        <span class="chip-pill">DULLNESS</span>
+        <span class="chip-pill">AGING</span>
+        <span class="chip-pill">PORES</span>
+        <span class="chip-pill">REDNESS</span>
+      </div>
+    </div>
+    <!-- SORT -->
+    <div class="row" style="align-items: center; gap: 12px; flex: 0 0 auto; position: relative">
+      <span class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">SORT:</span>
+      <div class="wf-component mono" style="padding: 6px 12px; min-width: 120px; display: flex; justify-content: space-between; font-size: 11px">BEST MATCH <span style="font-size:9px">▾</span></div>
+    </div>
+  </div>
+  <div class="wf-note">Chip is active when selected; single-select on concern (click same chip to clear). Skin type has "ALL" as the deselect state. Clicking a chip updates URL + triggers server re-render.</div>
+  <div class="wf-note">Sort dropdown: [Best match · Price ↑ · Price ↓ · New]. Opens on click (client island). Keyboard: Enter/Space opens, arrow keys navigate, Esc closes.</div>
+  <div class="wf-note">Mobile: the three zones stack vertically; each chip row becomes horizontally scrollable.</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 3: PRODUCT GRID  (on paper-2)
+     Data: GET /api/products · 4-up · 24 per page
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section paper-2" style="padding: 56px 32px 96px">
+  <span class="wf-label">ProductGrid — 4-col · 24 per page · cached server render</span>
+  <div class="row" style="align-items: baseline; gap: 12px; margin-bottom: 32px">
+    <span class="display" style="font-size: 44px">All products</span>
+    <span class="mono" style="color: #55534C; font-size: 12px">(17)</span>
+  </div>
+  <div class="grid4">
+    <!-- Product tile × 4 -->
+    <div class="col">
+      <div class="wf-ph mineral" style="aspect-ratio: 1 / 1"><span>SPECIMEN · BRIGHTENING SERUM</span><span>SERUM 30ML</span></div>
+      <div class="wf-component" style="padding: 16px 18px 18px; background: #F4F1EB; border: 1px solid #BFBAAD; border-top: 0">
+        <div class="mono" style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">SERUM</div>
+        <div style="font-size: 15px; font-weight: 500; margin: 6px 0 8px">Brightening Serum</div>
+        <div class="mono" style="font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: #55534C">DULLNESS · ACNE · PORES</div>
+        <div class="row" style="justify-content: space-between; align-items: flex-end; margin-top: 18px">
+          <span class="mono" style="font-size: 15px; font-variant-numeric: tabular-nums">₹1,299</span>
+          <div class="wf-component" style="width: 28px; height: 28px; background: #121210; color: #F4F1EB; display:inline-flex; align-items:center; justify-content:center; padding:0; font-size: 16px">+</div>
+        </div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="wf-ph" style="aspect-ratio: 1 / 1"><span>SPECIMEN · NIGHT REPAIR CREAM</span><span>MOISTURIZER 50ML</span></div>
+      <div class="wf-component" style="margin-top: 0">Tile 2 — same layout</div>
+    </div>
+    <div class="col">
+      <div class="wf-ph mineral" style="aspect-ratio: 1 / 1"><span>SPECIMEN · PORE REFINING TONER</span><span>TONER 200ML</span></div>
+      <div class="wf-component" style="margin-top: 0">Tile 3 — same layout</div>
+    </div>
+    <div class="col">
+      <div class="wf-ph" style="aspect-ratio: 1 / 1"><span>SPECIMEN · SPF 50</span><span>SPF 30ML</span></div>
+      <div class="wf-component" style="margin-top: 0">Tile 4 — same layout</div>
+    </div>
+  </div>
+
+  <div class="wf-note">Tile image aspect: 1/1 square. Info block has 1px hairline border, 0 top (continues from image). No shadows.</div>
+  <div class="wf-note">+ button: 28px ink square, no radius. onClick → useCartStore.addItem(defaultVariant, product, 1). Triggers CartDrawer open. Loading state: disabled + mono "…".</div>
+  <div class="wf-note">Empty state: centered mono "— No formulas match your filters. Adjust your selection." · Optional secondary CTA "Clear filters" (m-btn--hair).</div>
+  <div class="wf-note">Loading: 4 striped m-ph placeholders + hairline info blocks. Never a spinner.</div>
+
+  <!-- Pagination -->
+  <div class="row" style="justify-content: center; margin-top: 56px; align-items: center; gap: 12px">
+    <div class="wf-component mono" style="padding: 10px 14px; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase">← PREV</div>
+    <div class="wf-component mono" style="padding: 10px 14px; font-size: 11px">PAGE 01 / 03</div>
+    <div class="wf-component mono" style="padding: 10px 14px; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase">NEXT →</div>
+  </div>
+  <div class="wf-note">Pagination is URL-driven (?page=N). No infinite scroll. Prev disabled at page 1, Next disabled at last page (border hairline, text graphite).</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 4: SKIN INSIGHT QUIZ CTA
+     Component: <QuizCTA /> · scroll-anchor target #skininsight
+     Matter ref: shop-sections.jsx → function QuizCTA()
+     ════════════════════════════════════════════════════════ -->
+<div id="skininsight" class="wf-section" style="padding: 80px 32px">
+  <span class="wf-label">QuizCTA — 2-col · concern heatmap (L) · copy+CTA (R)</span>
+  <div class="row" style="gap: 80px; align-items: center; min-height: 420px">
+    <!-- LEFT: heatmap figure (decorative) -->
+    <div class="col" style="aspect-ratio: 4 / 3; background: #EDE9E1; border: 1px solid #BFBAAD; padding: 32px 36px 40px; display: flex; flex-direction: column">
+      <div class="row" style="justify-content: space-between">
+        <div>
+          <div class="mono" style="font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: #55534C">FIG. 026 — CONCERN DENSITY MAP</div>
+          <div class="mono" style="font-size: 9px; letter-spacing: 0.14em; color: #55534C; margin-top: 4px">SUBJECT 026 · 11 MARKERS INDEXED</div>
+        </div>
+        <div class="mono" style="font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: #55534C">AI · ANALYSIS</div>
+      </div>
+      <div style="flex: 1; margin-top: 20px; border: 1px solid #BFBAAD; background: #F4F1EB; position: relative">
+        <div class="wf-ph" style="height: 100%; border: 0; background: none"><span>PLOT GRID · HEATMAP ELLIPSES · 4 MARKERS</span><span></span></div>
+      </div>
+      <div class="row" style="justify-content: space-between; margin-top: 16px">
+        <span class="mono" style="font-size: 9px; letter-spacing: 0.14em; color: #55534C">SPECIMEN · SUBJECT 026</span>
+        <span class="mono" style="font-size: 9px; letter-spacing: 0.14em; color: #55534C">CONFIDENCE — 96.4%</span>
+      </div>
+    </div>
+
+    <!-- RIGHT: copy + CTA -->
+    <div class="col">
+      <div class="wf-component mono" style="font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: #55534C">§ NEW</div>
+      <div class="wf-component display" style="font-size: clamp(44px, 5vw, 68px); padding: 16px; margin-top: 18px">Skin<em style="font-style:italic">Insights</em>.</div>
+      <div class="wf-component mono" style="font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #55534C; margin-top: 16px">KNOW YOUR SKIN HEALTH, USING AI</div>
+      <div class="wf-component" style="font-size: 15px; color:#26251F; max-width: 460px; margin-top: 28px">Scan your face in 30 seconds. Our clinical-grade model identifies pigmentation, pores, acne, and early signs of aging — then prescribes a routine from our formulary.</div>
+      <div class="row" style="align-items: center; gap: 16px; margin-top: 36px">
+        <div class="wf-component mono" style="background: #121210; color: #F4F1EB; padding: 14px 24px; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase">TRY NOW →</div>
+        <span class="mono" style="font-size: 10px; letter-spacing: 0.14em; color: #55534C">FREE · NO SIGNUP</span>
+      </div>
+      <!-- trust strip -->
+      <div class="row" style="gap: 0; margin-top: 40px; border-top: 1px solid #BFBAAD; border-bottom: 1px solid #BFBAAD">
+        <div class="wf-component col" style="padding: 14px 16px; border-right: 1px solid rgba(191,186,173,0.5)"><div class="mono" style="font-size:9px; color:#55534C; letter-spacing:0.14em; text-transform:uppercase">ACCURACY</div><div class="mono" style="font-size:14px; font-variant-numeric: tabular-nums; margin-top:4px">96.4%</div></div>
+        <div class="wf-component col" style="padding: 14px 16px; border-right: 1px solid rgba(191,186,173,0.5)">TRIAL N · 4,812</div>
+        <div class="wf-component col" style="padding: 14px 16px">MARKERS · 11 INDEXED</div>
+      </div>
+    </div>
+  </div>
+  <div class="wf-note">SkinInsight (AI facial analysis) is Phase 2 per TDD. This block is a marketing placeholder — "TRY NOW" CTA is a waitlist form or disabled/coming-soon until Phase 2 ships. Confirm product direction before wiring.</div>
+  <div class="wf-note">Heatmap is static SVG from matter's shop-sections.jsx. No user data is processed. Subject 026 / 4,812 are brand-persona numbers, not real trial data — confirm before launch.</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 5: FOOTER (shared)
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section">
+  <span class="wf-label">Footer — see Home.html</span>
+  <div class="wf-component">&lt;Footer /&gt;</div>
+</div>
+
+</body>
+</html>

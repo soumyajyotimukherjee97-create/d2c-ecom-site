@@ -1,0 +1,254 @@
+<!--
+  WIREFRAME V2: Product Detail Page — /products/[slug]
+  ============================================================
+  App            : apps/storefront
+  Component file : src/app/(shop)/products/[slug]/page.tsx
+  Auth           : Public
+  Data           : getProductBySlug(slug) → product + variants + reviews
+  Design refs    : DESIGN_SYSTEM_V2.md · design_agent_handoff/project/Product.html
+  Token source   : design_agent_handoff/project/assets/matter.css
+  TDD ref        : Section 6.3
+
+  LAYOUT INTENT
+  ─────────────
+  Two-column (1fr 1fr) with a hairline gutter rule between.
+  Gallery on L, purchase panel on R.
+  Below the fold: reviews carousel, then "You might also like" 4-up.
+
+  SECTIONS
+    1. Nav (shared)
+    2. Breadcrumb — mono trail
+    3. PDPMain — gallery (L) · purchase panel (R, paddingLeft:48px, borderLeft hairline)
+    4. ProductReviews — 3-up paged arrow carousel
+    5. YouMightAlsoLike — 4-up with in-card image carousel
+    6. Footer (shared)
+
+  CONSTRAINTS (do not violate)
+  ─────────────────────────────
+  · Variant selector uses square pills. Never dropdown.
+  · Qty + ATC are a tight pair, side by side (130px qty · 1fr CTA).
+  · Price computes from selected variant on the server — NEVER from client.
+  · Clinical-insight callout (paper-2 bg) is optional per product; show only if content is present.
+  · Related products: exactly 4. Uses in-card image pager (5px dots only).
+  · JSON-LD breadcrumb required (generateMetadata) — keep from V1.
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1440">
+  <title>Wireframe V2 — PDP</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #F4F1EB; color: #121210; line-height: 1.5; font-size: 13px; }
+    .wf-note { background: #fffbe6; border-left: 3px solid #f0c000; padding: 6px 10px; font-size: 11px; color: #7a5f00; margin: 6px 0; }
+    .wf-component { border: 1.5px dashed #BFBAAD; padding: 8px 12px; margin: 4px 0; background: #F4F1EB; font-size: 12px; color: #55534C; }
+    .wf-section { border-bottom: 1px solid #BFBAAD; padding: 32px; background: #F4F1EB; }
+    .wf-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: #55534C; margin-bottom: 8px; display: block; }
+    .wf-ph { background: repeating-linear-gradient(135deg, transparent 0 14px, rgba(191,186,173,0.35) 14px 15px), #EDE9E1; border: 1px solid #BFBAAD; display: flex; align-items: flex-end; justify-content: space-between; padding: 12px; color: #55534C; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; font-family: 'JetBrains Mono', monospace; }
+    .row { display: flex; gap: 12px; }
+    .col { flex: 1; }
+    .mono { font-family: 'JetBrains Mono', monospace; letter-spacing: 0.02em; }
+    .display { font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; letter-spacing: -0.025em; line-height: 1; }
+  </style>
+</head>
+<body>
+
+<div class="wf-section" style="padding: 18px 32px">
+  <span class="wf-label">Nav — shared</span>
+  <div class="wf-component">&lt;Nav active="shop" /&gt;</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 2: BREADCRUMB
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="padding: 20px 32px">
+  <span class="wf-label">Breadcrumb — mono trail</span>
+  <div class="wf-component mono" style="color: #55534C; font-size: 11px">
+    <span>HOME</span> <span style="opacity:0.4; margin:0 10px">/</span>
+    <span>SHOP</span> <span style="opacity:0.4; margin:0 10px">/</span>
+    <span style="color: #121210">NIGHT REPAIR CREAM</span>
+  </div>
+  <div class="wf-note">Mono, 11px, uppercase optional. JSON-LD breadcrumb in generateMetadata() (retain from V1).</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 3: PDP MAIN  (2-col — gallery L · purchase R)
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="padding: 24px 32px 80px">
+  <span class="wf-label">PDPMain — grid 1fr 1fr · gap 64px · purchase panel has paddingLeft 48 + borderLeft hairline</span>
+
+  <div class="row" style="gap: 64px; align-items: flex-start">
+
+    <!-- ═══════════ LEFT: GALLERY ═══════════ -->
+    <div class="col">
+      <div class="wf-ph" style="aspect-ratio: 1 / 1; min-height: 480px"><span>SPECIMEN · HERO</span><span>SELECTED IMAGE</span></div>
+      <div class="row" style="gap: 12px; margin-top: 12px">
+        <div class="wf-ph" style="aspect-ratio: 1 / 1; flex: 1; border: 1px solid #121210">T1</div>
+        <div class="wf-ph" style="aspect-ratio: 1 / 1; flex: 1">T2</div>
+        <div class="wf-ph" style="aspect-ratio: 1 / 1; flex: 1">T3</div>
+        <div class="wf-ph" style="aspect-ratio: 1 / 1; flex: 1">T4</div>
+      </div>
+      <div class="wf-note">Hero image 1:1 aspect. 4 thumbnails below, 1px hairline, selected = 1px ink border. No radii, no shadow. Click thumbnail swaps hero image (client island).</div>
+      <div class="wf-note">Zoom: click hero opens lightbox (primitive not yet in V2 — see gap list). Keyboard: ←/→ to navigate, Esc to close. Mobile: horizontal swipe.</div>
+    </div>
+
+    <!-- ═══════════ RIGHT: PURCHASE PANEL ═══════════ -->
+    <div class="col" style="border-left: 1px solid #BFBAAD; padding-left: 48px">
+
+      <!-- CATEGORY EYEBROW -->
+      <div class="wf-component mono" style="color: #55534C; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase">MOISTURISER</div>
+
+      <!-- PRODUCT NAME -->
+      <div class="wf-component display" style="font-size: 52px; padding: 14px 0; margin-top: 14px">Night Repair Cream</div>
+
+      <!-- PRICE -->
+      <div class="row" style="align-items: baseline; gap: 10px; margin-top: 18px">
+        <span class="display" style="font-size: 34px">₹2,499</span>
+        <span class="mono" style="color: #55534C; font-size: 11px">/ 30ML</span>
+      </div>
+      <div class="wf-note">Price comes from selected variant. Recomputes server-side when variant changes (or recomputes locally from server-sent variant payload — never from user input).</div>
+
+      <!-- SIZE SELECTOR -->
+      <div style="margin-top: 32px">
+        <div class="wf-component mono" style="font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C; margin-bottom: 10px">SIZE</div>
+        <div class="row" style="gap: 8px">
+          <div class="wf-component mono" style="background: #121210; color: #F4F1EB; padding: 10px 14px; font-size: 11px; border: 1px solid #121210">30ML</div>
+          <div class="wf-component mono" style="padding: 10px 14px; font-size: 11px">60ML — ₹3,999</div>
+        </div>
+      </div>
+      <div class="wf-note">Variant pill: square, no radius. Selected = ink fill. Unselected = hairline border. Out-of-stock variants: hairline + strike-through + "OUT OF LOT" mono caption.</div>
+
+      <!-- IDEAL FOR -->
+      <div style="margin-top: 28px">
+        <div class="wf-component mono" style="font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C; margin-bottom: 10px">IDEAL FOR</div>
+        <div class="row" style="flex-wrap: wrap; gap: 8px">
+          <span class="wf-component mono" style="padding: 7px 12px; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">DRY</span>
+          <span class="wf-component mono" style="padding: 7px 12px; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">COMBINATION</span>
+          <span class="wf-component mono" style="padding: 7px 12px; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">SENSITIVE</span>
+          <span class="wf-component mono" style="padding: 7px 12px; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">AGING</span>
+          <span class="wf-component mono" style="padding: 7px 12px; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">DULLNESS</span>
+          <span class="wf-component mono" style="padding: 7px 12px; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">REDNESS</span>
+        </div>
+      </div>
+
+      <!-- QTY + ATC -->
+      <div style="margin-top: 32px; display: grid; grid-template-columns: 130px 1fr; gap: 10px">
+        <div class="wf-component" style="display: grid; grid-template-columns: 36px 1fr 36px; align-items: center; border: 1px solid #BFBAAD; padding: 0">
+          <span style="height: 46px; display: flex; align-items: center; justify-content: center; color: #55534C">–</span>
+          <span class="mono" style="text-align: center; font-size: 14px; font-variant-numeric: tabular-nums">1</span>
+          <span style="height: 46px; display: flex; align-items: center; justify-content: center; color: #55534C">+</span>
+        </div>
+        <div class="wf-component mono" style="background: #121210; color: #F4F1EB; padding: 0 24px; height: 46px; display: flex; align-items: center; justify-content: center; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase">ADD TO CART</div>
+      </div>
+      <div class="wf-note">Qty stepper: no radius, 46px tall. Inc/dec buttons are graphite caps, never below 1. ATC: useCartStore.addItem(selectedVariant, product, qty) · triggers CartDrawer open.</div>
+      <div class="wf-note">Loading: ATC shows mono "ADDING…" (disabled). Error: oxblood mono caption appears below "— Could not add. Retry." with inline retry button.</div>
+
+      <!-- KEY INGREDIENTS -->
+      <div style="margin-top: 40px">
+        <div class="wf-component mono" style="font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C; margin-bottom: 12px">KEY INGREDIENTS</div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div class="wf-component" style="display: flex; justify-content: space-between; padding: 12px 14px 12px 16px; border: 1px solid #BFBAAD; border-left: 3px solid #121210">
+            <span style="font-size: 14px">Encapsulated Retinol</span>
+            <span class="mono" style="font-size: 11px; color: #55534C; font-variant-numeric: tabular-nums">0.1%</span>
+          </div>
+          <div class="wf-component" style="display: flex; justify-content: space-between; padding: 12px 14px 12px 16px; border: 1px solid #BFBAAD; border-left: 3px solid #121210">
+            <span style="font-size: 14px">Ceramide NP</span>
+            <span class="mono" style="font-size: 11px; color: #55534C">1%</span>
+          </div>
+          <div class="wf-component" style="display: flex; justify-content: space-between; padding: 12px 14px 12px 16px; border: 1px solid #BFBAAD; border-left: 3px solid #121210">
+            <span style="font-size: 14px">Palmitoyl Tripeptide-1</span>
+          </div>
+        </div>
+      </div>
+      <div class="wf-note">Ingredient rows: 3px left ink border (signature PDP pattern). Percentage optional. Row can link to /ingredients#[sym] when ingredients page ships.</div>
+
+      <!-- CLINICAL INSIGHT -->
+      <div class="wf-component" style="margin-top: 20px; padding: 18px 20px; border: 1px solid #BFBAAD; background: #EDE9E1">
+        <div class="mono" style="font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C">CLINICAL INSIGHT</div>
+        <div style="font-size: 13px; color: #26251F; margin-top: 8px">Microencapsulation slows release, dramatically reducing irritation vs. pure retinol at equivalent activity.</div>
+      </div>
+      <div class="wf-note">Clinical insight block: paper-2 background, hairline border. Show only when product.clinical_insight is set (optional field).</div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 4: PRODUCT REVIEWS  (3-up paged carousel)
+     Data: GET /api/reviews?product_id=…
+     Client island — React.useState(page)
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="padding: 80px 32px">
+  <span class="wf-label">ProductReviews — same shape as Home reviews · scoped to this product</span>
+  <div class="row" style="justify-content: space-between; align-items: end; margin-bottom: 40px">
+    <div>
+      <div class="wf-component mono" style="font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C">§ CORRESPONDENCE</div>
+      <div class="wf-component display" style="font-size: 40px; padding: 14px 0; margin-top: 14px">What people say about <em style="font-style:italic">Night Repair Cream</em>.</div>
+    </div>
+    <div class="row" style="gap: 20px; align-items: center">
+      <div class="wf-component mono" style="font-size: 10px; color: #55534C">n = 412 · avg 4.9 / 5</div>
+      <div class="wf-component mono" style="font-size: 10px">01 / 02</div>
+      <div class="wf-component" style="width: 40px; height: 40px; display:inline-flex; align-items:center; justify-content:center; border: 1px solid #121210">‹</div>
+      <div class="wf-component" style="width: 40px; height: 40px; display:inline-flex; align-items:center; justify-content:center; border: 1px solid #121210">›</div>
+    </div>
+  </div>
+  <div class="row" style="border-top: 1px solid #BFBAAD; border-bottom: 1px solid #BFBAAD; gap: 0">
+    <div class="wf-component col" style="padding: 28px; border-right: 1px solid rgba(191,186,173,0.5); min-height: 300px">Review card 1 (identical layout to Home reviews)</div>
+    <div class="wf-component col" style="padding: 28px; border-right: 1px solid rgba(191,186,173,0.5); min-height: 300px">Review card 2</div>
+    <div class="wf-component col" style="padding: 28px; min-height: 300px">Review card 3</div>
+  </div>
+  <div class="wf-note">Reuses the review card primitive from Home. Empty state: mono caption "— No correspondence yet for this formula." with CTA to write the first review (if authed).</div>
+  <div class="wf-note">Write-review: auth required. Form lives in /account or a drawer (not yet specified — see gap list).</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 5: YOU MIGHT ALSO LIKE  (4-up, in-card carousel)
+     Data: GET /api/products?exclude=[slug]&limit=4&sort=complementary
+     Matter ref: pdp-sections.jsx → function YouMightAlsoLike()
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="padding: 72px 32px 96px">
+  <span class="wf-label">YouMightAlsoLike — 4-up with in-card arrow+dot pager</span>
+  <div style="margin-bottom: 40px">
+    <div class="wf-component mono" style="font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C">§ COMPLETE THE REGIMEN</div>
+    <div class="wf-component display" style="font-size: 40px; padding: 14px 0; margin-top: 14px">You might <em style="font-style:italic">also</em> like.</div>
+  </div>
+  <div class="row" style="gap: 24px">
+    <div class="col">
+      <div class="wf-ph" style="aspect-ratio: 1 / 1; position: relative">
+        <div class="wf-component" style="position: absolute; top: 50%; left: 14px; transform: translateY(-50%); width: 32px; height: 32px; border-radius: 50%; background: #F4F1EB; border: 1px solid #BFBAAD; display:inline-flex; align-items:center; justify-content:center; padding:0">‹</div>
+        <div class="wf-component" style="position: absolute; top: 50%; right: 14px; transform: translateY(-50%); width: 32px; height: 32px; border-radius: 50%; background: #F4F1EB; border: 1px solid #BFBAAD; display:inline-flex; align-items:center; justify-content:center; padding:0">›</div>
+        <div style="position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); display:flex; gap: 6px">
+          <span style="width:5px; height:5px; border-radius:50%; background:#121210"></span>
+          <span style="width:5px; height:5px; border-radius:50%; background:#BFBAAD"></span>
+          <span style="width:5px; height:5px; border-radius:50%; background:#BFBAAD"></span>
+        </div>
+      </div>
+      <div style="margin-top: 16px">
+        <div style="font-size: 14px; font-weight: 500">Salicylic Acid + LHA 2% Cleanser</div>
+        <div style="font-size: 12px; color: #55534C; margin-top: 6px">Acne, breakouts &amp; oiliness</div>
+        <div class="mono" style="font-size: 13px; margin-top: 6px; font-variant-numeric: tabular-nums">On sale from ₹269</div>
+      </div>
+      <div class="wf-component mono" style="width: 100%; margin-top: 16px; padding: 14px 16px; background: #121210; color: #F4F1EB; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; text-align: center">SELECT SIZE</div>
+    </div>
+    <div class="col"><div class="wf-component" style="margin-top: 0">Card 2</div></div>
+    <div class="col"><div class="wf-component" style="margin-top: 0">Card 3</div></div>
+    <div class="col"><div class="wf-component" style="margin-top: 0">Card 4</div></div>
+  </div>
+  <div class="wf-note">Circular arrow buttons (exception to "no radius" rule — these are pagers, not navigation). Dots: 5px ink for active, hairline inactive. In-card pager only exists on PDP related section — not on the other product grids.</div>
+  <div class="wf-note">CTA text varies: "SELECT SIZE" when multi-variant, "ADD TO CART" when single variant. Never a free-form "BUY NOW".</div>
+</div>
+
+
+<div class="wf-section">
+  <span class="wf-label">Footer — see Home.html</span>
+  <div class="wf-component">&lt;Footer /&gt;</div>
+</div>
+
+</body>
+</html>

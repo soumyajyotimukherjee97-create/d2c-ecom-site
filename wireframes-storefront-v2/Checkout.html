@@ -1,0 +1,339 @@
+<!--
+  WIREFRAME V2: Checkout + Order Confirmation
+  ============================================================
+  App            : apps/storefront
+  Routes         : /checkout  ·  /order/[id]
+  Route group    : src/app/(checkout)/ — bare layout (no nav links, no footer)
+  Auth           : Public (guest checkout allowed) · attaches user_id if session exists
+  Data           : /checkout → client cart → POST /api/orders (atomic SECURITY DEFINER RPC)
+                   /order/[id] → server component, getOrderById(id)
+  Design refs    : DESIGN_SYSTEM_V2.md · (no matter mockup — extrapolated)
+  TDD ref        : Section 7, 8
+
+  LAYOUT INTENT
+  ─────────────
+  Checkout: bare, editorial layout. Minimal chrome — just the wordmark
+  and a "secure checkout" mono caption top-right. Two columns:
+  form (7/12) · sticky summary (5/12). Sections numbered § 01, § 02, § 03.
+  Confirmation: a "receipt-as-artefact" page — broadsheet masthead,
+  order number styled like a lot reference (ORD-MT-0026), matter-of-fact.
+
+  CONSTRAINTS (do not violate)
+  ─────────────────────────────
+  · NEVER trust client-submitted prices, subtotals, shipping, or total.
+    Server recomputes from variant_id + quantity on order creation.
+  · Never trust client-submitted user_id — derive from session.
+  · RHF + Zod: schema = { email, first_name, last_name, line1, line2?,
+    city, state, pincode, phone }. Existing schema in lib/api/schemas.
+  · State dropdown: Indian states (no country picker — IN only per TDD).
+  · Order total sent to client is DISPLAY only. /api/orders refuses
+    if client total disagrees beyond tolerance (paise-level).
+  · Confirmation page is server-rendered (SSR). No client JS for the
+    receipt itself. Fetch order by id; 404 if not found or wrong user.
+  · No upsell on confirmation. No "share to social". No coupon codes
+    (promos are Phase 2 per TDD).
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1440">
+  <title>Wireframe V2 — Checkout</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #F4F1EB; color: #121210; line-height: 1.5; font-size: 13px; }
+    .wf-note { background: #fffbe6; border-left: 3px solid #f0c000; padding: 6px 10px; font-size: 11px; color: #7a5f00; margin: 6px 0; }
+    .wf-component { border: 1.5px dashed #BFBAAD; padding: 8px 12px; margin: 4px 0; background: #F4F1EB; font-size: 12px; color: #55534C; }
+    .wf-section { border-bottom: 1px solid #BFBAAD; padding: 32px; background: #F4F1EB; }
+    .wf-section.paper-2 { background: #EDE9E1; }
+    .wf-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: #55534C; margin-bottom: 8px; display: block; }
+    .wf-ph { background: repeating-linear-gradient(135deg, transparent 0 14px, rgba(191,186,173,0.35) 14px 15px), #EDE9E1; border: 1px solid #BFBAAD; padding: 8px; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C; }
+    .row { display: flex; gap: 12px; }
+    .col { flex: 1; }
+    .grid12 { display: grid; grid-template-columns: repeat(12, 1fr); gap: 32px; }
+    .mono { font-family: 'JetBrains Mono', monospace; letter-spacing: 0.02em; }
+    .display { font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; letter-spacing: -0.025em; line-height: 1; }
+    .field { border: 1px solid #BFBAAD; background: transparent; padding: 12px 14px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #121210; width: 100%; display: block; }
+    .field-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C; margin-bottom: 8px; display: block; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════
+     ROUTE A: /checkout  (apps/storefront/src/app/(checkout)/checkout/page.tsx)
+     Layout: (checkout) route group — bare, no Nav/Footer from shop layout
+     ════════════════════════════════════════════════════════ -->
+
+<!-- MINIMAL CHROME -->
+<div class="wf-section" style="padding: 20px 32px">
+  <span class="wf-label">Minimal Chrome — wordmark (L) · "Secure checkout" (C) · "Need help?" (R)</span>
+  <div class="row" style="justify-content: space-between; align-items: center">
+    <div class="wf-component display" style="font-size: 22px; padding: 4px 10px">matter<em style="font-style:italic">.</em></div>
+    <div class="wf-component mono" style="font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C">§ SECURE CHECKOUT · SSL</div>
+    <div class="wf-component mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase">NEED HELP? →</div>
+  </div>
+  <div class="wf-note">Wordmark links to /. "Need help?" links to /support/new. No nav links, no account icon, no cart badge — focused pattern reduces abandonment.</div>
+</div>
+
+
+<!-- ════════ MAIN CHECKOUT GRID — 7/12 form · 5/12 sticky summary ════════ -->
+<div class="wf-section" style="padding: 48px 32px 96px; background: #EDE9E1">
+
+  <!-- headline -->
+  <div style="margin-bottom: 48px">
+    <div class="wf-component mono" style="font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C">§ CHECKOUT · ORDER BRIEF</div>
+    <div class="wf-component display" style="font-size: clamp(56px, 6vw, 88px); padding: 14px; margin-top: 18px">Finalising your <em style="font-style:italic">consignment</em>.</div>
+  </div>
+
+  <div class="grid12" style="align-items: start">
+
+    <!-- ═══════ LEFT: FORM (cols 1-8) ═══════ -->
+    <div style="grid-column: 1 / 9">
+
+      <!-- § 01 CONTACT -->
+      <div style="border-top: 2px solid #121210; padding-top: 20px; margin-bottom: 48px">
+        <div class="row" style="justify-content: space-between; margin-bottom: 24px">
+          <div>
+            <div class="mono" style="font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #121210">§ 01 — CONTACT</div>
+            <div class="display" style="font-size: 28px; margin-top: 8px">Who are you?</div>
+          </div>
+          <div class="mono" style="font-size: 10px; letter-spacing: 0.14em; color: #55534C">REQUIRED</div>
+        </div>
+        <div style="margin-bottom: 16px">
+          <span class="field-label">EMAIL ADDRESS</span>
+          <div class="wf-component field">you@domain.com</div>
+        </div>
+        <div class="wf-note">If user is authed, email is read-only (prefilled from session). Guest checkout: email is editable and becomes the `contact_email` on the order.</div>
+        <label class="row" style="gap: 8px; margin-top: 14px; font-size: 12px; color: #26251F">
+          <input type="checkbox"/> Dispatch transaction-only correspondence. No marketing.
+        </label>
+      </div>
+
+      <!-- § 02 SHIPPING ADDRESS -->
+      <div style="border-top: 2px solid #121210; padding-top: 20px; margin-bottom: 48px">
+        <div class="row" style="justify-content: space-between; margin-bottom: 24px">
+          <div>
+            <div class="mono" style="font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #121210">§ 02 — DISPATCH ADDRESS</div>
+            <div class="display" style="font-size: 28px; margin-top: 8px">Where shall we send it?</div>
+          </div>
+          <div class="mono" style="font-size: 10px; letter-spacing: 0.14em; color: #55534C">INDIA ONLY</div>
+        </div>
+        <div class="row" style="gap: 16px; margin-bottom: 16px">
+          <div class="col"><span class="field-label">FIRST NAME</span><div class="wf-component field">Aarti</div></div>
+          <div class="col"><span class="field-label">LAST NAME</span><div class="wf-component field">Kapoor</div></div>
+        </div>
+        <div style="margin-bottom: 16px">
+          <span class="field-label">ADDRESS LINE 1</span>
+          <div class="wf-component field">Flat 4B, Silver Oak Residences, 12 Linking Road</div>
+        </div>
+        <div style="margin-bottom: 16px">
+          <span class="field-label">ADDRESS LINE 2 · OPTIONAL</span>
+          <div class="wf-component field" style="color: #55534C">Landmark, apt, etc</div>
+        </div>
+        <div class="row" style="gap: 16px; margin-bottom: 16px">
+          <div class="col"><span class="field-label">CITY</span><div class="wf-component field">Mumbai</div></div>
+          <div class="col" style="max-width: 180px"><span class="field-label">STATE</span><div class="wf-component field" style="display:flex; justify-content:space-between">Maharashtra <span>▾</span></div></div>
+          <div class="col" style="max-width: 140px"><span class="field-label">PINCODE</span><div class="wf-component field mono" style="font-variant-numeric: tabular-nums">400050</div></div>
+        </div>
+        <div>
+          <span class="field-label">PHONE (10 DIGITS)</span>
+          <div class="wf-component field mono" style="font-variant-numeric: tabular-nums">+91 · 98234 12345</div>
+        </div>
+        <div class="wf-note">State: dropdown of Indian states. Pincode: 6-digit numeric only. Phone: 10-digit after +91. All validation in Zod. On blur: inline oxblood mono caption under the field.</div>
+      </div>
+
+      <!-- § 03 PAYMENT -->
+      <div style="border-top: 2px solid #121210; padding-top: 20px">
+        <div class="row" style="justify-content: space-between; margin-bottom: 24px">
+          <div>
+            <div class="mono" style="font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #121210">§ 03 — PAYMENT</div>
+            <div class="display" style="font-size: 28px; margin-top: 8px">How would you like to pay?</div>
+          </div>
+          <div class="mono" style="font-size: 10px; letter-spacing: 0.14em; color: #55534C">COD + UPI ONLY · MVP</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <div class="wf-component" style="border: 1px solid #121210; padding: 16px 18px">
+            <div class="row" style="justify-content: space-between; align-items: center">
+              <div><div class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase">01 · CASH ON DELIVERY</div><div style="font-size: 13px; color: #26251F; margin-top: 4px">Pay when your consignment arrives.</div></div>
+              <div style="width: 16px; height: 16px; border-radius: 50%; background: #121210"></div>
+            </div>
+          </div>
+          <div class="wf-component" style="border: 1px solid #BFBAAD; padding: 16px 18px">
+            <div class="row" style="justify-content: space-between; align-items: center">
+              <div><div class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">02 · UPI / NET BANKING · COMING SOON</div><div style="font-size: 13px; color: #55534C; margin-top: 4px">Razorpay integration — Phase 2.</div></div>
+              <div style="width: 16px; height: 16px; border-radius: 50%; border: 1px solid #BFBAAD"></div>
+            </div>
+          </div>
+        </div>
+        <div class="wf-note">MVP payment = COD only per TDD (Razorpay is Phase 2). UPI option shown as disabled radio for transparency; confirm copy with product before launch.</div>
+      </div>
+
+      <!-- SUBMIT CTA -->
+      <div style="margin-top: 40px">
+        <div class="wf-component mono" style="background: #121210; color: #F4F1EB; padding: 18px; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; text-align: center; width: 100%">PLACE ORDER · ₹5,097</div>
+        <div class="wf-note">CTA always shows the current display total. Disabled during submission ("PLACING ORDER…"). On success → router.push('/order/' + order.id). On error → inline alert above CTA with oxblood mono caption.</div>
+      </div>
+    </div>
+
+    <!-- ═══════ RIGHT: STICKY SUMMARY (cols 9-13) ═══════ -->
+    <div style="grid-column: 9 / 13; position: sticky; top: 24px">
+      <div class="wf-section" style="padding: 24px; background: #F4F1EB; border: 1px solid #121210">
+        <div class="mono" style="font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #121210; padding-bottom: 14px; border-bottom: 2px solid #121210; display: flex; justify-content: space-between">
+          <span>§ ORDER BRIEF</span>
+          <span style="color: #55534C">2 FORMULAS</span>
+        </div>
+
+        <!-- line items compact -->
+        <div style="padding: 16px 0; border-bottom: 1px solid rgba(191,186,173,0.5)">
+          <div class="row" style="gap: 14px; padding: 10px 0">
+            <div class="wf-ph" style="width: 56px; aspect-ratio: 1 / 1">NR</div>
+            <div class="col">
+              <div style="font-size: 13px">Night Repair Cream</div>
+              <div class="mono" style="font-size: 10px; color: #55534C; margin-top: 4px">30ML · QTY 1</div>
+            </div>
+            <div class="mono" style="font-size: 13px; font-variant-numeric: tabular-nums">₹2,499</div>
+          </div>
+          <div class="row" style="gap: 14px; padding: 10px 0">
+            <div class="wf-ph" style="width: 56px; aspect-ratio: 1 / 1">BS</div>
+            <div class="col">
+              <div style="font-size: 13px">Brightening Serum</div>
+              <div class="mono" style="font-size: 10px; color: #55534C; margin-top: 4px">30ML · QTY 2</div>
+            </div>
+            <div class="mono" style="font-size: 13px; font-variant-numeric: tabular-nums">₹2,598</div>
+          </div>
+        </div>
+
+        <!-- math strip -->
+        <div style="padding: 14px 0; border-bottom: 1px solid rgba(191,186,173,0.5)">
+          <div class="row" style="justify-content: space-between; padding: 4px 0"><span class="mono" style="font-size: 11px; color: #55534C">SUBTOTAL</span><span class="mono" style="font-size: 12px; font-variant-numeric: tabular-nums">₹5,097</span></div>
+          <div class="row" style="justify-content: space-between; padding: 4px 0"><span class="mono" style="font-size: 11px; color: #55534C">SHIPPING</span><span class="mono" style="font-size: 12px; color: #2A6B45">FREE</span></div>
+          <div class="row" style="justify-content: space-between; padding: 4px 0"><span class="mono" style="font-size: 11px; color: #55534C">TAX (INCL. GST)</span><span class="mono" style="font-size: 12px; font-variant-numeric: tabular-nums">₹0</span></div>
+        </div>
+
+        <!-- total -->
+        <div class="row" style="justify-content: space-between; align-items: baseline; padding-top: 14px">
+          <span class="display" style="font-size: 22px">Total</span>
+          <span class="display" style="font-size: 28px">₹5,097</span>
+        </div>
+        <div class="mono" style="font-size: 9px; letter-spacing: 0.18em; color: #55534C; margin-top: 6px">DISPLAYED TOTAL · RECOMPUTED ON SUBMIT</div>
+      </div>
+      <div class="wf-note">Summary is STICKY (position: sticky, top: 24px). Scrolls with the form. Recompute: whenever cart state changes (it shouldn't mid-checkout — the drawer is closed), or on initial mount.</div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     ROUTE B: /order/[id]  (Order Confirmation)
+     apps/storefront/src/app/(checkout)/order/[id]/page.tsx
+     Server component · getOrderById(id)
+     ════════════════════════════════════════════════════════ -->
+
+<div class="wf-section" style="padding: 20px 32px; margin-top: 48px; border-top: 1px dashed #BFBAAD">
+  <span class="wf-label">═══ /ORDER/[ID] — CONFIRMATION PAGE (SAME ROUTE GROUP) ═══</span>
+</div>
+
+<!-- BROADSHEET MASTHEAD -->
+<div class="wf-section" style="padding: 28px 48px 18px; border-bottom: 3px double #121210">
+  <span class="wf-label">Broadsheet masthead — receipt-as-artefact treatment</span>
+  <div class="row" style="justify-content: space-between; align-items: center">
+    <span class="mono" style="font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #55534C">VOL. I · NO. 01</span>
+    <span class="mono" style="font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase">ORDER BRIEF · DISPATCH</span>
+    <span class="mono" style="font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #55534C">18 APRIL 2026</span>
+  </div>
+</div>
+
+<!-- CONFIRMATION HERO -->
+<div class="wf-section" style="padding: 72px 32px; text-align: center">
+  <span class="wf-label">Confirmation hero — centered, editorial, no celebratory imagery</span>
+  <div class="wf-component mono" style="display:inline-block; font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #55534C">§ ACKNOWLEDGED — ORD-MT-0026</div>
+  <div class="wf-component display" style="font-size: clamp(56px, 7vw, 104px); padding: 20px; line-height: 0.96; margin: 20px auto 0; max-width: 14ch">Your consignment is <em style="font-style:italic">underway</em>.</div>
+  <div class="wf-component" style="font-size: 16px; color: #26251F; max-width: 560px; margin: 28px auto 0">A confirmation has been dispatched to <span class="mono" style="font-size: 13px">aarti@example.com</span>. Tracking will follow within 48 hours.</div>
+  <div class="wf-note" style="text-align:left">Order number formatted as ORD-MT-{id}. Data: server fetches getOrderById. 404 if not found. If order.user_id doesn't match session, still show (guest order by email match) — but never leak items belonging to a different email.</div>
+  <div class="wf-note" style="text-align:left">Tone: confident and quiet. No confetti, no animation, no "congratulations" copy. The language is dispatch/consignment, in keeping with matter's editorial voice.</div>
+</div>
+
+<!-- INFO STRIP -->
+<div class="wf-section" style="padding: 0 32px">
+  <div class="row" style="gap: 0; border-top: 1px solid #BFBAAD; border-bottom: 1px solid #BFBAAD">
+    <div class="wf-component col" style="padding: 20px 24px; border-right: 1px solid rgba(191,186,173,0.5)">
+      <div class="mono" style="font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C">STATUS</div>
+      <div class="mono" style="font-size: 14px; margin-top: 6px; color: #2A6B45">● CONFIRMED</div>
+    </div>
+    <div class="wf-component col" style="padding: 20px 24px; border-right: 1px solid rgba(191,186,173,0.5)">
+      <div class="mono" style="font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C">ESTIMATED DISPATCH</div>
+      <div class="mono" style="font-size: 14px; margin-top: 6px">20 APR — 22 APR</div>
+    </div>
+    <div class="wf-component col" style="padding: 20px 24px; border-right: 1px solid rgba(191,186,173,0.5)">
+      <div class="mono" style="font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C">PAYMENT</div>
+      <div class="mono" style="font-size: 14px; margin-top: 6px">COD · ₹5,097</div>
+    </div>
+    <div class="wf-component col" style="padding: 20px 24px">
+      <div class="mono" style="font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C">ORDER ID</div>
+      <div class="mono" style="font-size: 14px; margin-top: 6px; font-variant-numeric: tabular-nums">ORD-MT-0026</div>
+    </div>
+  </div>
+</div>
+
+<!-- ORDER ITEMS -->
+<div class="wf-section" style="padding: 64px 32px">
+  <span class="wf-label">Order items — snapshotted at order time (product_name, variant_sku, unit_price)</span>
+  <div class="row" style="justify-content: space-between; margin-bottom: 24px">
+    <div class="display" style="font-size: 32px">Manifest</div>
+    <div class="mono" style="font-size: 10px; letter-spacing: 0.14em; color: #55534C">3 ITEMS · 2 FORMULAS</div>
+  </div>
+  <div style="border-top: 1px solid #BFBAAD">
+    <div class="wf-component" style="display: grid; grid-template-columns: 56px 1fr auto auto auto; gap: 20px; padding: 20px 0; border-bottom: 1px solid rgba(191,186,173,0.5); background: none; align-items: baseline">
+      <span class="mono" style="font-size: 9px; color: #55534C">01</span>
+      <div>
+        <div style="font-size: 15px">Night Repair Cream</div>
+        <div class="mono" style="font-size: 10px; color: #55534C; margin-top: 4px">SKU NR-30 · 30ML</div>
+      </div>
+      <span class="mono" style="font-size: 12px; color: #55534C">QTY 1</span>
+      <span class="mono" style="font-size: 12px; color: #55534C; font-variant-numeric: tabular-nums">₹2,499</span>
+      <span class="mono" style="font-size: 14px; font-variant-numeric: tabular-nums">₹2,499</span>
+    </div>
+    <div class="wf-component" style="display: grid; grid-template-columns: 56px 1fr auto auto auto; gap: 20px; padding: 20px 0; border-bottom: 1px solid rgba(191,186,173,0.5); background: none; align-items: baseline">
+      <span class="mono" style="font-size: 9px; color: #55534C">02</span>
+      <div>
+        <div style="font-size: 15px">Brightening Serum</div>
+        <div class="mono" style="font-size: 10px; color: #55534C; margin-top: 4px">SKU BS-30 · 30ML</div>
+      </div>
+      <span class="mono" style="font-size: 12px; color: #55534C">QTY 2</span>
+      <span class="mono" style="font-size: 12px; color: #55534C; font-variant-numeric: tabular-nums">₹1,299</span>
+      <span class="mono" style="font-size: 14px; font-variant-numeric: tabular-nums">₹2,598</span>
+    </div>
+  </div>
+</div>
+
+<!-- ACCOUNT INCENTIVE (guest only) -->
+<div class="wf-section paper-2" style="padding: 48px 32px">
+  <span class="wf-label">Account incentive — shown only if order was placed as guest</span>
+  <div class="row" style="gap: 40px; align-items: center">
+    <div class="col">
+      <div class="mono" style="font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #55534C">§ OPTIONAL — CREATE YOUR DOSSIER</div>
+      <div class="display" style="font-size: 36px; margin-top: 14px">Track consignments and reorder in one step.</div>
+      <div style="font-size: 14px; color: #26251F; margin-top: 16px; max-width: 420px">Link this order to an account and we'll keep a complete dossier — dispatch tracking, reorder shortcuts, and a skin profile you can edit.</div>
+    </div>
+    <div class="col" style="max-width: 280px">
+      <div class="wf-component mono" style="background: #121210; color: #F4F1EB; padding: 14px 24px; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; text-align: center">CREATE ACCOUNT →</div>
+      <div class="mono" style="font-size: 10px; letter-spacing: 0.14em; color: #55534C; margin-top: 12px; text-align: center">30 SECONDS · EMAIL + PASSWORD</div>
+    </div>
+  </div>
+  <div class="wf-note">Hidden for authenticated users. Links to /signup?prefill=[email]&order=[id] — signup flow attaches this order to the new user_id after creation.</div>
+</div>
+
+<!-- RELATED PRODUCTS + FOOTER -->
+<div class="wf-section" style="padding: 64px 32px">
+  <span class="wf-label">Related products — 4-up (same component as PDP YouMightAlsoLike)</span>
+  <div class="wf-component">&lt;YouMightAlsoLike relatedTo={order.items[0].product_id} /&gt;</div>
+</div>
+<div class="wf-section">
+  <span class="wf-label">Footer — (checkout) route group includes full footer on /order/[id] only</span>
+  <div class="wf-component">&lt;Footer /&gt;</div>
+</div>
+
+</body>
+</html>

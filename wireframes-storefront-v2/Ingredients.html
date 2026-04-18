@@ -1,0 +1,354 @@
+<!--
+  WIREFRAME V2: Ingredients — /ingredients  (NEW ROUTE)
+  ============================================================
+  App            : apps/storefront
+  Component file : src/app/(shop)/ingredients/page.tsx  (to be created)
+  Auth           : Public
+  Data           : Static — content lives in src/content/ingredients/*.mdx
+                   (decision pending: MDX vs DB table; recommendation in
+                   the V2 gap analysis is MDX for launch)
+  Design refs    : DESIGN_SYSTEM_V2.md · design_agent_handoff/project/Ingredients.html
+  Token source   : design_agent_handoff/project/assets/matter.css
+  TDD ref        : Section 2 (content) — NEW, not previously specified
+
+  LAYOUT INTENT
+  ─────────────
+  Editorial long-form — "The Formulary Index" written as essays.
+  The page is one chapter at a time (selected via a horizontal chapter
+  rail at the top) with a sticky science "data sheet" sidecar. Navigate
+  via rail, prev/next, URL hash (#essay/NIA), or localStorage resume.
+
+  SECTIONS (top to bottom)
+    1. Nav (shared)
+    2. IngredientsHero — 2-col: title (L) · intro + 3-cell stat strip (R)
+    3. ChapterRail — horizontal scroller · chapter chips · ← / → arrows
+    4. EssayEntry — ONE active chapter at a time:
+        a. Chapter head (Ch. N · Class · Pp. range)
+        b. Title block with editorial headline + byline strip
+        c. Two-column body: 7fr essay (dropcap + pullquote) · 4fr science sidecar
+           (sidecar is sticky, holds big symbol, data rows, tolerance strip, footer)
+    5. Prev / Next chapter buttons — 2-col
+    6. Philosophy — 3-up strip: Disclosure · Restraint · Provenance
+    7. Footer (shared)
+
+  CONSTRAINTS (do not violate)
+  ─────────────────────────────
+  · Chapter state persists across navigation:
+      - URL hash (#essay/[SYM]) is source of truth
+      - localStorage('mt_essay_sym') is fallback on cold load
+      - Browser back/forward must switch chapter (hashchange listener)
+  · Sidecar is position:sticky (top:100) — never duplicated, never modal
+  · Dropcap = first character of first paragraph. Instrument Serif italic.
+    Float left, ~110px, line-height 0.8.
+  · Pullquote uses the `aside` field from the per-ingredient ESSAYS map.
+    If no ESSAYS entry exists, fall back to ESSAYS.default.
+  · Alternating section bg: odd chapters on paper-2, even on paper.
+  · Data: INGREDIENTS catalogue — 17 entries in the handoff (NIA, RET,
+    MAN, BAK, SAL, AZE, HYA, GLY, PAN, CER, SQU, PMT, VTC, VTE, FER, CEN, GLU).
+    Product links in "Appears in" should resolve to real /products/[slug]
+    when that product exists in DB; otherwise render as inert caption.
+  · No DetailDrawer (the handoff has one but the Essay view supersedes it).
+  · Ingredient page is informational only — no ATC, no price, no stock.
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1440">
+  <title>Wireframe V2 — Ingredients</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #F4F1EB; color: #121210; line-height: 1.5; font-size: 13px; }
+    .wf-note { background: #fffbe6; border-left: 3px solid #f0c000; padding: 6px 10px; font-size: 11px; color: #7a5f00; margin: 6px 0; }
+    .wf-component { border: 1.5px dashed #BFBAAD; padding: 8px 12px; margin: 4px 0; background: #F4F1EB; font-size: 12px; color: #55534C; }
+    .wf-section { border-bottom: 1px solid #BFBAAD; padding: 32px; background: #F4F1EB; }
+    .wf-section.paper-2 { background: #EDE9E1; }
+    .wf-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: #55534C; margin-bottom: 8px; display: block; }
+    .wf-ph { background: repeating-linear-gradient(135deg, transparent 0 14px, rgba(191,186,173,0.35) 14px 15px), #EDE9E1; border: 1px solid #BFBAAD; padding: 8px; font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C; }
+    .row { display: flex; gap: 12px; }
+    .col { flex: 1; }
+    .mono { font-family: 'JetBrains Mono', monospace; letter-spacing: 0.02em; }
+    .display { font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; letter-spacing: -0.025em; line-height: 1; }
+    .chip { display: inline-block; padding: 9px 12px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; border: 1px solid #BFBAAD; color: #55534C; background: transparent; white-space: nowrap; }
+    .chip.on { background: #121210; color: #F4F1EB; border-color: #121210; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 1: NAV (shared)
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="padding: 18px 32px">
+  <span class="wf-label">Nav — shared · active="ingredients"</span>
+  <div class="wf-component">&lt;Nav active="ingredients" /&gt;</div>
+  <div class="wf-note">Ingredients link becomes a first-class nav item (currently hardcoded destination doesn't exist — this page delivers it).</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 2: INGREDIENTS HERO
+     2-col · 1fr 1fr · gap 80 · align: end · paper-2 bg
+     Matter ref: ingredients-data.jsx → function IngredientsHero()
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section paper-2" style="padding: 80px 32px">
+  <span class="wf-label">Hero — 2-col · title (L) · intro + 3-cell stat strip (R)</span>
+  <div class="row" style="gap: 80px; align-items: end">
+
+    <!-- LEFT: title -->
+    <div class="col">
+      <div class="wf-component mono" style="font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C">§ THE FORMULARY INDEX</div>
+      <div class="wf-component display" style="font-size: clamp(64px, 7vw, 112px); padding: 18px 0 0; margin-top: 18px; line-height: 0.95">
+        Every <em style="font-style:italic">molecule</em>,<br>indexed.
+      </div>
+    </div>
+
+    <!-- RIGHT: intro + stat strip -->
+    <div class="col">
+      <div class="wf-component" style="font-size: 16px; color: #26251F; max-width: 480px; line-height: 1.6">
+        The full catalogue of actives, humectants, emollients and botanicals that appear across the matter formulary — written as short essays, with history, mechanism and provenance for each.
+      </div>
+      <!-- 3-cell stat strip -->
+      <div class="row" style="gap: 0; margin-top: 40px; border-top: 1px solid #BFBAAD">
+        <div class="wf-component col" style="padding: 14px 12px; border-right: 1px solid rgba(191,186,173,0.5)">
+          <div class="mono" style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">CHAPTERS</div>
+          <div class="mono" style="font-size: 18px; margin-top: 4px; font-variant-numeric: tabular-nums">17</div>
+        </div>
+        <div class="wf-component col" style="padding: 14px 12px; border-right: 1px solid rgba(191,186,173,0.5)">
+          <div class="mono" style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">READ TIME</div>
+          <div class="mono" style="font-size: 18px; margin-top: 4px; font-variant-numeric: tabular-nums">68 MIN</div>
+        </div>
+        <div class="wf-component col" style="padding: 14px 12px">
+          <div class="mono" style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">UPDATED</div>
+          <div class="mono" style="font-size: 18px; margin-top: 4px">APR 2026</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="wf-note">Chapter count auto-derived from content (INGREDIENTS.length). Read time = count × 4 min per handoff. "Updated" pulls from content build metadata.</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 3: CHAPTER RAIL  (client island)
+     Matter ref: ingredients-essay.jsx → function ChapterRail()
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="padding: 22px 32px">
+  <span class="wf-label">ChapterRail — horizontal scroller · 17 chips · prev/next arrows · sticky-safe</span>
+  <div class="row" style="align-items: center; gap: 16px">
+    <span class="mono" style="font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #55534C; flex-shrink: 0">CHAPTERS</span>
+
+    <!-- PREV arrow -->
+    <div class="wf-component" style="width: 34px; height: 34px; border: 1px solid #BFBAAD; display: flex; align-items: center; justify-content: center; color: #55534C; flex-shrink: 0">←</div>
+
+    <!-- scrollable chip rail -->
+    <div style="flex: 1; overflow-x: auto; white-space: nowrap; display: flex; gap: 4px; scrollbar-width: none">
+      <span class="chip on"><span style="opacity:0.6; margin-right:8px">01</span>NIA</span>
+      <span class="chip"><span style="opacity:0.6; margin-right:8px">02</span>RET</span>
+      <span class="chip"><span style="opacity:0.6; margin-right:8px">03</span>MAN</span>
+      <span class="chip"><span style="opacity:0.6; margin-right:8px">04</span>BAK</span>
+      <span class="chip"><span style="opacity:0.6; margin-right:8px">05</span>SAL</span>
+      <span class="chip"><span style="opacity:0.6; margin-right:8px">06</span>AZE</span>
+      <span class="chip"><span style="opacity:0.6; margin-right:8px">07</span>HYA</span>
+      <span class="chip"><span style="opacity:0.6; margin-right:8px">08</span>GLY</span>
+      <span class="chip"><span style="opacity:0.6; margin-right:8px">09</span>PAN</span>
+      <span class="chip"><span style="opacity:0.6; margin-right:8px">10</span>CER</span>
+      <span class="chip"><span style="opacity:0.6; margin-right:8px">11</span>SQU</span>
+      <span class="chip"><span style="opacity:0.6; margin-right:8px">12</span>PMT</span>
+      <span class="chip"><span style="opacity:0.6; margin-right:8px">13</span>VTC</span>
+      <span class="chip"><span style="opacity:0.6; margin-right:8px">14</span>VTE</span>
+      <span class="chip"><span style="opacity:0.6; margin-right:8px">15</span>FER</span>
+      <span class="chip"><span style="opacity:0.6; margin-right:8px">16</span>CEN</span>
+      <span class="chip"><span style="opacity:0.6; margin-right:8px">17</span>GLU</span>
+    </div>
+
+    <!-- NEXT arrow -->
+    <div class="wf-component" style="width: 34px; height: 34px; border: 1px solid #121210; display: flex; align-items: center; justify-content: center; flex-shrink: 0">→</div>
+  </div>
+  <div class="wf-note">Client island (React state + hashchange + ResizeObserver). Active chip has ink fill. Click chip → sets state, updates URL hash #essay/[SYM], scrolls active chip into view.</div>
+  <div class="wf-note">Arrows: disabled (hairline border, graphite text) when scrolled to edge. Click = scrollBy 80% clientWidth smooth. Hidden scrollbar (scrollbar-width: none, ::-webkit-scrollbar display:none).</div>
+  <div class="wf-note">Deep-linking: /ingredients#essay/RET loads directly to Retinaldehyde. localStorage('mt_essay_sym') resumes last-read chapter on cold load with no hash.</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 4: ESSAY ENTRY  (one chapter at a time)
+     Matter ref: ingredients-essay.jsx → function EssayEntry()
+     Alternating bg: odd idx → paper-2, even → paper
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="padding: 48px 32px 128px">
+  <span class="wf-label">EssayEntry — chapter 01/17 · NIACINAMIDE (example)</span>
+
+  <!-- ═══════ CHAPTER HEAD ═══════ -->
+  <div class="row" style="justify-content: space-between; padding-top: 16px; padding-bottom: 20px; border-top: 2px solid #121210; margin-bottom: 40px">
+    <span class="mono" style="font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #121210">CHAPTER 01</span>
+    <span class="mono" style="font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #55534C">ACTIVE · BARRIER · SEBUM</span>
+    <span class="mono" style="font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #55534C">Pp. 14 — 21</span>
+  </div>
+  <div class="wf-note">2px ink top rule signals chapter start. Three-column mono caption strip: Ch. N · Class · Page range. Page range is decorative (derived from `idx * 14` per handoff).</div>
+
+  <!-- ═══════ TITLE BLOCK ═══════ -->
+  <div style="margin-bottom: 64px">
+    <div class="wf-component display" style="font-size: clamp(72px, 9vw, 160px); padding: 16px; line-height: 0.9; letter-spacing: -0.03em; max-width: 14ch">
+      The <em style="font-style:italic">science</em> of <br>Niacinamide.
+    </div>
+    <div class="row" style="justify-content: space-between; align-items: baseline; margin-top: 28px; padding-top: 16px; border-top: 1px solid #BFBAAD">
+      <span class="mono" style="font-size: 11px; letter-spacing: 0.08em; color: #55534C">By the matter atelier</span>
+      <span class="mono" style="font-size: 11px; letter-spacing: 0.08em; color: #55534C">C₆H₆N₂O · 122.12 g/mol</span>
+      <span class="mono" style="font-size: 11px; letter-spacing: 0.08em; color: #55534C">— 4 min read</span>
+    </div>
+  </div>
+  <div class="wf-note">Headline pattern: "The [word] of [Name]." The middle word comes from a per-class map in `storyTitle(r)`: Active→science, Exfoliant→craft, Humectant→history, Emollient→shape, Peptide→signal, Antioxidant→defence, Botanical→origin.</div>
+
+  <!-- ═══════ BODY: 7fr essay · 4fr science sidecar ═══════ -->
+  <div class="row" style="gap: 80px; align-items: start">
+
+    <!-- LEFT: ESSAY (7fr) -->
+    <div style="flex: 7">
+      <span class="wf-label">Essay body — dropcap first paragraph + ~2 more paragraphs + pullquote</span>
+
+      <!-- Dropcap paragraph -->
+      <div class="wf-component display" style="font-size: 26px; line-height: 1.35; color: #121210; padding: 16px">
+        <span style="float: left; font-family: 'Instrument Serif', serif; font-size: 110px; line-height: 0.8; padding: 6px 14px 0 0; font-style: italic">N</span>
+        iacinamide began as a footnote in pellagra research. In 1937, when Conrad Elvehjem identified vitamin B3 as the factor missing from the diets of corn-fed populations, no one imagined the molecule would, ninety years later, sit at the centre of the most-studied topical ingredient in skincare.
+      </div>
+
+      <!-- remaining paragraphs -->
+      <div class="wf-component" style="font-size: 16px; line-height: 1.7; color: #26251F; margin-top: 24px; max-width: 60ch; padding: 14px">
+        Its promotion to household name took longer than it should have. For decades it lived quietly in pharmacy creams marketed for dark spots — a workhorse, never the story. The turn came when dermatologists began measuring what users had been claiming: that 2% niacinamide, applied twice daily, visibly normalised skin…
+      </div>
+      <div class="wf-component" style="font-size: 16px; line-height: 1.7; color: #26251F; margin-top: 24px; max-width: 60ch; padding: 14px">
+        What makes niacinamide remarkable is not any single action, but the breadth. Ceramide synthesis, melanosome transfer inhibition, sebaceous regulation — three distinct mechanisms running in parallel, in a single cosmetic-grade molecule. There is no equivalent.
+      </div>
+
+      <!-- Pullquote -->
+      <div class="wf-component" style="margin-top: 56px; padding: 32px 0 0; border-top: 1px solid #BFBAAD; background: none; border-left: 0">
+        <div class="display" style="font-size: 34px; line-height: 1.25; max-width: 26ch">
+          <em style="font-style:italic">"A common myth — that high percentages of niacinamide are better. Trials show efficacy plateaus between 2–5%."</em>
+        </div>
+        <div class="mono" style="margin-top: 20px; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: #55534C">— MARGIN NOTE · NIA · 01</div>
+      </div>
+      <div class="wf-note">Essay content: 3 paragraphs from ESSAYS[sym].story. Pullquote: ESSAYS[sym].aside. Fallback: ESSAYS.default if no per-ingredient entry. Content source = src/content/ingredients/*.mdx (per gap-list recommendation).</div>
+    </div>
+
+    <!-- RIGHT: SCIENCE SIDECAR (4fr, sticky) -->
+    <aside style="flex: 4; position: sticky; top: 100px; border: 1px solid #121210; background: #EDE9E1">
+      <span class="wf-label" style="padding: 12px 22px 0">Science sidecar — sticky · full data sheet</span>
+
+      <!-- header -->
+      <div style="padding: 18px 22px; border-bottom: 1px solid #121210">
+        <div class="mono" style="font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase; color: #55534C">§ DATA SHEET · NIA</div>
+      </div>
+
+      <!-- big symbol card -->
+      <div style="padding: 22px; display: flex; flex-direction: column; align-items: center; border-bottom: 1px solid #BFBAAD">
+        <div class="display" style="font-size: 120px; line-height: 0.9; letter-spacing: -0.04em">NIA</div>
+        <div style="font-size: 13px; margin-top: 10px; color: #55534C">Niacinamide</div>
+      </div>
+
+      <!-- key/value rows -->
+      <div style="padding: 8px 22px">
+        <div class="row" style="justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(191,186,173,0.5)"><span class="mono" style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">FORMULA</span><span class="mono" style="font-size: 12px; color: #26251F">C₆H₆N₂O</span></div>
+        <div class="row" style="justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(191,186,173,0.5)"><span class="mono" style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">MOLAR MASS</span><span class="mono" style="font-size: 12px; color: #26251F">122.12 g/mol</span></div>
+        <div class="row" style="justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(191,186,173,0.5)"><span class="mono" style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">TYPICAL USE</span><span class="mono" style="font-size: 12px; color: #26251F">4.0%</span></div>
+        <div class="row" style="justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(191,186,173,0.5)"><span class="mono" style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">WORKING pH</span><span class="mono" style="font-size: 12px; color: #26251F">5.5</span></div>
+        <div class="row" style="justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(191,186,173,0.5)"><span class="mono" style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">CLASS</span><span style="font-size: 12px; color: #26251F">Active</span></div>
+        <div class="row" style="justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(191,186,173,0.5)"><span class="mono" style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">FUNCTION</span><span style="font-size: 12px; color: #26251F">Barrier · Sebum</span></div>
+        <div class="row" style="justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(191,186,173,0.5)"><span class="mono" style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">ORIGIN</span><span style="font-size: 11px; color: #26251F; text-align:right">Synthesised · pharma grade · EU</span></div>
+        <div class="row" style="justify-content: space-between; padding: 12px 0"><span class="mono" style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">EVIDENCE</span><span class="mono" style="font-size: 11px; color: #26251F">MT-CT-0026 · n=104 · 56 days</span></div>
+      </div>
+
+      <!-- tolerance mini -->
+      <div style="padding: 16px 22px; border-top: 1px solid #BFBAAD">
+        <div class="mono" style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C; margin-bottom: 10px">TOLERANCE</div>
+        <div class="row" style="gap: 4px">
+          <div style="flex:1; text-align: center; padding: 6px 0; border: 1px solid #BFBAAD"><div class="display" style="font-size: 16px">●</div><div class="mono" style="font-size: 8px; letter-spacing: 0.14em; color: #55534C; margin-top: 2px">DRY</div></div>
+          <div style="flex:1; text-align: center; padding: 6px 0; border: 1px solid #BFBAAD"><div class="display" style="font-size: 16px">●</div><div class="mono" style="font-size: 8px; letter-spacing: 0.14em; color: #55534C; margin-top: 2px">OIL</div></div>
+          <div style="flex:1; text-align: center; padding: 6px 0; border: 1px solid #BFBAAD"><div class="display" style="font-size: 16px">●</div><div class="mono" style="font-size: 8px; letter-spacing: 0.14em; color: #55534C; margin-top: 2px">COM</div></div>
+          <div style="flex:1; text-align: center; padding: 6px 0; border: 1px solid #BFBAAD"><div class="display" style="font-size: 16px">●</div><div class="mono" style="font-size: 8px; letter-spacing: 0.14em; color: #55534C; margin-top: 2px">SEN</div></div>
+          <div style="flex:1; text-align: center; padding: 6px 0; border: 1px solid #BFBAAD"><div class="display" style="font-size: 16px">●</div><div class="mono" style="font-size: 8px; letter-spacing: 0.14em; color: #55534C; margin-top: 2px">REA</div></div>
+        </div>
+      </div>
+      <div class="wf-note" style="margin: 8px 22px">Symbols: ● Well tolerated · ◐ With caution · ○ Avoid (oxblood color for ○). Order matches handoff: dry/oily/combo/sensitive/reactive.</div>
+
+      <!-- page footer (inverted bar) -->
+      <div class="row" style="padding: 14px 22px; border-top: 1px solid #121210; background: #121210; color: #F4F1EB; justify-content: space-between">
+        <span class="mono" style="font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase">MT · FORMULARY</span>
+        <span class="mono" style="font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase; font-variant-numeric: tabular-nums">01 / 17</span>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ═══════ APPEARS IN (small block under essay body) ═══════ -->
+  <div style="margin-top: 64px; padding-top: 24px; border-top: 1px solid #BFBAAD">
+    <div class="mono" style="font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C; margin-bottom: 14px">§ APPEARS IN</div>
+    <div class="row" style="gap: 8px; flex-wrap: wrap">
+      <div class="wf-component mono" style="padding: 10px 16px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; border: 1px solid #BFBAAD">THE CORRECTIVE →</div>
+      <div class="wf-component mono" style="padding: 10px 16px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; border: 1px solid #BFBAAD">THE MORNING →</div>
+    </div>
+  </div>
+  <div class="wf-note">Each chip links to /products/[slug] if the product exists in DB (lookup by `used[i]` name → product). Otherwise render as inert caption (no link, graphite text). Never 404 the user.</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 5: PREV / NEXT CHAPTER NAV  (2-col)
+     Matter ref: ingredients-essay.jsx → function ChapterLink()
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="padding: 40px 32px">
+  <span class="wf-label">Prev / Next — 2-col bordered blocks with chapter preview</span>
+  <div class="row" style="gap: 24px">
+    <div class="wf-component col" style="padding: 24px 28px; border: 1px solid #BFBAAD; text-align: left">
+      <div class="mono" style="font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #55534C">← PREVIOUS CHAPTER</div>
+      <div class="display" style="font-size: 32px; margin: 10px 0 6px; line-height: 1">
+        <span style="color: #55534C; font-size: 18px; margin-right: 10px">17</span>β-Glucan
+      </div>
+      <div class="mono" style="font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C">BOTANICAL</div>
+    </div>
+    <div class="wf-component col" style="padding: 24px 28px; border: 1px solid #BFBAAD; text-align: right">
+      <div class="mono" style="font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #55534C">NEXT CHAPTER →</div>
+      <div class="display" style="font-size: 32px; margin: 10px 0 6px; line-height: 1">
+        <span style="color: #55534C; font-size: 18px; margin-right: 10px">02</span>Retinaldehyde
+      </div>
+      <div class="mono" style="font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C">ACTIVE</div>
+    </div>
+  </div>
+  <div class="wf-note">Clicking either block switches `sym` state (updates URL hash, scrolls rail, re-renders essay). Hover: border darkens to ink + bg to paper-2.</div>
+  <div class="wf-note">Wraps around: prev on chapter 01 goes to 17; next on 17 goes to 01.</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 6: PHILOSOPHY STRIP
+     3-up · 1px top rule on each column · copy blocks
+     Matter ref: ingredients-data.jsx → function Philosophy()
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="padding: 64px 32px">
+  <span class="wf-label">Philosophy — 3-up strip · Disclosure · Restraint · Provenance</span>
+  <div class="row" style="gap: 40px">
+    <div class="col" style="border-top: 1px solid #BFBAAD; padding-top: 20px">
+      <div class="mono" style="font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C">01 DISCLOSURE</div>
+      <div style="font-size: 14px; line-height: 1.6; color: #26251F; margin-top: 12px">Every ingredient published with exact concentration. No proprietary blends, no "active complex" hand-waving.</div>
+    </div>
+    <div class="col" style="border-top: 1px solid #BFBAAD; padding-top: 20px">
+      <div class="mono" style="font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C">02 RESTRAINT</div>
+      <div style="font-size: 14px; line-height: 1.6; color: #26251F; margin-top: 12px">If a molecule lacks trial evidence or measurable benefit, we do not use it. Short ingredient lists, by design.</div>
+    </div>
+    <div class="col" style="border-top: 1px solid #BFBAAD; padding-top: 20px">
+      <div class="mono" style="font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C">03 PROVENANCE</div>
+      <div style="font-size: 14px; line-height: 1.6; color: #26251F; margin-top: 12px">Origin, supplier class and extraction method documented for each lot. Available on request for professionals.</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 7: FOOTER (shared)
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section">
+  <span class="wf-label">Footer — see Home.html</span>
+  <div class="wf-component">&lt;Footer /&gt;</div>
+</div>
+
+</body>
+</html>

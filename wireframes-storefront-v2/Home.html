@@ -1,0 +1,375 @@
+<!--
+  WIREFRAME V2: Homepage — /
+  ============================================================
+  App            : apps/storefront
+  Component file : src/app/(shop)/page.tsx
+  Auth           : Public
+  Data           : GET /api/products?limit=3&sort=created_at_desc (ISR 60s)
+  Design refs    : DESIGN_SYSTEM_V2.md · design_agent_handoff/project/Home.html
+  Token source   : design_agent_handoff/project/assets/matter.css
+  TDD ref        : Section 6.1
+
+  LAYOUT INTENT
+  ─────────────
+  Editorial, restrained, lab-documentation aesthetic. Warm bone paper,
+  ink-black serif display, mono-caps eyebrows. 1px hairlines structure
+  every section. No shadows, no radii, no gradients.
+
+  SECTIONS (top to bottom, each separated by 1px hairline)
+    1. Nav (sticky, paper bg)
+    2. Hero — 12-col split: headline+CTAs (L, cols 1-8) · specimen (R, 9-13)
+    3. Featured formulas — 3-up product grid, specimen placeholders
+    4. Know your ingredient — tabbed selector + data strip (on paper-2)
+    5. Principles — 4-up bordered grid, 1px line-icons
+    6. Reviews — 3-up arrow-nav carousel
+    7. Press — 6-cell or scrolling ticker
+    8. Newsletter — 2-col: copy (L) + inline form (R) (on paper-2)
+    9. Footer
+
+  CONSTRAINTS (do not violate)
+  ─────────────────────────────
+  · No box-shadows. Use 1px hairlines and surface tone shifts for structure.
+  · No border-radius on any surface. Only on round dots/avatars.
+  · Featured products: exactly 3. No carousel.
+  · Newsletter: inline only — never a modal, never a popup.
+  · Reviews: arrow navigation only. No auto-advance. No infinite scroll.
+  · Section backgrounds alternate: paper → paper → paper-2 → paper → paper-2.
+  · Prices: ₹{Math.round(paise/100).toLocaleString()} (rupees, not € or raw).
+  · Add-to-cart `+` button: 28px square ink fill, no radius, triggers CartDrawer.
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1440">
+  <title>Wireframe V2 — Homepage</title>
+  <style>
+    /* ── Wireframe chrome only — not production styles ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #F4F1EB; color: #121210; line-height: 1.5; font-size: 13px; }
+    .wf-note { background: #fffbe6; border-left: 3px solid #f0c000; padding: 6px 10px; font-size: 11px; color: #7a5f00; margin: 6px 0; }
+    .wf-component { border: 1.5px dashed #BFBAAD; padding: 8px 12px; margin: 4px 0; background: #F4F1EB; font-size: 12px; color: #55534C; }
+    .wf-section { border-bottom: 1px solid #BFBAAD; padding: 32px; background: #F4F1EB; }
+    .wf-section.paper-2 { background: #EDE9E1; }
+    .wf-section.ink { background: #121210; color: #F4F1EB; }
+    .wf-section.ink .wf-component { background: #121210; color: #F4F1EB; border-color: rgba(244,241,235,0.3); }
+    .wf-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: #55534C; margin-bottom: 8px; display: block; }
+    .wf-ph { background: repeating-linear-gradient(135deg, transparent 0 14px, rgba(191,186,173,0.35) 14px 15px), #EDE9E1; border: 1px solid #BFBAAD; display: flex; align-items: flex-end; justify-content: space-between; padding: 12px; color: #55534C; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; font-family: 'JetBrains Mono', monospace; }
+    .wf-ph.ink { background: repeating-linear-gradient(135deg, transparent 0 14px, rgba(244,241,235,0.1) 14px 15px), #121210; color: rgba(244,241,235,0.7); border-color: #121210; }
+    .wf-ph.mineral { background: repeating-linear-gradient(135deg, transparent 0 14px, rgba(85,83,76,0.18) 14px 15px), #D6D2C6; }
+    .row { display: flex; gap: 12px; }
+    .col { flex: 1; }
+    .grid12 { display: grid; grid-template-columns: repeat(12, 1fr); gap: 24px; }
+    .eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C; }
+    .display { font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; letter-spacing: -0.025em; line-height: 0.98; }
+    .mono { font-family: 'JetBrains Mono', monospace; letter-spacing: 0.02em; }
+    hr.hairline { height:1px; background:#BFBAAD; border:0; margin: 0; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 1: NAV  (shared — components/layout/Navbar.tsx)
+     Matter equivalents: <Nav active="shop" /> from chrome.jsx
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="padding: 18px 32px">
+  <span class="wf-label">Nav — sticky · paper bg · 1px hairline bottom</span>
+  <div class="wf-note">Three zones: wordmark + nav links (L) · spacer (C) · Account + Bag (R). No icons — all text-label, mono-caps 10px, tracking 0.14em. Active link has 1px ink underline.</div>
+  <div class="row" style="align-items: center; gap: 40px">
+    <div style="display:flex; align-items:center; gap:32px">
+      <div class="wf-component" style="font-family: 'Instrument Serif', serif; font-size: 22px; padding: 4px 10px">matter<em style="font-style:italic">.</em></div>
+      <span style="width:1px; height:14px; background:#BFBAAD"></span>
+      <div class="row" style="gap: 24px">
+        <div class="wf-component mono" style="font-size: 10px">SHOP</div>
+        <div class="wf-component mono" style="font-size: 10px">INGREDIENTS</div>
+        <div class="wf-component mono" style="font-size: 10px">SKININSIGHT</div>
+        <div class="wf-component mono" style="font-size: 10px">ABOUT</div>
+      </div>
+    </div>
+    <div class="col"></div>
+    <div class="row" style="gap: 20px; align-items: center">
+      <div class="wf-component mono" style="font-size: 10px">ACCOUNT</div>
+      <span style="width:1px; height:14px; background:#BFBAAD"></span>
+      <div class="wf-component mono" style="font-size: 10px">BAG (0)</div>
+    </div>
+  </div>
+  <div class="wf-note">Account link: /account if authed (shows initials badge), /login otherwise. Bag: (n) count, opens CartDrawer. useAuthUser + useCartStore with mounted guard.</div>
+  <div class="wf-note">Ingredients link: /ingredients (new route, static MDX — see gap list). SkinInsight: scroll anchor on /products#skininsight until Phase 2.</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 2: HERO
+     Inline in page.tsx · 80px top / 96px bottom padding
+     Matter ref: home-sections.jsx → function Hero()
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="padding: 80px 32px 96px">
+  <span class="wf-label">Hero — 12-col split · no image · specimen placeholder R</span>
+  <div class="grid12" style="align-items: center">
+    <!-- LEFT: cols 1-8 -->
+    <div style="grid-column: 1 / 9">
+      <div class="wf-component display" style="font-size: clamp(56px, 7vw, 104px); padding: 18px; line-height: 0.98">Skin, reduced<br>to its <em style="font-style: italic">matter</em>.</div>
+      <div class="wf-note">Display headline. Instrument Serif 400. Italic `<em>` carries the emphasis word. No bold.</div>
+      <div class="wf-component" style="font-size: 16px; max-width: 460px; color:#26251F; margin-top: 24px">Ingredient-led formulas, specified to the percentage proven in trial. No fragrance, no fillers, no filler claims.</div>
+      <div class="row" style="gap: 10px; margin-top: 36px">
+        <div class="wf-component mono" style="background: #121210; color: #F4F1EB; padding: 13px 20px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase">VIEW THE FORMULARY →</div>
+        <div class="wf-component mono" style="padding: 13px 20px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase">READ THE SCIENCE</div>
+      </div>
+      <div class="wf-note">Primary CTA → /products (btn-primary, m-btn). Ghost CTA → /ingredients (m-btn--hair, border only).</div>
+    </div>
+    <!-- RIGHT: cols 9-13 — featured specimen -->
+    <div style="grid-column: 9 / 13">
+      <div class="wf-ph mineral" style="aspect-ratio: 3 / 4; min-height: 360px">
+        <span>SPECIMEN · 01</span>
+        <span>SERUM 30ML</span>
+      </div>
+      <div class="row" style="justify-content: space-between; padding-top: 14px; margin-top: 4px; border-top: 1px solid rgba(191,186,173,0.5); align-items: baseline">
+        <span class="mono" style="color: #55534C; font-size: 11px">01 / The Corrective</span>
+        <span class="mono" style="font-size: 14px; font-variant-numeric: tabular-nums">₹ 6,999</span>
+      </div>
+      <div class="wf-note">Specimen = striped tonal placeholder until real photography ships. Data: top-ranked featured product (server fetch, ISR 60s). Links to /products/[slug].</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 3: FEATURED FORMULAS
+     Component: ProductCard (re-skinned from V1)
+     Data: GET /api/products?limit=3 · server, ISR 60s
+     Matter ref: home-sections.jsx → function Featured()
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="padding: 96px 32px">
+  <span class="wf-label">Featured formulas — 3-up grid</span>
+  <div class="row" style="justify-content: space-between; align-items: end; margin-bottom: 48px">
+    <div>
+      <div class="wf-component eyebrow">§ II — FEATURED FORMULAS</div>
+      <div class="wf-component display" style="font-size: 48px; padding: 12px; margin-top: 14px">Start your <em style="font-style:italic">journey</em> here.</div>
+    </div>
+    <div class="wf-component mono" style="font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; border: 0; border-bottom: 1px solid #121210; padding: 0 0 2px">VIEW ALL NINE →</div>
+  </div>
+  <div class="row" style="gap: 32px">
+    <!-- Card × 3 — Data order: n, class, name, ml, pH, price, variant -->
+    <div class="col">
+      <div class="wf-ph mineral" style="aspect-ratio: 4 / 5"><span>SPECIMEN · 01</span><span>SERUM 30ML</span></div>
+      <div class="row" style="justify-content: space-between; padding-top: 16px">
+        <span class="mono" style="color:#55534C; font-size: 11px">01</span>
+        <span class="mono" style="color:#2A6B45; font-size: 11px">● IN LOT</span>
+      </div>
+      <div class="wf-component display" style="font-size: 32px; padding: 8px 0 6px">The Corrective</div>
+      <div class="wf-component eyebrow">SERUM · 30 ML · pH 5.5</div>
+      <div class="row" style="justify-content: space-between; align-items: baseline; margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(191,186,173,0.5)">
+        <span class="mono" style="font-variant-numeric: tabular-nums; font-size: 16px">₹ 6,999</span>
+        <span class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase">VIEW ASSAY →</span>
+      </div>
+    </div>
+    <div class="col">
+      <div class="wf-ph" style="aspect-ratio: 4 / 5"><span>SPECIMEN · 02</span><span>EMULSION 50ML</span></div>
+      <div class="wf-component" style="margin-top: 16px">Card 2 — same layout · variant: default</div>
+    </div>
+    <div class="col">
+      <div class="wf-ph ink" style="aspect-ratio: 4 / 5"><span>SPECIMEN · 03</span><span>TONIC 200ML</span></div>
+      <div class="wf-component" style="margin-top: 16px">Card 3 — same layout · variant: ink (inverted)</div>
+    </div>
+  </div>
+  <div class="wf-note">ProductCard is a server component. Clicking anywhere on card → /products/[slug]. No + button on this layout (differs from PLP) — entire card is the link.</div>
+  <div class="wf-note">"● IN LOT" uses --assay-ink (clinical green). If stock=0 → "○ OUT OF LOT" in --graphite. Variant: one of mineral/default/ink (alternating or driven by category).</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 4: KNOW YOUR INGREDIENT  (tabbed spotlight)
+     Client island — React.useState(active)
+     Matter ref: home-sections.jsx → function Spotlight()
+     Background: paper-2
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section paper-2" style="padding: 96px 32px">
+  <span class="wf-label">Spotlight — tab selector + 2-col detail · CLIENT component</span>
+  <div class="row" style="justify-content: space-between; align-items: end; margin-bottom: 40px">
+    <div>
+      <div class="wf-component eyebrow">§ III — KNOW YOUR INGREDIENT</div>
+      <div class="wf-component display" style="font-size: 44px; padding: 12px; margin-top: 14px">The <em style="font-style:italic">science</em>.</div>
+    </div>
+    <div class="wf-component mono" style="font-size: 10px; letter-spacing: 0.14em; color: #55534C">1 / 4</div>
+  </div>
+  <!-- tabs: 4-col ink-on-paper grid, selected = ink fill -->
+  <div class="row" style="gap: 0; border: 1px solid #BFBAAD; margin-bottom: 56px; background: #F4F1EB">
+    <div class="wf-component col" style="background:#121210; color:#F4F1EB; padding:18px; border-right:1px solid #BFBAAD; text-align:left">
+      <div class="mono" style="font-size:9px; letter-spacing:0.14em; opacity:0.55">01</div>
+      <div class="display" style="font-size: 22px; margin-top: 6px">Niacinamide</div>
+    </div>
+    <div class="wf-component col" style="padding:18px; border-right:1px solid #BFBAAD; text-align:left">02 · Retinaldehyde</div>
+    <div class="wf-component col" style="padding:18px; border-right:1px solid #BFBAAD; text-align:left">03 · Mandelic Acid</div>
+    <div class="wf-component col" style="padding:18px; text-align:left">04 · Bakuchiol</div>
+  </div>
+  <div class="grid12" style="align-items: center">
+    <div style="grid-column: 1 / 7">
+      <div class="wf-component eyebrow">NIACINAMIDE — C₆H₆N₂O · 122.12 g/mol</div>
+      <div class="wf-component display" style="font-size: clamp(40px, 4.6vw, 64px); padding: 14px; margin-top: 14px">why <em style="font-style:italic">2%</em> is the sweet spot.</div>
+      <div class="wf-component" style="font-size: 15px; color:#26251F; max-width: 480px; margin-top: 24px">At 2%, niacinamide visibly reduces pore size and regulates sebum without irritating sensitive skin. Higher isn't better — it's about precision.</div>
+      <div class="wf-component mono" style="margin-top: 24px; font-size: 10px; letter-spacing: 0.14em; color: #55534C">— DR. INÈS SAAD, HEAD OF FORMULATION</div>
+    </div>
+    <div style="grid-column: 8 / 13">
+      <div class="wf-ph mineral" style="aspect-ratio: 4 / 5"><span>SPECIMEN · NIACINAMIDE</span><span>C₆H₆N₂O</span></div>
+      <!-- data strip: 3 cells -->
+      <div class="row" style="gap: 0; margin-top: 14px; border: 1px solid #BFBAAD; background: #F4F1EB">
+        <div class="wf-component col" style="padding:14px; border-right:1px solid rgba(191,186,173,0.5)">
+          <div class="mono" style="font-size:9px; letter-spacing:0.14em; color:#55534C">CONCENTRATION</div>
+          <div class="mono" style="font-size:14px; margin-top:6px; font-variant-numeric: tabular-nums">2.0%</div>
+        </div>
+        <div class="wf-component col" style="padding:14px; border-right:1px solid rgba(191,186,173,0.5)">TRIAL REF · MT-CT-0026</div>
+        <div class="wf-component col" style="padding:14px">PLATEAU · 2 – 3%</div>
+      </div>
+    </div>
+  </div>
+  <div class="wf-note">Client component — React.useState for active tab. Ingredient data is hardcoded until /ingredients DB/MDX decision is made. 4 ingredients max (tab bar gets crowded beyond).</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 5: PRINCIPLES  (4-up bordered grid)
+     Matter ref: home-sections.jsx → function Principles()
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="padding: 120px 32px; text-align:center">
+  <span class="wf-label">Principles — 4-up · 1px hairline grid · 1px SVG line-icons</span>
+  <div class="wf-component eyebrow" style="display:inline-block">§ III — PRINCIPLES</div>
+  <div class="wf-component display" style="font-size: clamp(40px, 5vw, 64px); padding: 16px; margin: 16px auto 0; max-width: 840px">The <em style="font-style:italic">future</em> of personal care is here.</div>
+  <div class="wf-component" style="font-size: 15px; color:#26251F; max-width: 560px; margin: 24px auto 0">Embrace matter — where each element is chosen for its scientific merit, offering you authentic, effective skincare.</div>
+  <div class="row" style="gap: 0; margin-top: 96px; border: 1px solid #BFBAAD">
+    <div class="wf-component col" style="padding: 56px 24px; border-right: 1px solid #BFBAAD">
+      <div class="mono" style="font-size: 9px; letter-spacing: 0.14em; color: #55534C">01</div>
+      <div style="font-family: monospace; font-size: 48px; margin: 24px 0 28px">◎</div>
+      <div class="display" style="font-size: 26px">Transparency</div>
+      <div style="font-size: 13px; color:#26251F; margin-top: 14px; max-width: 220px">Full disclosure of every active and its concentration, published with each lot.</div>
+    </div>
+    <div class="wf-component col" style="padding: 56px 24px; border-right: 1px solid #BFBAAD">02 — Efficacy (SVG icon: beaker)</div>
+    <div class="wf-component col" style="padding: 56px 24px; border-right: 1px solid #BFBAAD">03 — Accessible (SVG icon: vial)</div>
+    <div class="wf-component col" style="padding: 56px 24px">04 — Sourced well (SVG icon: globe)</div>
+  </div>
+  <div class="wf-note">Icons = inline SVG, 48×48 viewbox, 1px stroke, square linecaps, currentColor. NO icon libraries. See matter home-sections.jsx Principles() for exact paths.</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 6: REVIEWS  (3-up arrow-nav carousel)
+     Client island — React.useState(page)
+     Matter ref: home-sections.jsx → function Reviews()
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="padding: 96px 32px 80px">
+  <span class="wf-label">Reviews — 3-up paged carousel · arrow navigation only</span>
+  <div class="row" style="justify-content: space-between; align-items: end; margin-bottom: 48px">
+    <div>
+      <div class="wf-component eyebrow">§ IV — CORRESPONDENCE</div>
+      <div class="wf-component display" style="font-size: 44px; padding: 12px; margin-top: 14px">What our <em style="font-style:italic">customers</em> say.</div>
+    </div>
+    <div class="row" style="gap: 20px; align-items: center">
+      <div class="wf-component mono" style="font-size: 10px; color: #55534C">n = 1,284 · avg 4.9 / 5</div>
+      <div class="wf-component mono" style="font-size: 10px">01 / 02</div>
+      <div class="wf-component" style="width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #121210">‹</div>
+      <div class="wf-component" style="width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #121210">›</div>
+    </div>
+  </div>
+  <div class="row" style="gap: 0; border-top: 1px solid #BFBAAD; border-bottom: 1px solid #BFBAAD">
+    <div class="wf-component col" style="padding: 28px; border-right: 1px solid rgba(191,186,173,0.5); min-height: 300px">
+      <div class="mono" style="font-size: 11px; margin-bottom: 14px">Ritesh M. <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#2A6B45; margin:0 6px 1px"></span><span style="color:#55534C">Verified</span></div>
+      <div class="mono" style="font-size: 13px; letter-spacing: 0.18em">★★★★★</div>
+      <div class="display" style="font-size: 24px; margin: 14px 0 10px">Results you can see</div>
+      <div style="font-size: 13px; color:#26251F">Three weeks in and the change is clinical...</div>
+      <div class="row" style="align-items: center; gap: 10px; margin-top: 22px; padding-top: 14px; border-top: 1px solid rgba(191,186,173,0.5)">
+        <div style="width:28px; height:28px; background:#E4E0D6; border:1px solid #BFBAAD"></div>
+        <span class="mono" style="font-size: 10px; letter-spacing: 0.1em; color: #55534C; text-transform: uppercase">THE CORRECTIVE · 30ML</span>
+      </div>
+    </div>
+    <div class="wf-component col" style="padding: 28px; border-right: 1px solid rgba(191,186,173,0.5); min-height: 300px">Card 2 — same layout</div>
+    <div class="wf-component col" style="padding: 28px; min-height: 300px">Card 3 — same layout</div>
+  </div>
+  <div class="wf-note">Avatar: 28px square paper-3 (no circle). Product line links to /products/[slug]. Data: GET /api/reviews?featured=1&limit=6.</div>
+  <div class="wf-note">Arrow-nav only — no auto-advance, no dots. Page counter "01 / 02" in mono.</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 7: PRESS  (6-cell strip or ticker)
+     Matter ref: home-sections.jsx → function Press()
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="padding: 72px 32px">
+  <span class="wf-label">Press — 6-cell grid · no images, wordmarks set in Instrument Serif</span>
+  <div class="row" style="justify-content:space-between; margin-bottom: 32px">
+    <div class="wf-component eyebrow">§ IV — AS SEEN IN</div>
+    <div class="wf-component mono" style="color: #55534C">Press · 2024 – 2026</div>
+  </div>
+  <div class="row" style="gap: 0; border-top: 1px solid #BFBAAD; border-bottom: 1px solid #BFBAAD">
+    <div class="wf-component col display" style="padding: 36px 16px; text-align:center; font-size: 22px; border-right: 1px solid rgba(191,186,173,0.5)">Vogue Paris</div>
+    <div class="wf-component col display" style="padding: 36px 16px; text-align:center; font-size: 22px; border-right: 1px solid rgba(191,186,173,0.5)">Monocle</div>
+    <div class="wf-component col display" style="padding: 36px 16px; text-align:center; font-size: 22px; border-right: 1px solid rgba(191,186,173,0.5)">Financial Times</div>
+    <div class="wf-component col display" style="padding: 36px 16px; text-align:center; font-size: 22px; border-right: 1px solid rgba(191,186,173,0.5)">Kinfolk</div>
+    <div class="wf-component col display" style="padding: 36px 16px; text-align:center; font-size: 22px; border-right: 1px solid rgba(191,186,173,0.5)">NYT Styles</div>
+    <div class="wf-component col display" style="padding: 36px 16px; text-align:center; font-size: 22px">Elle Japon</div>
+  </div>
+  <div class="wf-note">Logos are typographic (no image assets needed). Replace with next/image if actual masthead art is licensed.</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 8: NEWSLETTER
+     Inline only — never modal · POST /api/newsletter (or Resend audience)
+     Matter ref: home-sections.jsx → function Newsletter()
+     Background: paper-2
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section paper-2" style="padding: 96px 32px">
+  <span class="wf-label">Newsletter — 2-col · inline form · NEVER MODAL</span>
+  <div class="grid12" style="align-items: center">
+    <div style="grid-column: 1 / 7">
+      <div class="wf-component eyebrow">§ V — STAY INFORMED</div>
+      <div class="wf-component display" style="font-size: clamp(40px, 4.5vw, 60px); padding: 16px; line-height: 1.02; margin-top: 16px">Formulary updates.<br><em style="font-style:italic">Nothing</em> else.</div>
+      <div class="wf-component" style="font-size: 14px; color:#26251F; max-width: 440px; margin-top: 20px">New lots, active revisions, the occasional trial publication. No promotions, no unsubscribe-bait.</div>
+    </div>
+    <div style="grid-column: 8 / 13">
+      <div class="row" style="gap: 0">
+        <div class="wf-component col" style="border:1px solid #121210; padding: 14px 16px; font-size: 13px; color:#55534C">ELECTRONIC ADDRESS</div>
+        <div class="wf-component mono" style="background:#121210; color:#F4F1EB; padding: 0 24px; display:flex; align-items:center; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; border:1px solid #121210">ENROL →</div>
+      </div>
+      <div class="wf-component mono" style="margin-top: 14px; color: #55534C; font-size: 10px">Dispatched quarterly · 2,814 subscribers</div>
+    </div>
+  </div>
+  <div class="wf-note">RHF + Zod: z.object({ email: z.string().email() }). Success → inline mono "You're in. Check your inbox." No toast. Error inline, oxblood mono caption.</div>
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 9: FOOTER  (shared — components/layout/Footer.tsx)
+     4-col: brand (1.4fr) · Shop · Learn · Help
+     Matter ref: chrome.jsx → function Footer()
+     ════════════════════════════════════════════════════════ -->
+<div class="wf-section" style="padding: 64px 32px 32px">
+  <span class="wf-label">Footer — 4-col grid · 1px hairline top · no social icons</span>
+  <div class="row" style="gap: 48px; margin-bottom: 80px">
+    <div class="col" style="flex: 1.4">
+      <div class="wf-component display" style="font-size: 32px; padding: 8px">matter<em>.</em></div>
+      <div class="wf-component" style="font-size: 13px; color: #26251F; max-width: 240px; margin-top: 20px; line-height: 1.7">Ingredient-led skincare.<br>Formulated with precision.<br>Nothing unnecessary.</div>
+    </div>
+    <div class="col">
+      <div class="wf-component eyebrow">SHOP</div>
+      <div class="wf-component" style="font-size: 13px; margin-top: 20px">All formulas · Serums · Emulsions · Cleansers · Tonics (one per line)</div>
+    </div>
+    <div class="col">
+      <div class="wf-component eyebrow">LEARN</div>
+      <div class="wf-component" style="font-size: 13px; margin-top: 20px">Ingredients · Skin quiz · Journal · About us</div>
+    </div>
+    <div class="col">
+      <div class="wf-component eyebrow">HELP</div>
+      <div class="wf-component" style="font-size: 13px; margin-top: 20px">FAQ · Shipping · Returns · Contact</div>
+    </div>
+  </div>
+  <div class="row" style="justify-content: space-between; padding-top: 24px; border-top: 1px solid rgba(191,186,173,0.5)">
+    <span class="mono" style="font-size: 11px; color: #55534C">© 2026 Matter. All rights reserved.</span>
+    <div class="row" style="gap: 28px">
+      <span class="mono" style="font-size: 11px; color: #55534C">PRIVACY</span>
+      <span class="mono" style="font-size: 11px; color: #55534C">TERMS</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

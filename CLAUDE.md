@@ -1,14 +1,36 @@
 # CLAUDE.md — D2C Skincare Platform
 
+## ⚠ Active initiative — storefront-v2 branch
+
+A long-lived branch `storefront-v2` is active for the customer-storefront visual redesign.
+Plan: `STOREFRONT_V2.md` · Execution tracker: `STOREFRONT_V2_ROADMAP.md`
+
+**Ground rules while `storefront-v2` is active:**
+
+- **All V2 visual work lands on `storefront-v2`.** Not on `main`.
+- **`main` accepts critical fixes only** — genuine bug reports, security patches, internal-console (`apps/internal/`) changes. No V1 storefront polish, no new storefront features on `main`.
+- **Rebase `storefront-v2` on `main` weekly** to avoid drift.
+- **Internal console (`apps/internal/`) is out of scope** for V2. Do not re-skin, do not refactor, do not touch beyond critical fixes. It keeps `DESIGN_SYSTEM.md`.
+- **Storefront V1 visual conventions are frozen.** On `storefront-v2`, defer to `DESIGN_SYSTEM_V2.md` and `wireframes-storefront-v2/`. Do not import V1 tokens, colours, or class patterns into new components.
+- **Tests evolve with code.** Do not merge red tests to `storefront-v2` "because the rewrite is in progress." Each chunk's PR keeps CI green.
+- **Cutover** = one final PR `storefront-v2` → `main`. See Chunk 16 in `STOREFRONT_V2_ROADMAP.md`.
+
+When in doubt about which branch a change belongs on: if it changes storefront visuals, it's `storefront-v2`. If it changes data, internal, infra, or is a critical bug fix, it's `main`.
+
+---
+
 ## Read first, every session
 
 Before starting any task, read all documents relevant to it:
 
-1. `DESIGN_SYSTEM.md` — all UI decisions
-2. `TDD.md` — API contracts, schema, workflows, constraints
-3. `tailwind.config.ts` — available design tokens
-4. `wireframes/[page].html` — layout spec for the page being built
-5. `REVIEW.md` — dated code review log; check for open issues that overlap with the current task and address them if relevant
+1. `DESIGN_SYSTEM.md` — UI decisions for the **internal console** (`apps/internal/`)
+2. `DESIGN_SYSTEM_V2.md` — UI decisions for the **customer storefront** (`apps/storefront/`); supersedes V1 on the storefront only. Source tokens live in `design_agent_handoff/project/assets/matter.css`.
+3. `STOREFRONT_V2.md` — storefront redesign plan: locked decisions, migration sequence, branch strategy, open items. Read before any storefront visual work.
+   - `STOREFRONT_V2_ROADMAP.md` — chunked execution tracker (chunks 0–16). Check current status before picking up V2 work; update status as chunks progress.
+4. `TDD.md` — API contracts, schema, workflows, constraints
+5. `tailwind.config.ts` — available design tokens
+6. `wireframes-storefront-v2/[page].html` — layout spec for storefront pages (binding). `wireframes/[page].html` is the V1 equivalent — use only for internal-console work or as historical context; storefront pages defer to V2 wireframes.
+7. `REVIEW.md` — dated code review log; check for open issues that overlap with the current task and address them if relevant
 
 If a file required for the current task is missing, stop and report:
 - the missing file path
@@ -24,8 +46,8 @@ Do not stop for files that are irrelevant to the current task.
 When sources conflict, this order of authority applies:
 
 1. `TDD.md` — product behaviour, data rules, API contracts, schema constraints
-2. `DESIGN_SYSTEM.md` — visual system, UI patterns, interaction rules
-3. `wireframes/[page].html` — page-specific layout, hierarchy, hard constraints
+2. Visual system — `DESIGN_SYSTEM_V2.md` on the storefront, `DESIGN_SYSTEM.md` on the internal console
+3. `wireframes/[page].html` — page-specific layout, hierarchy, hard constraints (pre-V2; on storefront, defer to `design_agent_handoff/project/` where it disagrees with V1 wireframes on visual composition)
 4. `tailwind.config.ts` — allowed design tokens
 
 If any two sources conflict, **stop and report the conflict before implementing**. Do not guess. Do not pick one silently.

@@ -1,0 +1,202 @@
+<!--
+  WIREFRAME V2: Cart Drawer — overlay (not a page)
+  ============================================================
+  App            : apps/storefront
+  Component file : src/components/shop/CartDrawer.tsx
+  Opens from     : Navbar "Bag (n)" · ProductCard + button · PDP ATC · Account reorder
+  Auth           : Public — local Zustand store, never trusts client values at checkout
+  Data           : Zustand 'cart-storage' (persist) + variant fetch on demand
+  Design refs    : DESIGN_SYSTEM_V2.md · (no matter mockup — extrapolated from design system)
+  TDD ref        : Section 7
+
+  LAYOUT INTENT
+  ─────────────
+  Right-side slide-in drawer, 480px wide on desktop, full-width on mobile.
+  Paper background, 1px hairline divider from the backdrop.
+  Three regions: header · scrollable body · sticky footer.
+
+  CONSTRAINTS (do not violate)
+  ─────────────────────────────
+  · Drawer is fixed-position, slides in from the right. Backdrop is
+    semi-transparent ink (rgba(18,18,16,0.35)). NEVER a blur filter.
+  · Focus trap: activate when open, return to trigger on close.
+  · Esc closes. Backdrop click closes. Close icon is an "×" glyph (mono).
+  · Client component. Persisted cart requires mounted guard to avoid SSR
+    hydration mismatch (see CLAUDE.md Zustand persist rule).
+  · NEVER send client-computed prices/totals to checkout. Cart shows
+    display totals only. /api/orders recomputes from variant_id+qty.
+  · Free-shipping line: threshold ≥ ₹999. Progress bar is visual only.
+  · Upsell block shows exactly one product (Night Repair Cream per V1).
+  · Empty state is NOT a modal full-page takeover — it's inline inside
+    the drawer.
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1440">
+  <title>Wireframe V2 — Cart Drawer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: rgba(18,18,16,0.35); color: #121210; line-height: 1.5; font-size: 13px; min-height: 100vh; padding: 24px; }
+    .wf-note { background: #fffbe6; border-left: 3px solid #f0c000; padding: 6px 10px; font-size: 11px; color: #7a5f00; margin: 6px 0; }
+    .wf-component { border: 1.5px dashed #BFBAAD; padding: 8px 12px; margin: 4px 0; background: #F4F1EB; font-size: 12px; color: #55534C; }
+    .wf-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 500; letter-spacing: .18em; text-transform: uppercase; color: #55534C; margin-bottom: 8px; display: block; }
+    .wf-ph { background: repeating-linear-gradient(135deg, transparent 0 14px, rgba(191,186,173,0.35) 14px 15px), #EDE9E1; border: 1px solid #BFBAAD; display: flex; align-items: flex-end; justify-content: space-between; padding: 8px; color: #55534C; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; font-family: 'JetBrains Mono', monospace; }
+    .wf-ph.mineral { background: repeating-linear-gradient(135deg, transparent 0 14px, rgba(85,83,76,0.18) 14px 15px), #D6D2C6; }
+    .row { display: flex; gap: 12px; }
+    .col { flex: 1; }
+    .mono { font-family: 'JetBrains Mono', monospace; letter-spacing: 0.02em; }
+    .display { font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; letter-spacing: -0.025em; line-height: 1; }
+    .drawer { width: 480px; background: #F4F1EB; border-left: 1px solid #BFBAAD; margin-left: auto; min-height: calc(100vh - 48px); display: flex; flex-direction: column; }
+  </style>
+</head>
+<body>
+
+<div class="wf-note" style="max-width: 480px; margin-left: auto; margin-bottom: 12px">
+  This wireframe is rendered against a dark backdrop to show the drawer in context. The backdrop is <code>rgba(18,18,16,0.35)</code> over the underlying page (Home / PLP / PDP).
+</div>
+
+<div class="drawer">
+
+  <!-- ═══════════ HEADER ═══════════ -->
+  <div style="padding: 20px 24px; border-bottom: 1px solid #BFBAAD">
+    <span class="wf-label">Drawer Header — mono eyebrow + count + close</span>
+    <div class="row" style="justify-content: space-between; align-items: center">
+      <div>
+        <div class="mono" style="font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C">§ YOUR BAG</div>
+        <div class="display" style="font-size: 24px; margin-top: 6px">2 formulas · 3 items</div>
+      </div>
+      <div class="wf-component mono" style="width: 40px; height: 40px; display:inline-flex; align-items:center; justify-content:center; font-size: 16px; border: 1px solid #BFBAAD">×</div>
+    </div>
+  </div>
+  <div class="wf-note" style="margin: 0 24px">Close button: keyboard-focusable, aria-label="Close cart". Esc also closes. Count reflects distinct formulas + total items (e.g. 2 formulas · 3 items) — helps shopper spot unintended duplicates.</div>
+
+  <!-- ═══════════ FREE SHIP PROGRESS ═══════════ -->
+  <div style="padding: 16px 24px; border-bottom: 1px solid #BFBAAD; background: #EDE9E1">
+    <span class="wf-label">Free-ship progress — hairline bar, no radius</span>
+    <div class="row" style="justify-content: space-between; margin-bottom: 10px">
+      <span class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">FREE SHIPPING AT ₹999</span>
+      <span class="mono" style="font-size: 10px; letter-spacing: 0.14em; color: #2A6B45">₹300 TO GO</span>
+    </div>
+    <div style="height: 2px; background: #BFBAAD; position: relative">
+      <div style="position: absolute; left: 0; top: 0; bottom: 0; width: 70%; background: #121210"></div>
+    </div>
+  </div>
+  <div class="wf-note" style="margin: 0 24px">Threshold ≥ ₹999 (paise &gt;= 99900). When reached, bar fills to 100% and copy changes to "✓ FREE SHIPPING UNLOCKED" in assay-green. No animation beyond transition on width.</div>
+
+  <!-- ═══════════ LINE ITEMS (scrollable) ═══════════ -->
+  <div style="flex: 1; overflow-y: auto">
+    <span class="wf-label" style="padding: 16px 24px 0; display:block">Line items — m-assay style rows, hairline divider</span>
+
+    <!-- Line item 1 -->
+    <div style="padding: 20px 24px; border-bottom: 1px solid rgba(191,186,173,0.5); display: grid; grid-template-columns: 80px 1fr auto; gap: 16px">
+      <div class="wf-ph mineral" style="aspect-ratio: 1 / 1"><span></span><span>01</span></div>
+      <div>
+        <div class="mono" style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">MOISTURISER</div>
+        <div class="display" style="font-size: 20px; margin-top: 4px">Night Repair Cream</div>
+        <div class="mono" style="font-size: 10px; letter-spacing: 0.1em; color: #55534C; margin-top: 6px; text-transform: uppercase">30ML · SKU NR-30</div>
+        <!-- qty stepper -->
+        <div class="row" style="margin-top: 12px; align-items: center; gap: 12px">
+          <div class="wf-component" style="display: grid; grid-template-columns: 28px 32px 28px; align-items: center; border: 1px solid #BFBAAD; padding: 0">
+            <span style="height: 32px; display:flex; align-items:center; justify-content:center; color: #55534C">–</span>
+            <span class="mono" style="text-align: center; font-size: 12px; font-variant-numeric: tabular-nums">1</span>
+            <span style="height: 32px; display:flex; align-items:center; justify-content:center; color: #55534C">+</span>
+          </div>
+          <span class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C; border-bottom: 1px solid #BFBAAD; padding-bottom: 2px">REMOVE</span>
+        </div>
+      </div>
+      <div style="text-align: right">
+        <div class="mono" style="font-size: 15px; font-variant-numeric: tabular-nums">₹2,499</div>
+      </div>
+    </div>
+
+    <!-- Line item 2 — with qty 2 -->
+    <div style="padding: 20px 24px; border-bottom: 1px solid rgba(191,186,173,0.5); display: grid; grid-template-columns: 80px 1fr auto; gap: 16px">
+      <div class="wf-ph" style="aspect-ratio: 1 / 1"><span></span><span>02</span></div>
+      <div>
+        <div class="mono" style="font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C">SERUM</div>
+        <div class="display" style="font-size: 20px; margin-top: 4px">Brightening Serum</div>
+        <div class="mono" style="font-size: 10px; letter-spacing: 0.1em; color: #55534C; margin-top: 6px; text-transform: uppercase">30ML · SKU BS-30</div>
+        <div class="row" style="margin-top: 12px; align-items: center; gap: 12px">
+          <div class="wf-component" style="display: grid; grid-template-columns: 28px 32px 28px; align-items: center; border: 1px solid #BFBAAD; padding: 0">
+            <span style="height: 32px; display:flex; align-items:center; justify-content:center">–</span>
+            <span class="mono" style="text-align: center; font-size: 12px; font-variant-numeric: tabular-nums">2</span>
+            <span style="height: 32px; display:flex; align-items:center; justify-content:center">+</span>
+          </div>
+          <span class="mono" style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: #55534C; border-bottom: 1px solid #BFBAAD; padding-bottom: 2px">REMOVE</span>
+        </div>
+      </div>
+      <div style="text-align: right">
+        <div class="mono" style="font-size: 15px; font-variant-numeric: tabular-nums">₹2,598</div>
+        <div class="mono" style="font-size: 10px; color: #55534C; margin-top: 2px">₹1,299 × 2</div>
+      </div>
+    </div>
+
+    <div class="wf-note" style="margin: 0 24px">Qty stepper: compact (32px tall). Decrement to 0 does NOT remove — it stops at 1. Explicit REMOVE button handles removal. Prevents accidental loss.</div>
+    <div class="wf-note" style="margin: 0 24px">Stock guard: if requested qty &gt; available stock on checkout, show oxblood mono line under item "— Only N left in lot." The API recomputes stock at order submit.</div>
+
+    <!-- ═══════════ UPSELL BLOCK ═══════════ -->
+    <div style="padding: 20px 24px; background: #EDE9E1; border-top: 1px solid #BFBAAD; border-bottom: 1px solid #BFBAAD">
+      <span class="wf-label">Upsell — exactly one product, hardcoded</span>
+      <div class="row" style="gap: 16px; align-items: center">
+        <div class="wf-ph mineral" style="width: 72px; aspect-ratio: 1 / 1"><span></span><span></span></div>
+        <div style="flex: 1">
+          <div class="mono" style="font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C">§ FREQUENTLY ADDED</div>
+          <div class="display" style="font-size: 20px; margin-top: 4px">The Corrective</div>
+          <div class="mono" style="font-size: 10px; color: #55534C; margin-top: 4px">SERUM · 30ML · ₹1,299</div>
+        </div>
+        <div class="wf-component mono" style="width: 32px; height: 32px; background: #121210; color: #F4F1EB; display:inline-flex; align-items:center; justify-content:center; padding: 0; font-size: 16px">+</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ STICKY FOOTER ═══════════ -->
+  <div style="padding: 20px 24px; border-top: 1px solid #BFBAAD; background: #F4F1EB">
+    <span class="wf-label">Sticky footer — subtotal + CTA</span>
+    <!-- Subtotal rows -->
+    <div style="margin-bottom: 16px">
+      <div class="row" style="justify-content: space-between; padding: 4px 0">
+        <span class="mono" style="font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #55534C">SUBTOTAL</span>
+        <span class="mono" style="font-size: 13px; font-variant-numeric: tabular-nums">₹5,097</span>
+      </div>
+      <div class="row" style="justify-content: space-between; padding: 4px 0">
+        <span class="mono" style="font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #55534C">SHIPPING</span>
+        <span class="mono" style="font-size: 13px; color: #2A6B45">FREE AT CHECKOUT</span>
+      </div>
+      <div class="row" style="justify-content: space-between; padding: 10px 0 0; border-top: 1px solid rgba(191,186,173,0.5); margin-top: 6px">
+        <span class="display" style="font-size: 18px">Total</span>
+        <span class="display" style="font-size: 22px">₹5,097</span>
+      </div>
+    </div>
+    <div class="wf-component mono" style="background: #121210; color: #F4F1EB; padding: 16px; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; text-align: center">CHECKOUT →</div>
+    <div class="wf-note" style="margin-top: 8px">CTA: links to /checkout. Total is DISPLAY ONLY — /api/orders recomputes from server-side variant prices + quantities. Shipping text: "CALCULATED AT CHECKOUT" if under ₹999, "FREE AT CHECKOUT" at/above.</div>
+    <!-- trust strip -->
+    <div class="row" style="justify-content: space-between; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(191,186,173,0.5)">
+      <span class="mono" style="font-size: 9px; letter-spacing: 0.14em; color: #55534C">✓ FREE RETURNS · 14 DAYS</span>
+      <span class="mono" style="font-size: 9px; letter-spacing: 0.14em; color: #55534C">✓ DISPATCHED IN 48H</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ STATE MATRIX ═══════════ -->
+<div class="drawer" style="margin-top: 24px; min-height: auto; padding: 24px">
+  <span class="wf-label">Empty State — inline inside drawer, not a separate view</span>
+  <div style="text-align: center; padding: 60px 24px">
+    <div class="mono" style="font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #55534C">§ YOUR BAG</div>
+    <div class="display" style="font-size: 32px; margin-top: 16px">— Empty.</div>
+    <div style="font-size: 14px; color: #26251F; margin-top: 16px; max-width: 320px; margin-left: auto; margin-right: auto">Nothing here yet. Begin with a serum, or take the skin insight quiz to let us prescribe.</div>
+    <div class="row" style="justify-content: center; gap: 8px; margin-top: 28px">
+      <div class="wf-component mono" style="background: #121210; color: #F4F1EB; padding: 13px 20px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase">BROWSE FORMULARY</div>
+      <div class="wf-component mono" style="padding: 13px 20px; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase">TAKE THE QUIZ</div>
+    </div>
+  </div>
+
+  <div class="wf-note">Empty state lives inside the drawer (same chrome, just no line items / upsell / footer). Keeps animation state simple — drawer is always open/closed, never full-screen.</div>
+  <div class="wf-note">Error state: if variant fetch fails on hydration, show inline alert above line items. If order creation fails from checkout, user is redirected back with ?error=... and alert banner appears at top of drawer.</div>
+  <div class="wf-note">Loading state: on initial cart hydration, show 2 striped m-ph skeletons for line items. Qty steppers disabled until mounted.</div>
+</div>
+
+</body>
+</html>
