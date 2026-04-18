@@ -481,7 +481,7 @@
 See `STOREFRONT_V2_QA_LOG.md` for the full write-up.
 
 - **Delivered commits**:
-  - `TBD` — docs(storefront-v2): Chunk 15 — QA log + dead-code purge + testid parity fix
+  - `2d5cfbe` — docs(storefront-v2): Chunk 15 — QA log + dead-code purge + testid parity fix
 
 ---
 
