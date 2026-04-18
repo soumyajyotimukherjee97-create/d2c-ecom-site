@@ -1,9 +1,9 @@
 import { unstable_cache } from 'next/cache'
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { ProductCard } from '@/components/shop/ProductCard'
+import { ProductTile } from '@/components/shop/ProductTile'
 import { FilterBar } from '@/components/shop/FilterBar'
-import { EmptyState } from '@/components/ui/EmptyState'
+import { SkinInsightCTA } from '@/components/shop/SkinInsightCTA'
 import type { ProductSummary, Variant } from '@/types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -43,6 +43,7 @@ export const revalidate = 60
 // ─── Data fetching ────────────────────────────────────────────────────────────
 
 const LIMIT = 20
+const PLACEHOLDER_TONES = ['mineral', 'default', 'ink', 'default'] as const
 
 function pickDefaultVariant(variants: RawVariantRow[]): VariantData | null {
   const inStock = variants.filter((v) => v.is_active && v.stock > 0)
@@ -94,7 +95,7 @@ async function fetchProducts(
     if (error || !rawData) return { items: [], total: 0 }
 
     const rows = rawData as RawRow[]
-    let items = rows.map((row) => {
+    const items = rows.map((row) => {
       const prices = row.product_variants.map((v) => v.price)
       return {
         product: {
@@ -136,8 +137,8 @@ function Pagination({
   concern,
   sort,
 }: {
-  offset:   number
-  total:    number
+  offset:    number
+  total:     number
   skinType?: string
   concern?:  string
   sort:      string
@@ -159,38 +160,54 @@ function Pagination({
     return qs ? `/products?${qs}` : '/products'
   }
 
+  const cellBase =
+    'font-mono text-[10px] tracking-widest uppercase px-3.5 py-2.5 border border-hairline'
+
   return (
     <nav
       aria-label="Pagination"
       data-testid="pagination"
-      className="flex items-center justify-center gap-2 mt-8"
+      className="flex items-center justify-center gap-3 mt-14"
     >
       {hasPrev ? (
         <Link
           href={pageUrl(offset - LIMIT)}
-          className="font-mono text-2xs uppercase tracking-wider px-4 py-2 border border-gray-100 rounded-sm text-gray-900 hover:border-gray-200 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2"
+          data-testid="pagination-prev"
+          className={`${cellBase} text-ink hover:bg-paper-2 transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2`}
         >
-          ← Previous
+          ← Prev
         </Link>
       ) : (
-        <span className="font-mono text-2xs uppercase tracking-wider px-4 py-2 border border-gray-100 rounded-sm text-gray-400 cursor-not-allowed">
-          ← Previous
+        <span
+          data-testid="pagination-prev"
+          aria-disabled="true"
+          className={`${cellBase} text-graphite cursor-not-allowed`}
+        >
+          ← Prev
         </span>
       )}
 
-      <span className="font-mono text-2xs text-gray-400 px-3 py-2 border border-gray-100 rounded-sm">
-        {currentPage} of {totalPages}
+      <span
+        data-testid="pagination-counter"
+        className={`${cellBase} text-ink tabular-nums`}
+      >
+        Page {String(currentPage).padStart(2, '0')} / {String(totalPages).padStart(2, '0')}
       </span>
 
       {hasNext ? (
         <Link
           href={pageUrl(offset + LIMIT)}
-          className="font-mono text-2xs uppercase tracking-wider px-4 py-2 border border-gray-100 rounded-sm text-gray-900 hover:border-gray-200 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2"
+          data-testid="pagination-next"
+          className={`${cellBase} text-ink hover:bg-paper-2 transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2`}
         >
           Next →
         </Link>
       ) : (
-        <span className="font-mono text-2xs uppercase tracking-wider px-4 py-2 border border-gray-100 rounded-sm text-gray-400 cursor-not-allowed">
+        <span
+          data-testid="pagination-next"
+          aria-disabled="true"
+          className={`${cellBase} text-graphite cursor-not-allowed`}
+        >
           Next →
         </span>
       )}
@@ -212,83 +229,88 @@ export default async function ProductsPage({
 
   const { items, total } = await getProducts(skinType ?? '', concern ?? '', sort, offset)
 
-  const hasActiveFilters = Boolean(skinType || concern)
-
   return (
     <>
       {/* ── Filter bar ────────────────────────────────────────────────────── */}
       <FilterBar />
 
-      {/* ── Product grid ──────────────────────────────────────────────────── */}
-      <main className="max-w-6xl mx-auto px-6 py-8">
+      {/* ── Product grid (on paper-2) ─────────────────────────────────────── */}
+      <section
+        aria-label="All products"
+        data-testid="product-grid-section"
+        className="bg-paper-2 border-b border-hairline"
+      >
+        <div className="max-w-container mx-auto px-8 pt-14 pb-24">
 
-        {/* Heading + count */}
-        <div className="flex items-baseline gap-2 mb-6">
-          <h1 className="font-heading text-3xl font-normal">All products</h1>
-          <span className="font-mono text-xs text-gray-400">({total})</span>
-        </div>
-
-        {items.length > 0 ? (
-          <>
-            <div
-              data-testid="product-grid"
-              className="grid grid-cols-2 md:grid-cols-4 gap-3"
+          {/* Heading + count */}
+          <div className="flex items-baseline gap-3 mb-8">
+            <h1 className="font-display text-4xl md:text-[44px] text-ink tracking-tighter">
+              All products
+            </h1>
+            <span
+              data-testid="product-count"
+              className="font-mono text-xs text-graphite tabular-nums"
             >
-              {items.map(({ product, defaultVariant }) => (
-                <ProductCard key={product.id} product={product} defaultVariant={defaultVariant} />
-              ))}
-            </div>
+              ({total})
+            </span>
+          </div>
 
-            <Pagination
-              offset={offset}
-              total={total}
-              skinType={skinType}
-              concern={concern}
-              sort={sort}
-            />
-          </>
-        ) : (
-          <EmptyState
-            heading="No products match these filters."
-            body="Try removing a filter or browsing all products."
-            actions={
-              <>
+          {items.length > 0 ? (
+            <>
+              <div
+                data-testid="product-grid"
+                className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+              >
+                {items.map(({ product, defaultVariant }, idx) => (
+                  <ProductTile
+                    key={product.id}
+                    product={product}
+                    defaultVariant={defaultVariant}
+                    placeholderTone={PLACEHOLDER_TONES[idx % PLACEHOLDER_TONES.length]}
+                  />
+                ))}
+              </div>
+
+              <Pagination
+                offset={offset}
+                total={total}
+                skinType={skinType}
+                concern={concern}
+                sort={sort}
+              />
+            </>
+          ) : (
+            <div
+              data-testid="product-grid-empty"
+              className="text-center py-24 border border-hairline bg-paper"
+            >
+              <p className="font-mono text-xs tracking-widest uppercase text-graphite">
+                — No formulas match your filters.
+              </p>
+              <p className="font-body text-sm text-ink-2 mt-3 max-w-[320px] mx-auto">
+                Adjust your selection, or take the skin quiz to let us prescribe.
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-2 mt-7">
                 <Link
                   href="/products"
-                  className="font-body text-xs uppercase tracking-wider bg-gray-900 text-white px-4 py-2 rounded-sm hover:bg-gray-800 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2"
+                  className="inline-flex items-center justify-center bg-ink text-paper font-mono text-2xs tracking-widest uppercase px-5 py-3 hover:bg-ink-2 transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2"
                 >
-                  Clear all filters
+                  Clear filters
                 </Link>
                 <Link
                   href="/products?quiz=true"
-                  className="font-body text-xs uppercase tracking-wider border border-gray-200 text-gray-900 px-4 py-2 rounded-sm hover:border-gray-400 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2"
+                  className="inline-flex items-center justify-center border border-ink text-ink font-mono text-2xs tracking-widest uppercase px-5 py-3 hover:bg-paper-2 transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2"
                 >
-                  Take the skin quiz
+                  Take the quiz
                 </Link>
-              </>
-            }
-          />
-        )}
-      </main>
-
-      {/* ── Quiz CTA — always shown ────────────────────────────────────────── */}
-      <section
-        aria-label="Not sure where to start"
-        className="bg-offwhite border-t border-gray-100 text-center py-12 px-6"
-      >
-        <h2 className="font-heading text-xl font-normal mb-1">
-          Not sure where to start?
-        </h2>
-        <p className="font-body text-sm text-gray-600 mb-6">
-          Take the 2-minute skin quiz and we&apos;ll match you to the right routine.
-        </p>
-        <Link
-          href="/products?quiz=true"
-          className="inline-block font-body text-xs uppercase tracking-wider bg-gray-900 text-white px-6 py-2 rounded-sm hover:bg-gray-800 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2"
-        >
-          Take the quiz →
-        </Link>
+              </div>
+            </div>
+          )}
+        </div>
       </section>
+
+      {/* ── SkinInsight CTA — always shown below grid ─────────────────────── */}
+      <SkinInsightCTA />
     </>
   )
 }

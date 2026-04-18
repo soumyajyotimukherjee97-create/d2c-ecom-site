@@ -53,26 +53,27 @@ function buildUrl(
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-interface FilterButtonProps {
+interface ChipButtonProps {
   label:    string
   active:   boolean
   onClick:  () => void
   testId?:  string
 }
 
-function FilterButton({ label, active, onClick, testId }: FilterButtonProps) {
+function ChipButton({ label, active, onClick, testId }: ChipButtonProps) {
   return (
     <button
       type="button"
       aria-pressed={active}
       data-testid={testId}
+      data-active={active}
       onClick={onClick}
       className={[
-        'font-mono text-2xs uppercase tracking-wide px-3 py-1 rounded-sm border transition-colors',
-        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2',
+        'font-mono text-[10px] tracking-[0.12em] uppercase px-3 py-1.5 border transition-colors',
+        'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2',
         active
-          ? 'bg-gray-900 text-white border-gray-900'
-          : 'bg-white text-gray-600 border-gray-100 hover:border-gray-200',
+          ? 'bg-ink text-paper border-ink'
+          : 'bg-transparent text-ink-2 border-hairline hover:border-ink',
       ].join(' ')}
     >
       {label}
@@ -130,47 +131,52 @@ export function FilterBar() {
   return (
     <div
       data-testid="filter-bar"
-      className={`border-b border-gray-100 bg-white px-6 py-3 transition-opacity ${isPending ? 'opacity-60' : ''}`}
+      data-pending={isPending}
+      className={`bg-paper border-b border-hairline px-8 py-5 transition-opacity ${isPending ? 'opacity-60' : ''}`}
     >
-      <div className="max-w-6xl mx-auto flex flex-wrap items-center gap-3 justify-between">
+      <div className="max-w-container mx-auto grid grid-cols-1 md:grid-cols-[auto_1fr_auto] gap-6 md:gap-10 items-center">
 
         {/* Skin type — single-select */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-2xs uppercase tracking-widest text-gray-400">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="font-mono text-[10px] tracking-widest uppercase text-graphite whitespace-nowrap">
             Skin type:
           </span>
-          {SKIN_TYPES.map(({ label, value }) => (
-            <FilterButton
-              key={label}
-              label={label}
-              active={activeSkinType === value}
-              onClick={() => setSkinType(value)}
-              testId={`filter-skin-${value || 'all'}`}
-            />
-          ))}
+          <div className="flex flex-wrap gap-1">
+            {SKIN_TYPES.map(({ label, value }) => (
+              <ChipButton
+                key={label}
+                label={label}
+                active={activeSkinType === value}
+                onClick={() => setSkinType(value)}
+                testId={`filter-skin-${value || 'all'}`}
+              />
+            ))}
+          </div>
         </div>
 
         {/* Concern — single-select */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-2xs uppercase tracking-widest text-gray-400">
+        <div className="flex flex-wrap items-center gap-3 md:justify-center">
+          <span className="font-mono text-[10px] tracking-widest uppercase text-graphite whitespace-nowrap">
             Concern:
           </span>
-          {CONCERNS.map(({ label, value }) => (
-            <FilterButton
-              key={label}
-              label={label}
-              active={activeConcern === value}
-              onClick={() => setConcern(value)}
-              testId={`filter-concern-${value}`}
-            />
-          ))}
+          <div className="flex flex-wrap gap-1">
+            {CONCERNS.map(({ label, value }) => (
+              <ChipButton
+                key={label}
+                label={label}
+                active={activeConcern === value}
+                onClick={() => setConcern(value)}
+                testId={`filter-concern-${value}`}
+              />
+            ))}
+          </div>
         </div>
 
         {/* Sort — native select */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <label
             htmlFor="plp-sort"
-            className="font-mono text-2xs uppercase tracking-widest text-gray-400"
+            className="font-mono text-[10px] tracking-widest uppercase text-graphite whitespace-nowrap"
           >
             Sort:
           </label>
@@ -179,7 +185,7 @@ export function FilterBar() {
             value={activeSort}
             onChange={(e) => setSort(e.target.value)}
             data-testid="sort-select"
-            className="border border-gray-100 rounded-sm px-2 py-1 font-mono text-2xs text-gray-900 bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2"
+            className="border border-hairline bg-paper px-3 py-1.5 font-mono text-[11px] text-ink min-w-[140px] hover:border-ink transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2"
           >
             {SORT_OPTIONS.map(({ label, value }) => (
               <option key={value} value={value}>{label}</option>
