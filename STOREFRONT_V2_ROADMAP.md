@@ -28,7 +28,7 @@
 | 8 | PDP (`/products/[slug]`) | ✅ | medium |
 | 9 | Ingredients page (new route, MDX) | ✅ | medium |
 | 10 | Checkout + Order confirmation | ✅ | high |
-| 11 | Auth (`/login`, `/signup`) | ☐ | medium |
+| 11 | Auth (`/login`, `/signup`) | ✅ | medium |
 | 12 | Account + Support | ☐ | medium |
 | 13 | SkinInsight coming-soon page | ☐ | low |
 | 14 | Polish — 404, errors, loading, newsletter | ☐ | low |
@@ -340,21 +340,29 @@
 
 ---
 
-## Chunk 11 — Auth (`/login` + `/signup`)
+## Chunk 11 — Auth (`/login` + `/signup`) ✅
 
-- **Prereqs**: Chunks 2, 3
+- **Prereqs**: Chunks 2, 3 ✅
 - **Scope**:
-  - Re-skin `src/app/(auth)/login/page.tsx` + `LoginView` per `wireframes-storefront-v2/Auth.html`.
-  - Re-skin `src/app/(auth)/signup/page.tsx` + `SignupView`.
-  - Preserve Suspense-wrap pattern that fixes the useSearchParams prerender issue (from 8.3).
-  - Typographic-only (per D3) — no imagery.
+  - Re-skinned `LoginView` per wireframe — typographic-only, minimal chrome (wordmark + `§ ACCESS · VERIFIED`), paper-2 body, centered 480px column, `§ RETURNING SUBJECT` eyebrow, "Welcome back." display heading, 2px ink top-rule form with matter Input fields, ink `SIGN IN →` CTA, switch-to-signup link. Preserved `next=` redirect behaviour. ✅
+  - Re-skinned `SignupView` — same chrome; `§ NEW SUBJECT — ENROLL` eyebrow, "Create your dossier." display heading. Form gained **first_name** + **last_name** + **terms** checkbox to match the wireframe; names passed to Supabase as `user_metadata`. Dropped `confirm_password` (not in wireframe — show/hide toggle is a future addition). `?prefill=<email>` from Chunk 10's guest confirmation link pre-fills the email input. "Check your inbox" verification screen matter-voiced. ✅
+  - `SignupSchema` updated: `first_name`, `last_name`, `email`, `password`, `terms: z.literal(true)`. 10 schema tests (was 9) covering names, terms, trim/lowercase. ✅
+  - Suspense wrappers at page level preserved (both pages use `useSearchParams`). Both routes still static-prerender (`○`). ✅
 - **Done when**:
-  - Both routes build statically (prerender OK).
-  - Forms submit and route correctly with `next=...` preserved.
-  - Inline errors display per V2 rules.
-  - Existing auth tests pass.
-- **Tests**: update LoginForm / SignupForm tests; confirm next-param preservation test still green.
-- **Risk**: medium.
+  - Both routes build statically. ✅
+  - Forms submit; `next=` preserved; `prefill=` pre-fills email. ✅
+  - Inline errors follow V2 rules (oxblood mono caption). ✅
+  - All auth tests pass, including schema tests for the new fields. ✅
+- **Tests**: 518/518 (was 512; +6). Schema: 10 (+6). LoginPage: 5 unchanged. SignupPage rewritten to cover names, terms, prefill, next-param.
+- **Risk**: medium. Auth request shapes unchanged beyond the additive `options.data.{first_name,last_name}`.
+- **Delivered commits**:
+  - `1ce6189` — feat(storefront-v2): Chunk 11 — Auth re-skin
+- **Notes**:
+  - **D3 followed**: zero imagery on both pages. Typographic-only editorial layout matches the About-page restraint.
+  - **Schema breaking change (additive)**: `SignupSchema` now requires `first_name`, `last_name`, `terms`. Anything else that imports it would break — grep confirms only `SignupView` and the schema test consume it, so there is no hidden caller.
+  - **Deferred (noted in SignupView comments)**: `?order=<id>` claim-on-signup server action. Chunk 10 emits this link, but auto-attaching the guest order to the new user's id isn't yet wired server-side. Plumbing needs: server action that (a) verifies session, (b) checks `order.contact_email === auth.email`, (c) updates `orders.user_id` when currently null. 10-line change; punts to Chunk 12 (Account) or a dedicated follow-up before cutover.
+  - **Deferred**: Show/hide password toggle, forgot-password flow, social login, magic link — all marked as Phase 2 in the wireframe notes and TDD. Not in scope for MVP.
+  - Caps-lock detection on the password field (wireframe aside) is a nice-to-have but not load-bearing; skipped.
 
 ---
 
@@ -495,4 +503,5 @@ _Update when chunks complete or scope shifts._
 - `2026-04-18` — **Chunk 7 complete** at `73d68a7`. PLP rebuilt for matter — FilterBar chips, new ProductTile (1/1 square + hairline-wrapped info block), matter pagination, SkinInsightCTA block with heatmap figure extracted for reuse in Chunk 13. Home keeps ProductCard; PLP uses ProductTile — two components because typography differs. 471/471 tests (+15).
 - `2026-04-18` — **Chunk 8 complete** at `f9f6ff7`. PDP rebuilt — mono breadcrumb, 2-col PDPMain, PDPGallery (new client island with tablist thumbs), PDPPurchasePanel re-skin (display h1, ink variant pills with OOS states, IDEAL FOR chips, matter ATC, clinical-insight callout), paper-2 "formulation + assay" section, PDPReviews carousel (new client island), 4-up related products. ReviewBar removed from panel — aggregate moved to PDPReviews header. 486/486 tests (+15).
 - `2026-04-18` — **Chunk 9 complete** at `72fb121`. `/ingredients` ships with IngredientsHero + IngredientsReader (17-chip ChapterRail + dropcap EssayEntry + sticky data-sheet sidecar + wrap-around Prev/Next + hash sync + localStorage resume) + Philosophy. Content pipeline: `src/lib/ingredients/catalogue.ts` (typed) + `src/content/ingredients/*.md` (gray-matter front-matter). D1 deviation flagged: plain .md vs .mdx — upgrade path clean. 509/509 tests (+23). Setup polyfills: ResizeObserver + scrollIntoView/scrollBy.
-- `2026-04-18` — **Chunk 10 complete** at `72372e6`. `/checkout` and `/order/[id]` both re-skinned to matter editorial layout. Commerce invariants preserved — the POST /api/orders payload shape is byte-identical to main. Checkout: 12-col grid, three § sections, COD-only payment, ink CTA with dynamic total, sticky summary with "Displayed total · Recomputed on submit" caption. Confirmation: broadsheet masthead, "Your consignment is underway." hero, 4-cell info strip, manifest table, guest-only account incentive → /signup?prefill=…&order=…, 4-up related. 512/512 tests (+3 net).
+- `2026-04-18` — **Chunk 10 complete** at `72372e6`. `/checkout` and `/order/[id]` both re-skinned to matter editorial layout. Commerce invariants preserved — the POST /api/orders payload shape is byte-identical to main. Checkout: 12-col grid, three § sections, COD-only payment, ink CTA with dynamic total, sticky summary with "Displayed total · Recomputed on submit" caption. Confirmation: broadsheet masthead, "Your consignment is underway." hero, 4-cell info strip, manifest table, guest-only account incentive → /signup?prefill=…&order=…, 4-up related. 512/512 tests (+3 net). Two follow-up fixes: `bf63ba5` dropped non-existent `payment_method` column from getOrder select (was causing 404 on every successful checkout); `43259b5` restored top nav on the confirmation page (dropped in Chunk 10, added back inline so /checkout stays minimal).
+- `2026-04-18` — **Chunk 11 complete** at `1ce6189`. `/login` and `/signup` re-skinned per D3 (typographic-only, no imagery). SignupSchema expanded: first/last name + terms literal; prefill email from `?prefill=`; next-param preserved. Order claim-on-signup flagged as deferred follow-up. 518/518 tests (+6).
