@@ -19,7 +19,7 @@
 |---|---|---|---|
 | 0 | Branch + infra setup | ✅ | low |
 | 1 | Design tokens + fonts | ✅ | low |
-| 2 | UI atoms (re-skin + new primitives) | ☐ | low |
+| 2 | UI atoms (re-skin + new primitives) | ✅ | low |
 | 3 | Shared chrome — Navbar + Footer | ☐ | medium |
 | 4 | Cart drawer (overlay re-skin) | ☐ | medium |
 | 5 | **Pilot page: About** (new route) | ☐ | low |
@@ -86,20 +86,30 @@
 
 ---
 
-## Chunk 2 — UI atoms (re-skin + new primitives)
+## Chunk 2 — UI atoms (re-skin + new primitives) ✅
 
-- **Prereqs**: Chunk 1
+- **Prereqs**: Chunk 1 ✅
 - **Scope**:
-  - Re-skin existing `apps/storefront/src/components/ui/`: `Button`, `Badge`, `Input`, `SkeletonCard`, `Alert`, `ScienceTag`, `IngredientTag`, `ScienceCallout`, `EmptyState`, `QuantitySelector`, `ReviewBar`, `StatusBadge`.
-  - Add new primitives: `Placeholder` (striped tonal art stand-in), `Eyebrow` (mono §-caption), `MonoCaption`, `Ruler` (12-col decorative), `StatusChip` (mono-caps square chip — replaces V1 StatusBadge shape).
-  - Update existing component tests to match new markup where needed. Tests must continue to assert on `data-testid` and roles, never class names.
+  - Re-skin 12 atoms (Button, Badge, Input, SkeletonCard, Alert, ScienceTag, IngredientTag, ScienceCallout, EmptyState, QuantitySelector, ReviewBar, StatusBadge). ✅
+  - Add 4 new primitives (Placeholder, Eyebrow, MonoCaption, Ruler) + StatusChip alias. ✅
+  - Replace class-based test assertions with semantic `data-variant` / `data-size` / `data-status` / `data-tone` attributes. ✅
+  - Purge V1-specific Badge variants (`mist`, `blush`) — updated PDPPurchasePanel to use `filled`. ✅
 - **Done when**:
-  - Every atom renders per `DESIGN_SYSTEM_V2.md`.
-  - All existing vitest component tests pass.
-  - New atoms have component tests covering their props matrix.
-  - No V1 colour tokens remain in atom source.
-- **Tests**: update ~12 existing component specs; add ~5 new.
-- **Risk**: low — isolated to `components/ui/`.
+  - Every atom renders per `DESIGN_SYSTEM_V2.md`. ✅
+  - All existing vitest component tests pass. ✅
+  - New atoms have component tests covering their props matrix. ✅
+  - No V1 colour tokens remain in atom source. ✅
+- **Tests**: 405/405 passing (was 372; +33 new).
+- **Risk**: low — isolated to `components/ui/` and `components/shop/ReviewBar.tsx`.
+- **Delivered commits**:
+  - `846df2e` — feat(storefront-v2): Chunk 2 — UI atoms re-skin + new primitives
+- **Notes**:
+  - `StatusBadge` is re-skinned to the square mono-caps chip specified by V2 and re-exported as `StatusChip` for semantic clarity.
+  - Added `.m-ph / .m-ph--ink / .m-ph--mineral` to `globals.css` — the striped tonal placeholder patterns from `matter.css`, consumed by `<Placeholder />` and `<SkeletonCard />`.
+  - `QuantitySelector` gained a `size` prop: `sm` (32px, for cart drawer line items) or `md` (46px, for PDP).
+  - `Alert` gained a `success` variant (assay-green) beyond the existing error / info.
+  - `Eyebrow` and `MonoCaption` are polymorphic via `as` prop for proper heading semantics.
+  - Consumers of atoms (PDPPurchasePanel, ProductCard, CartDrawer, CheckoutPage, etc.) build and test clean with no code changes — aliases in the tailwind config ensure class names still resolve and data-* attributes don't require re-plumbing.
 
 ---
 
@@ -401,3 +411,4 @@ _Update when chunks complete or scope shifts._
 - `2026-04-18` — Roadmap drafted.
 - `2026-04-18` — **Chunk 0 complete.** `storefront-v2` cut from `main` at `4da9d9c`. GitHub Actions CI added (was missing entirely). Planning docs + handoff landed on `main` at `bf61957`; CI workflow at `092be5d`. Both branches green.
 - `2026-04-18` — **Chunk 1 complete** at `38096be`. Matter tokens + fonts (`next/font/google`) applied. V1 class names back-compat-aliased to matter values; 372/372 tests still pass. V1 pages now render in V1 layouts with matter palette/typography as expected.
+- `2026-04-18` — **Chunk 2 complete** at `846df2e`. 12 atoms re-skinned, 4 new primitives added (Placeholder, Eyebrow, MonoCaption, Ruler), StatusChip alias in barrel. Class-name test assertions refactored to `data-variant` / `data-size` / `data-status` / `data-tone`. 405/405 tests green (+33).
