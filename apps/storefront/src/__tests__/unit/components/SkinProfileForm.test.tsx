@@ -32,7 +32,10 @@ describe('SkinProfileForm', () => {
   it('renders the current values in read mode', () => {
     render(<SkinProfileForm skinType="combination" concerns={['dullness', 'pores']} />)
     expect(screen.getByTestId('skin-type-value')).toHaveTextContent('Combination')
-    expect(screen.getByTestId('concerns-value')).toHaveTextContent('Dullness · Pores')
+    // Matter concerns render as individual mono-caps chips — check both are present.
+    const concerns = screen.getByTestId('concerns-value')
+    expect(concerns).toHaveTextContent(/dullness/i)
+    expect(concerns).toHaveTextContent(/pores/i)
   })
 
   it('renders "Not set" and "None noted" when profile is empty', () => {

@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/Button'
 import { Alert } from '@/components/ui/Alert'
 import { extractApiError, NETWORK_MESSAGE } from '@/lib/api/client'
 import { SKIN_TYPE_OPTIONS, CONCERN_OPTIONS } from '@/lib/api/schemas/profile'
@@ -23,25 +22,25 @@ const SKIN_TYPE_LABEL: Record<Exclude<SkinType, 'all'>, string> = {
 }
 
 const CONCERN_LABEL: Record<Concern, string> = {
-  acne: 'Acne',
+  acne:     'Acne',
   dullness: 'Dullness',
-  aging: 'Aging',
-  pores: 'Pores',
-  redness: 'Redness',
+  aging:    'Aging',
+  pores:    'Pores',
+  redness:  'Redness',
 }
 
-function formatConcerns(list: Concern[]) {
+function formatConcerns(list: Concern[]): string {
   if (list.length === 0) return 'None noted'
   return list.map((c) => CONCERN_LABEL[c]).join(' · ')
 }
 
 export function SkinProfileForm({ skinType, concerns }: SkinProfileFormProps) {
   const router = useRouter()
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing]             = useState(false)
   const [draftSkinType, setDraftSkinType] = useState<EditableSkinType>(skinType)
   const [draftConcerns, setDraftConcerns] = useState<Concern[]>(concerns)
-  const [error, setError] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
+  const [error, setError]                 = useState<string | null>(null)
+  const [saving, setSaving]               = useState(false)
 
   function toggleConcern(c: Concern) {
     setDraftConcerns((prev) =>
@@ -54,9 +53,9 @@ export function SkinProfileForm({ skinType, concerns }: SkinProfileFormProps) {
     setSaving(true)
     try {
       const res = await fetch('/api/account/profile', {
-        method: 'PATCH',
+        method:  'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ skin_type: draftSkinType, concerns: draftConcerns }),
+        body:    JSON.stringify({ skin_type: draftSkinType, concerns: draftConcerns }),
       })
       if (!res.ok) {
         setError(await extractApiError(res, 'Could not save changes.'))
@@ -79,52 +78,97 @@ export function SkinProfileForm({ skinType, concerns }: SkinProfileFormProps) {
   }
 
   return (
-    <section aria-labelledby="skin-profile-heading" data-testid="skin-profile">
-      <div className="flex items-baseline justify-between mb-3">
-        <h2 id="skin-profile-heading" className="font-heading text-base text-gray-900">
-          Skin profile
-        </h2>
+    <section
+      aria-labelledby="skin-profile-heading"
+      data-testid="skin-profile"
+      className="mt-16"
+    >
+      <div className="flex items-baseline justify-between mb-2">
+        <p className="font-mono text-[10px] tracking-ultra uppercase text-graphite">
+          § 02 — Skin profile
+        </p>
         {!editing && (
           <button
             type="button"
             onClick={() => setEditing(true)}
             data-testid="skin-profile-edit"
-            className="font-mono text-2xs uppercase tracking-wider text-gray-400 hover:text-gray-900 transition-colors rounded-sm focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2"
+            className="font-mono text-[10px] tracking-widest uppercase text-graphite hover:text-ink border-b border-hairline hover:border-ink pb-0.5 transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2"
           >
             Edit →
           </button>
         )}
       </div>
+      <h2
+        id="skin-profile-heading"
+        className="font-display text-[clamp(24px,2.6vw,36px)] text-ink mb-6"
+      >
+        Subject profile.
+      </h2>
 
       {!editing ? (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="border border-gray-100 rounded-sm p-3">
-            <p className="font-mono text-2xs uppercase tracking-widest text-gray-400 mb-1">
+        <div data-testid="skin-profile-view" className="border-t border-hairline">
+          <div className="grid grid-cols-[200px_1fr_auto] gap-5 py-4 border-b border-hairline/60 items-center">
+            <span className="font-mono text-[10px] tracking-widest uppercase text-graphite">
               Skin type
-            </p>
-            <p className="font-body text-sm text-gray-900" data-testid="skin-type-value">
+            </span>
+            <span
+              className="font-body text-[13px] text-ink"
+              data-testid="skin-type-value"
+            >
               {skinType ? SKIN_TYPE_LABEL[skinType] : 'Not set'}
-            </p>
+            </span>
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="font-mono text-[10px] tracking-widest uppercase text-graphite hover:text-ink border-b border-hairline hover:border-ink pb-0.5 transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2"
+            >
+              Edit
+            </button>
           </div>
-          <div className="border border-gray-100 rounded-sm p-3">
-            <p className="font-mono text-2xs uppercase tracking-widest text-gray-400 mb-1">
-              Concerns
-            </p>
-            <p className="font-body text-sm text-gray-900" data-testid="concerns-value">
-              {formatConcerns(concerns)}
-            </p>
+          <div className="grid grid-cols-[200px_1fr_auto] gap-5 py-4 border-b border-hairline/60 items-center">
+            <span className="font-mono text-[10px] tracking-widest uppercase text-graphite">
+              Primary concerns
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {concerns.length === 0 ? (
+                <span
+                  data-testid="concerns-value"
+                  className="font-body text-[13px] text-graphite"
+                >
+                  {formatConcerns(concerns)}
+                </span>
+              ) : (
+                <span data-testid="concerns-value" className="flex flex-wrap gap-1.5">
+                  {concerns.map((c) => (
+                    <span
+                      key={c}
+                      className="font-mono text-[10px] tracking-widest uppercase text-graphite border border-hairline px-2 py-1"
+                    >
+                      {CONCERN_LABEL[c]}
+                    </span>
+                  ))}
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="font-mono text-[10px] tracking-widest uppercase text-graphite hover:text-ink border-b border-hairline hover:border-ink pb-0.5 transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2"
+            >
+              Edit
+            </button>
           </div>
         </div>
       ) : (
-        <div data-testid="skin-profile-editor">
+        <div data-testid="skin-profile-editor" className="border-t border-hairline pt-5">
           {error && (
             <div className="mb-4" data-testid="skin-profile-error">
               <Alert variant="error" message={error} />
             </div>
           )}
 
-          <fieldset className="mb-4">
-            <legend className="font-mono text-2xs uppercase tracking-widest text-gray-400 mb-2">
+          <fieldset className="mb-5">
+            <legend className="font-mono text-[10px] tracking-widest uppercase text-graphite mb-2.5">
               Skin type
             </legend>
             <div className="flex flex-wrap gap-2">
@@ -138,11 +182,11 @@ export function SkinProfileForm({ skinType, concerns }: SkinProfileFormProps) {
                     data-testid={`skin-type-${opt}`}
                     aria-pressed={selected}
                     className={[
-                      'font-body text-sm px-3 py-1 rounded-sm border transition-colors',
-                      'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2',
+                      'font-mono text-[10px] tracking-widest uppercase px-3 py-2 border transition-colors',
+                      'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2',
                       selected
-                        ? 'bg-gray-900 text-white border-gray-900'
-                        : 'border-gray-200 text-gray-900 hover:border-gray-900',
+                        ? 'bg-ink text-paper border-ink'
+                        : 'border-hairline text-ink hover:border-ink',
                     ].join(' ')}
                   >
                     {SKIN_TYPE_LABEL[opt]}
@@ -152,8 +196,8 @@ export function SkinProfileForm({ skinType, concerns }: SkinProfileFormProps) {
             </div>
           </fieldset>
 
-          <fieldset className="mb-4">
-            <legend className="font-mono text-2xs uppercase tracking-widest text-gray-400 mb-2">
+          <fieldset className="mb-5">
+            <legend className="font-mono text-[10px] tracking-widest uppercase text-graphite mb-2.5">
               Concerns
             </legend>
             <div className="flex flex-wrap gap-2">
@@ -167,11 +211,11 @@ export function SkinProfileForm({ skinType, concerns }: SkinProfileFormProps) {
                     data-testid={`concern-${opt}`}
                     aria-pressed={selected}
                     className={[
-                      'font-body text-sm px-3 py-1 rounded-sm border transition-colors',
-                      'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2',
+                      'font-mono text-[10px] tracking-widest uppercase px-3 py-2 border transition-colors',
+                      'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2',
                       selected
-                        ? 'bg-gray-900 text-white border-gray-900'
-                        : 'border-gray-200 text-gray-900 hover:border-gray-900',
+                        ? 'bg-ink text-paper border-ink'
+                        : 'border-hairline text-ink hover:border-ink',
                     ].join(' ')}
                   >
                     {CONCERN_LABEL[opt]}
@@ -182,25 +226,24 @@ export function SkinProfileForm({ skinType, concerns }: SkinProfileFormProps) {
           </fieldset>
 
           <div className="flex gap-2">
-            <Button
+            <button
               type="button"
-              variant="primary"
-              loading={saving}
-              disabled={saving}
               onClick={handleSave}
+              disabled={saving}
               data-testid="skin-profile-save"
+              className="inline-flex items-center justify-center font-mono text-[11px] tracking-ultra uppercase px-5 py-3 bg-ink text-paper hover:bg-ink-2 disabled:opacity-60 disabled:cursor-not-allowed transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2"
             >
-              Save changes
-            </Button>
-            <Button
+              {saving ? 'Saving…' : 'Save changes'}
+            </button>
+            <button
               type="button"
-              variant="secondary"
               onClick={handleCancel}
               disabled={saving}
               data-testid="skin-profile-cancel"
+              className="inline-flex items-center justify-center font-mono text-[11px] tracking-widest uppercase px-5 py-3 border border-hairline text-ink hover:border-ink disabled:opacity-60 transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2"
             >
               Cancel
-            </Button>
+            </button>
           </div>
         </div>
       )}

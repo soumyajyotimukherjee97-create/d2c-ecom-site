@@ -86,7 +86,7 @@ describe('SupportForm — guest', () => {
     await user.click(screen.getByTestId('support-submit'))
 
     expect(await screen.findByTestId('support-success')).toBeInTheDocument()
-    expect(screen.getByTestId('support-ticket-id')).toHaveTextContent('#abcdef12')
+    expect(screen.getByTestId('support-ticket-id')).toHaveTextContent('TKT-ABCDEF12')
   })
 
   it('renders an error alert when the API fails', async () => {

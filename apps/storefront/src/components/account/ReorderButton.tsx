@@ -29,11 +29,11 @@ export function ReorderButton({
   }
 
   const base =
-    'font-mono text-2xs uppercase tracking-wider px-3 py-2 rounded-sm transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed'
+    'inline-flex items-center justify-center font-mono text-[11px] tracking-widest uppercase px-5 py-3 transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed'
   const palette =
     variant === 'primary'
-      ? 'bg-gray-900 text-white hover:bg-gray-700'
-      : 'border border-gray-200 text-gray-900 hover:border-gray-900'
+      ? 'bg-ink text-paper hover:bg-ink-2'
+      : 'border border-hairline text-ink hover:border-ink'
 
   return (
     <button
@@ -41,6 +41,7 @@ export function ReorderButton({
       onClick={handleClick}
       disabled={disabled}
       data-testid={testId}
+      data-variant={variant}
       className={[base, palette, className].filter(Boolean).join(' ')}
     >
       {label}
