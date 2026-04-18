@@ -24,7 +24,6 @@ type OrderRow = {
   subtotal:        number
   shipping_total:  number
   total:           number
-  payment_method:  string | null
   status:          string
   shipping_address: {
     line1:   string
@@ -63,7 +62,7 @@ async function getOrder(id: string): Promise<OrderRow | null> {
     .select(`
       id, order_number, contact_email, user_id,
       subtotal, shipping_total, total,
-      payment_method, status,
+      status,
       shipping_address,
       created_at,
       order_items(id, variant_id, product_name, variant_sku, quantity, unit_price, line_total)
@@ -71,7 +70,12 @@ async function getOrder(id: string): Promise<OrderRow | null> {
     .eq('id', id)
     .single()
 
-  if (error || !data) return null
+  if (error || !data) {
+    // Surface the Supabase error in server logs so a misnamed column /
+    // missing row doesn't silently collapse into a blank 404.
+    if (error) console.error('[order/[id]] getOrder failed:', error)
+    return null
+  }
   return data as unknown as OrderRow
 }
 
@@ -151,10 +155,9 @@ function estimatedDispatch(createdAtIso: string): string {
   return `${formatShortDate(start)} — ${formatShortDate(end)}`
 }
 
-function paymentLabel(method: string | null): string {
-  if (!method || method === 'cod') return 'COD'
-  return method.toUpperCase()
-}
+// MVP: COD is the only payment method (TDD §7 — Razorpay is Phase 2).
+// When the DB gains a `payment_method` column, plumb it through here.
+const PAYMENT_LABEL = 'COD'
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -169,7 +172,6 @@ export default async function OrderConfirmationPage({ params }: RouteContext) {
   const isGuest        = order.user_id === null
   const totalItemCount = order.order_items.reduce((s, i) => s + i.quantity, 0)
   const formulaCount   = order.order_items.length
-  const payment        = paymentLabel(order.payment_method)
 
   return (
     <div className="min-h-screen bg-paper">
@@ -258,7 +260,7 @@ export default async function OrderConfirmationPage({ params }: RouteContext) {
                 Payment
               </p>
               <p className="font-mono text-sm text-ink mt-1.5 tabular-nums">
-                {payment} · {formatInr(order.total)}
+                {PAYMENT_LABEL} · {formatInr(order.total)}
               </p>
             </div>
             <div className="px-6 py-5">
