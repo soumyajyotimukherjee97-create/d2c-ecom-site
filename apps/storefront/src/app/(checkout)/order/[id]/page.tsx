@@ -216,7 +216,7 @@ export default async function OrderConfirmationPage({ params }: RouteContext) {
       >
         <div className="max-w-container mx-auto px-8 py-20 text-center">
           <p
-            data-testid="confirmation-ack"
+            data-testid="confirmation-order-meta"
             className="font-mono text-2xs tracking-ultra uppercase text-graphite"
           >
             § Acknowledged — {order.order_number}
