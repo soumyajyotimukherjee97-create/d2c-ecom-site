@@ -9,6 +9,11 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
   hint?: string
 }
 
+/**
+ * Matter m-input. Mono-caps uppercase label above, 1px hairline input
+ * below, mono-caps uppercase placeholder inside. Focus border darkens
+ * to ink. Error: oxblood border + oxblood mono caption.
+ */
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   { id, label, error, hint, className = '', ...props },
   ref,
@@ -18,8 +23,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   const describedBy = [hintId, errorId].filter(Boolean).join(' ') || undefined
 
   return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="font-body text-sm font-medium text-gray-900">
+    <div className="flex flex-col gap-2">
+      <label
+        htmlFor={id}
+        className="font-mono text-2xs uppercase tracking-widest text-graphite"
+      >
         {label}
       </label>
 
@@ -30,15 +38,14 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         aria-invalid={error ? true : undefined}
         data-testid="input"
         className={[
-          'w-full border rounded-sm',
-          'px-3 py-2 font-body text-base text-gray-900 bg-white',
-          'placeholder:text-gray-400',
-          'transition-colors duration-150',
-          'focus:outline-none focus-visible:outline focus-visible:outline-2',
-          'focus-visible:outline-gray-900 focus-visible:outline-offset-1',
+          'w-full bg-transparent',
+          'px-3.5 py-3 font-mono text-sm text-ink',
+          'placeholder:uppercase placeholder:tracking-widest placeholder:text-graphite placeholder:text-2xs',
+          'transition-colors duration-150 border',
+          'focus:outline-none focus-visible:outline-none',
           error
-            ? 'border-error'
-            : 'border-gray-200 hover:border-gray-400',
+            ? 'border-oxblood focus:border-oxblood'
+            : 'border-hairline hover:border-ink focus:border-ink',
           className,
         ]
           .filter(Boolean)
@@ -47,7 +54,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       />
 
       {hint && !error && (
-        <p id={hintId} className="font-body text-sm text-gray-400">
+        <p id={hintId} className="font-mono text-2xs tracking-wide text-graphite">
           {hint}
         </p>
       )}
@@ -57,9 +64,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           id={errorId}
           role="alert"
           data-testid="input-error"
-          className="font-body text-sm text-error"
+          className="font-mono text-2xs uppercase tracking-wide text-oxblood"
         >
-          {error}
+          — {error}
         </p>
       )}
     </div>

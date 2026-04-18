@@ -8,9 +8,10 @@ describe('EmptyState', () => {
     expect(screen.getByTestId('empty-state')).toBeDefined()
   })
 
-  it('renders the heading', () => {
+  it('renders the heading with em-dash lead', () => {
     render(<EmptyState heading="No products found" body="Adjust your filters." />)
-    expect(screen.getByText('No products found')).toBeDefined()
+    // Matter empty-state pattern prefixes with "— "; use substring match.
+    expect(screen.getByTestId('empty-state')).toHaveTextContent('No products found')
   })
 
   it('renders the body text', () => {

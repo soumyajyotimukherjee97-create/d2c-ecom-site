@@ -12,19 +12,27 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode
 }
 
+// Matter m-btn family. All variants are mono-caps, square corners.
+// primary   = m-btn        (ink fill, paper text)
+// secondary = m-btn--ghost (transparent, ink border, inverts on hover)
+// ghost     = m-btn--hair  (transparent, hairline border, darkens to ink on hover)
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'bg-gray-900 text-white border border-gray-900 hover:bg-gray-800 hover:border-gray-800 disabled:bg-gray-400 disabled:border-gray-400',
+    'bg-ink text-paper border border-ink hover:bg-ink-2 hover:border-ink-2 ' +
+    'disabled:bg-graphite disabled:border-graphite',
   secondary:
-    'bg-transparent text-gray-900 border border-gray-900 hover:bg-gray-100 disabled:text-gray-400 disabled:border-gray-400',
+    'bg-transparent text-ink border border-ink hover:bg-ink hover:text-paper ' +
+    'disabled:text-graphite disabled:border-graphite',
   ghost:
-    'bg-transparent text-gray-600 border border-transparent hover:border-gray-200 disabled:text-gray-400',
+    'bg-transparent text-ink border border-hairline hover:border-ink ' +
+    'disabled:text-graphite disabled:border-hairline',
 }
 
+// Matter default padding: ~13px 20px. Mono 11px, tracking 0.14em.
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: 'px-3 py-1 text-sm',
-  md: 'px-4 py-2 text-base',
-  lg: 'px-6 py-3 text-lg',
+  sm: 'px-4 py-2.5 text-2xs',
+  md: 'px-5 py-[13px] text-xs',
+  lg: 'px-6 py-3.5 text-sm',
 }
 
 function Spinner() {
@@ -62,13 +70,15 @@ export function Button({
       disabled={isDisabled}
       aria-busy={loading}
       data-testid="button"
+      data-variant={variant}
+      data-size={size}
       className={[
-        'inline-flex items-center justify-center gap-2',
-        'rounded-sm font-body font-medium',
+        'inline-flex items-center justify-center gap-2.5',
+        'font-mono uppercase tracking-widest',
         'transition-colors duration-150',
         'cursor-pointer disabled:cursor-not-allowed',
         'focus:outline-none focus-visible:outline focus-visible:outline-2',
-        'focus-visible:outline-gray-900 focus-visible:outline-offset-2',
+        'focus-visible:outline-ink focus-visible:outline-offset-2',
         variantClasses[variant],
         sizeClasses[size],
         className,

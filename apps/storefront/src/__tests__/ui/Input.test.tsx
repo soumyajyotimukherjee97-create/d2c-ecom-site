@@ -70,9 +70,9 @@ describe('Input', () => {
     expect(screen.getByTestId('input')).not.toHaveAttribute('aria-invalid')
   })
 
-  it('applies border-error class when error is present', () => {
+  it('uses the oxblood border when an error is present', () => {
     render(<Input id="email" label="Email" error="Required" />)
-    expect(screen.getByTestId('input').className).toContain('border-error')
+    expect(screen.getByTestId('input').className).toContain('border-oxblood')
   })
 
   it('forwards type and placeholder props', () => {

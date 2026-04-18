@@ -5,16 +5,27 @@ export interface IngredientTagProps {
   className?: string
 }
 
-/** Left-bordered tag used in ingredient lists on PDPs. */
+/**
+ * PDP ingredient row — 3px left ink border signature pattern, 1px
+ * hairline frame, ingredient name left, concentration right.
+ * Matches wireframes/Pdp.html "KEY INGREDIENTS" rows.
+ */
 export function IngredientTag({ name, concentration, className = '' }: IngredientTagProps) {
   return (
     <div
       data-testid="ingredient-tag"
-      className={['ingredient-tag', className].filter(Boolean).join(' ')}
+      className={[
+        'flex items-center justify-between',
+        'px-3.5 py-3',
+        'border border-hairline border-l-[3px] border-l-ink bg-paper',
+        className,
+      ]
+        .filter(Boolean)
+        .join(' ')}
     >
-      <span className="font-body text-sm font-medium text-gray-900">{name}</span>
+      <span className="font-body text-sm text-ink">{name}</span>
       {concentration != null && (
-        <span className="font-mono text-2xs text-gray-400 ml-auto">
+        <span className="font-mono text-xs text-graphite tabular-nums">
           {concentration}%
         </span>
       )}

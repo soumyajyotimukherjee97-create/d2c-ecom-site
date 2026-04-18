@@ -41,33 +41,34 @@ describe('Button', () => {
     expect(btn.querySelector('svg')).toBeInTheDocument()
   })
 
-  it('applies primary variant classes by default', () => {
+  it('defaults to primary variant', () => {
     render(<Button>Primary</Button>)
-    const btn = screen.getByTestId('button')
-    expect(btn.className).toContain('bg-gray-900')
-    expect(btn.className).toContain('text-white')
+    expect(screen.getByTestId('button')).toHaveAttribute('data-variant', 'primary')
   })
 
-  it('applies secondary variant classes', () => {
+  it('exposes the secondary variant via data-variant', () => {
     render(<Button variant="secondary">Secondary</Button>)
-    const btn = screen.getByTestId('button')
-    expect(btn.className).toContain('bg-transparent')
-    expect(btn.className).toContain('border-gray-900')
+    expect(screen.getByTestId('button')).toHaveAttribute('data-variant', 'secondary')
   })
 
-  it('applies ghost variant classes', () => {
+  it('exposes the ghost variant via data-variant', () => {
     render(<Button variant="ghost">Ghost</Button>)
-    expect(screen.getByTestId('button').className).toContain('text-gray-600')
+    expect(screen.getByTestId('button')).toHaveAttribute('data-variant', 'ghost')
   })
 
-  it('applies sm size classes', () => {
+  it('defaults to md size', () => {
+    render(<Button>Default size</Button>)
+    expect(screen.getByTestId('button')).toHaveAttribute('data-size', 'md')
+  })
+
+  it('exposes the sm size via data-size', () => {
     render(<Button size="sm">Small</Button>)
-    expect(screen.getByTestId('button').className).toContain('px-3')
+    expect(screen.getByTestId('button')).toHaveAttribute('data-size', 'sm')
   })
 
-  it('applies lg size classes', () => {
+  it('exposes the lg size via data-size', () => {
     render(<Button size="lg">Large</Button>)
-    expect(screen.getByTestId('button').className).toContain('px-6')
+    expect(screen.getByTestId('button')).toHaveAttribute('data-size', 'lg')
   })
 
   it('forwards additional className', () => {

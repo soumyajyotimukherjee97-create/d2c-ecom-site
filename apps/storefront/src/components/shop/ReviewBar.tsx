@@ -9,9 +9,15 @@ interface ReviewBarProps {
 function Stars({ rating }: { rating: number }) {
   const filled = Math.round(rating)
   return (
-    <span aria-label={`${rating} out of 5 stars`} className="text-gray-900 tracking-tight">
+    <span
+      aria-label={`${rating} out of 5 stars`}
+      data-testid="review-stars"
+      className="font-mono text-sm tracking-[0.18em] text-ink"
+    >
       {Array.from({ length: 5 }, (_, i) => (
-        <span key={i} aria-hidden="true">{i < filled ? '★' : '☆'}</span>
+        <span key={i} aria-hidden="true" className={i < filled ? '' : 'text-hairline'}>
+          ★
+        </span>
       ))}
     </span>
   )
@@ -21,16 +27,13 @@ export function ReviewBar({ summary, scrollTargetId }: ReviewBarProps) {
   if (summary.count === 0) return null
 
   const inner = (
-    <div
-      data-testid="review-bar"
-      className="flex items-center gap-2"
-    >
+    <div data-testid="review-bar" className="inline-flex items-center gap-3">
       <Stars rating={summary.average} />
-      <span className="font-mono text-2xs text-gray-400">
+      <span className="font-mono text-2xs tracking-wide text-graphite tabular-nums">
         {summary.average.toFixed(1)}
       </span>
-      <span className="font-mono text-2xs text-gray-400">
-        ({summary.count} {summary.count === 1 ? 'review' : 'reviews'})
+      <span className="font-mono text-2xs uppercase tracking-widest text-graphite">
+        · n = {summary.count}
       </span>
     </div>
   )
@@ -39,7 +42,7 @@ export function ReviewBar({ summary, scrollTargetId }: ReviewBarProps) {
     return (
       <a
         href={`#${scrollTargetId}`}
-        className="inline-flex focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2"
+        className="inline-flex focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2"
       >
         {inner}
       </a>

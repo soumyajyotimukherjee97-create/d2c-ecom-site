@@ -15,9 +15,9 @@ describe('ScienceTag', () => {
     expect(screen.getByTestId('science-tag').tagName).toBe('SPAN')
   })
 
-  it('has science-tag CSS class', () => {
+  it('renders with matter assay tokens', () => {
     render(<ScienceTag>Tag</ScienceTag>)
-    expect(screen.getByTestId('science-tag').className).toContain('science-tag')
+    expect(screen.getByTestId('science-tag').className).toContain('border-assay')
   })
 
   it('forwards additional className', () => {
@@ -47,9 +47,9 @@ describe('IngredientTag', () => {
     expect(screen.getByTestId('ingredient-tag')).not.toHaveTextContent('%')
   })
 
-  it('has ingredient-tag CSS class', () => {
+  it('renders with the signature 3px ink left border', () => {
     render(<IngredientTag name="Hyaluronic Acid" />)
-    expect(screen.getByTestId('ingredient-tag').className).toContain('ingredient-tag')
+    expect(screen.getByTestId('ingredient-tag').className).toContain('border-l-ink')
   })
 })
 
@@ -66,9 +66,11 @@ describe('ScienceCallout', () => {
     expect(screen.getByTestId('science-callout').tagName).toBe('DIV')
   })
 
-  it('has science-callout CSS class', () => {
+  it('renders on a paper-2 surface with a hairline frame', () => {
     render(<ScienceCallout>Content</ScienceCallout>)
-    expect(screen.getByTestId('science-callout').className).toContain('science-callout')
+    const el = screen.getByTestId('science-callout')
+    expect(el.className).toContain('bg-paper-2')
+    expect(el.className).toContain('border-hairline')
   })
 
   it('renders rich children', () => {

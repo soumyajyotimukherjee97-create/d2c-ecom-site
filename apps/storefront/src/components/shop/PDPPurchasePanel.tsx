@@ -125,7 +125,7 @@ export function PDPPurchasePanel({ product }: PDPPurchasePanelProps) {
               </Badge>
             ))}
             {product.concerns.map((c) => (
-              <Badge key={c} variant="mist">
+              <Badge key={c} variant="filled">
                 {c.charAt(0).toUpperCase() + c.slice(1)}
               </Badge>
             ))}

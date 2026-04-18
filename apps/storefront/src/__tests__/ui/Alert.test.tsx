@@ -31,14 +31,19 @@ describe('Alert', () => {
     expect(onRetry).toHaveBeenCalledOnce()
   })
 
-  it('applies error variant classes by default', () => {
+  it('defaults to the error variant', () => {
     render(<Alert message="Error" />)
-    expect(screen.getByTestId('alert').className).toContain('border-l-error')
+    expect(screen.getByTestId('alert')).toHaveAttribute('data-variant', 'error')
   })
 
-  it('applies info variant classes', () => {
+  it('exposes the info variant via data-variant', () => {
     render(<Alert variant="info" message="Info" />)
-    expect(screen.getByTestId('alert').className).toContain('border-l-gray-900')
+    expect(screen.getByTestId('alert')).toHaveAttribute('data-variant', 'info')
+  })
+
+  it('exposes the success variant via data-variant', () => {
+    render(<Alert variant="success" message="Saved" />)
+    expect(screen.getByTestId('alert')).toHaveAttribute('data-variant', 'success')
   })
 
   it('forwards additional className', () => {

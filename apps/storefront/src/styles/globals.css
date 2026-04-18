@@ -27,6 +27,36 @@
 }
 
 @layer components {
+  /* ─── Placeholder striped pattern ──────────────────────────────
+     Stand-in for product photography. Matches matter.css .m-ph.
+     Used by <Placeholder /> primitive. */
+  .m-ph {
+    position: relative;
+    background:
+      repeating-linear-gradient(135deg,
+        transparent 0 14px,
+        color-mix(in oklab, theme('colors.hairline') 25%, transparent) 14px 15px),
+      theme('colors.paper-2');
+    border: 1px solid theme('colors.hairline');
+    overflow: hidden;
+  }
+  .m-ph--ink {
+    background:
+      repeating-linear-gradient(135deg,
+        transparent 0 14px,
+        color-mix(in oklab, theme('colors.paper') 10%, transparent) 14px 15px),
+      theme('colors.ink');
+    border-color: theme('colors.ink');
+    color: theme('colors.paper');
+  }
+  .m-ph--mineral {
+    background:
+      repeating-linear-gradient(135deg,
+        transparent 0 14px,
+        color-mix(in oklab, theme('colors.graphite') 18%, transparent) 14px 15px),
+      theme('colors.mineral');
+  }
+
   /* ─── Inverted surface helper ─────────────────────────────────
      When a section sets a dark background (bg-ink), add `m-inverted`
      to flip text + borders to paper tones. Matches matter.css. */

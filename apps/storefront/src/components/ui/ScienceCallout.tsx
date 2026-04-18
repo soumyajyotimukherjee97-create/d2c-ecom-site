@@ -5,12 +5,21 @@ export interface ScienceCalloutProps {
   className?: string
 }
 
-/** Left-bordered callout block for scientific claims and study citations. */
+/**
+ * Paper-2 block with a hairline frame — used for "clinical insight"
+ * sidecar callouts on PDP and ingredient essays. Matches
+ * wireframes/Pdp.html CLINICAL INSIGHT treatment.
+ */
 export function ScienceCallout({ children, className = '' }: ScienceCalloutProps) {
   return (
     <div
       data-testid="science-callout"
-      className={['science-callout', className].filter(Boolean).join(' ')}
+      className={[
+        'border border-hairline bg-paper-2 px-5 py-4',
+        className,
+      ]
+        .filter(Boolean)
+        .join(' ')}
     >
       {children}
     </div>

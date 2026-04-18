@@ -20,9 +20,9 @@ describe('ReviewBar', () => {
     expect(screen.getByText('4.2')).toBeDefined()
   })
 
-  it('displays the review count', () => {
+  it('displays the review count using matter mono format', () => {
     render(<ReviewBar summary={summary} />)
-    expect(screen.getByText('(84 reviews)')).toBeDefined()
+    expect(screen.getByTestId('review-bar')).toHaveTextContent('n = 84')
   })
 
   it('renders stars with an accessible label', () => {
@@ -50,12 +50,12 @@ describe('ReviewBar', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('uses singular "review" when count is 1', () => {
+  it('renders n = 1 when count is 1 (no singular/plural distinction in matter format)', () => {
     const one: ReviewsSummary = {
       average: 5, count: 1,
       distribution: { '1': 0, '2': 0, '3': 0, '4': 0, '5': 1 },
     }
     render(<ReviewBar summary={one} />)
-    expect(screen.getByText('(1 review)')).toBeDefined()
+    expect(screen.getByTestId('review-bar')).toHaveTextContent('n = 1')
   })
 })

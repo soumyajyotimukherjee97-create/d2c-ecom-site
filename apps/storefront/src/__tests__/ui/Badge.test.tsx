@@ -13,37 +13,29 @@ describe('Badge', () => {
     expect(screen.getByTestId('badge').tagName).toBe('SPAN')
   })
 
-  it('applies default variant by default', () => {
+  it('defaults to the default variant', () => {
     render(<Badge>Default</Badge>)
-    expect(screen.getByTestId('badge').className).toContain('bg-gray-100')
+    expect(screen.getByTestId('badge')).toHaveAttribute('data-variant', 'default')
   })
 
-  it('applies mist variant classes', () => {
-    render(<Badge variant="mist">Mist</Badge>)
-    const el = screen.getByTestId('badge')
-    expect(el.className).toContain('bg-mist')
-    expect(el.className).toContain('text-mist-text')
+  it('exposes the ink variant via data-variant', () => {
+    render(<Badge variant="ink">Ink</Badge>)
+    expect(screen.getByTestId('badge')).toHaveAttribute('data-variant', 'ink')
   })
 
-  it('applies blush variant classes', () => {
-    render(<Badge variant="blush">Blush</Badge>)
-    const el = screen.getByTestId('badge')
-    expect(el.className).toContain('bg-blush')
-    expect(el.className).toContain('text-blush-text')
+  it('exposes the assay variant via data-variant', () => {
+    render(<Badge variant="assay">Active</Badge>)
+    expect(screen.getByTestId('badge')).toHaveAttribute('data-variant', 'assay')
   })
 
-  it('applies error variant classes', () => {
+  it('exposes the filled variant via data-variant', () => {
+    render(<Badge variant="filled">Filled</Badge>)
+    expect(screen.getByTestId('badge')).toHaveAttribute('data-variant', 'filled')
+  })
+
+  it('exposes the error variant via data-variant', () => {
     render(<Badge variant="error">Error</Badge>)
-    const el = screen.getByTestId('badge')
-    expect(el.className).toContain('text-error')
-    expect(el.className).toContain('border-error')
-  })
-
-  it('applies uppercase and monospace classes', () => {
-    render(<Badge>Style</Badge>)
-    const el = screen.getByTestId('badge')
-    expect(el.className).toContain('uppercase')
-    expect(el.className).toContain('font-mono')
+    expect(screen.getByTestId('badge')).toHaveAttribute('data-variant', 'error')
   })
 
   it('forwards additional className', () => {

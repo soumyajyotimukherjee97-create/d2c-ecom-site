@@ -1,6 +1,6 @@
 'use client'
 
-export type AlertVariant = 'error' | 'info'
+export type AlertVariant = 'error' | 'info' | 'success'
 
 export interface AlertProps {
   variant?: AlertVariant
@@ -9,9 +9,11 @@ export interface AlertProps {
   className?: string
 }
 
+// 1px hairline frame + 2px left border keyed to variant colour.
 const variantClasses: Record<AlertVariant, string> = {
-  error: 'border-l-error text-error',
-  info:  'border-l-gray-900 text-gray-600',
+  error:   'border-l-[2px] border-l-oxblood text-oxblood',
+  info:    'border-l-[2px] border-l-ink text-ink-2',
+  success: 'border-l-[2px] border-l-assay text-assay-ink',
 }
 
 export function Alert({ variant = 'error', message, onRetry, className = '' }: AlertProps) {
@@ -19,9 +21,10 @@ export function Alert({ variant = 'error', message, onRetry, className = '' }: A
     <div
       role="alert"
       data-testid="alert"
+      data-variant={variant}
       className={[
         'flex items-center justify-between',
-        'border border-gray-100 border-l-2 bg-white',
+        'border border-hairline bg-paper',
         'px-4 py-3',
         variantClasses[variant],
         className,
@@ -29,15 +32,15 @@ export function Alert({ variant = 'error', message, onRetry, className = '' }: A
         .filter(Boolean)
         .join(' ')}
     >
-      <p className="font-body text-sm">{message}</p>
+      <p className="font-mono text-xs tracking-wide">{message}</p>
 
       {onRetry && (
         <button
           onClick={onRetry}
           data-testid="alert-retry"
           className={[
-            'font-body text-sm font-medium shrink-0 ml-4',
-            'underline underline-offset-2',
+            'font-mono text-2xs uppercase tracking-widest shrink-0 ml-4',
+            'border-b border-current pb-0.5',
             'hover:opacity-70 transition-opacity',
             'focus:outline-none focus-visible:outline focus-visible:outline-2',
             'focus-visible:outline-current focus-visible:outline-offset-2',
