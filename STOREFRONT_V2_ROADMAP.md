@@ -21,7 +21,7 @@
 | 1 | Design tokens + fonts | ✅ | low |
 | 2 | UI atoms (re-skin + new primitives) | ✅ | low |
 | 3 | Shared chrome — Navbar + Footer | ✅ | medium |
-| 4 | Cart drawer (overlay re-skin) | ☐ | medium |
+| 4 | Cart drawer (overlay re-skin) | ✅ | medium |
 | 5 | **Pilot page: About** (new route) | ✅ | low |
 | 6 | Home page | ☐ | medium |
 | 7 | PLP (`/products`) | ☐ | medium |
@@ -139,20 +139,34 @@
 
 ---
 
-## Chunk 4 — Cart drawer (overlay re-skin)
+## Chunk 4 — Cart drawer (overlay re-skin) ✅
 
-- **Prereqs**: Chunks 2, 3
+- **Prereqs**: Chunks 2, 3 ✅
 - **Scope**:
-  - Rewrite `components/shop/CartDrawer.tsx` per `wireframes-storefront-v2/Cart.html`:
-    header with count + close, free-ship progress bar, m-assay-style line items, qty stepper, REMOVE link, upsell block, sticky footer with subtotal/total, trust strip.
-  - Keep all state + logic unchanged (Zustand store, focus trap, backdrop click, Esc).
-  - Empty state inline inside drawer.
+  - Rewrite `components/shop/CartDrawer.tsx` per `wireframes-storefront-v2/Cart.html` — header with § eyebrow + display count + square close button, free-ship progress bar, m-assay line items with sm qty stepper + mono REMOVE link, upsell block, sticky footer with subtotal + total + CHECKOUT → CTA, trust strip. ✅
+  - Kept all state + logic unchanged (Zustand store, focus trap, backdrop click, Esc). ✅
+  - Empty state rendered inline below header (drawer chrome stays put, only footer is hidden). ✅
 - **Done when**:
-  - Drawer renders per wireframe.
-  - All existing CartDrawer tests pass (behavioural tests should survive — they assert on roles/testids).
-  - Add/update tests for new inner elements (progress bar text, upsell block).
-- **Tests**: update CartDrawer.test.tsx; add tests for progress bar text + empty state.
+  - Drawer renders per wireframe. ✅
+  - All existing CartDrawer behavioural tests pass (subtotal, upsell, close handlers, remove). ✅
+  - New tests cover free-ship progress bar, trust strip, empty-state CTAs, formulas/items count format. ✅
+- **Tests**: 435/435 (was 421; +14 for the re-skinned CartDrawer).
 - **Risk**: medium — overlay + commerce UI coupling.
+- **Delivered commits**:
+  - `8c1d5e0` — feat(storefront-v2): Chunk 4 — Cart drawer re-skin
+- **Notes**:
+  - Drawer width bumped from 340 → 480px desktop; full-width on mobile.
+  - Backdrop is `bg-ink/35` (matter spec: `rgba(18,18,16,0.35)`) — never `bg-black/20` or a blur.
+  - Close control is a 40×40 hairline-bordered square with an `×` glyph in mono — accessible name unchanged.
+  - Header count format: `N formulas · M items` (singularised at 1), per wireframe. An `sr-only` `(N)` is also emitted so any legacy callers / analytics selectors keep working.
+  - Free-ship progress block only appears when the cart has items (never in empty state). `role="progressbar"` + `aria-valuenow` = percentage of ₹999 threshold.
+  - Under threshold: "₹X TO GO" in graphite; at/above: "✓ FREE SHIPPING UNLOCKED" in assay-green. Bar fill colour swaps ink → assay on unlock.
+  - Shipping line copy updated to `Calculated at checkout` / `Free at checkout` (was `₹99` / `Free`) — this is the cart's display-only presentation; `/api/orders` still recomputes at order-create time.
+  - Line items use `<Placeholder />`-style `.m-ph` stripes when `imageUrl` is missing, instead of a blank grey square.
+  - Line items show unit-price × quantity breakdown only when qty > 1 — single items keep the panel clean.
+  - Removed the "Continue shopping" button — backdrop, Esc, and × cover the same intent with less visual noise.
+  - Empty state adds a second CTA: "Take the quiz" → `/products?quiz=true`, matching the wireframe's dual-CTA layout.
+  - Upsell eyebrow changed from "Complete your routine" → "§ Frequently added". Upsell `+` button is a 32px ink square — a mini of the PLP `+` button to be designed in Chunk 7.
 
 ---
 
@@ -432,3 +446,4 @@ _Update when chunks complete or scope shifts._
 - `2026-04-18` — **Chunk 2 complete** at `846df2e`. 12 atoms re-skinned, 4 new primitives added (Placeholder, Eyebrow, MonoCaption, Ruler), StatusChip alias in barrel. Class-name test assertions refactored to `data-variant` / `data-size` / `data-status` / `data-tone`. 405/405 tests green (+33).
 - `2026-04-18` — **Chunk 3 complete** at `540e669`. Navbar + Footer re-skinned to matter chrome. Wordmark "Form." → "matter." Nav: Shop · Ingredients · SkinInsight · About. Search button removed (unwired). 407/407 tests green (+2).
 - `2026-04-18` — **Chunk 5 complete** (Chunk 4 deferred — pilot page prioritised to validate atoms + chrome + tokens end-to-end on a real page before touching the cart overlay). `/about` shipped as a server component with `AboutHero` + `Manifesto` per handoff. `wireframes-storefront-v2/About.html` added for V2 consistency. 421/421 tests (+14). 17 routes build (was 16; `/about` is static `○`).
+- `2026-04-18` — **Chunk 4 complete** at `8c1d5e0`. CartDrawer re-skinned to matter. Drawer widened to 480px. New free-ship progress block with assay-green unlock state; new trust strip; new formulas/items header format; new empty-state quiz CTA. Upsell eyebrow renamed to § FREQUENTLY ADDED. `Continue shopping` button removed (redundant with Esc/×/backdrop). 435/435 tests (+14).
