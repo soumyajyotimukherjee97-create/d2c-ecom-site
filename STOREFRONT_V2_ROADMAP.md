@@ -30,7 +30,7 @@
 | 10 | Checkout + Order confirmation | ✅ | high |
 | 11 | Auth (`/login`, `/signup`) | ✅ | medium |
 | 12 | Account + Support | ✅ | medium |
-| 13 | SkinInsight coming-soon page | ☐ | low |
+| 13 | SkinInsight coming-soon page | ✅ | low |
 | 14 | Polish — 404, errors, loading, newsletter | ☐ | low |
 | 15 | Pre-cutover QA sweep | ☐ | high |
 | 16 | Cutover — merge `storefront-v2` → `main` | ☐ | high |
@@ -392,20 +392,27 @@
 
 ---
 
-## Chunk 13 — SkinInsight coming-soon page
+## Chunk 13 — SkinInsight coming-soon page ✅
 
-- **Prereqs**: Chunks 2, 3
+- **Prereqs**: Chunks 2, 3 ✅
 - **Scope**:
-  - New route `src/app/(shop)/skin-insight/page.tsx`.
-  - Single-page coming-soon shell: broadsheet masthead, editorial hero with `§ COMING SOON — PHASE 2`, short copy about the feature, optional inline waitlist email form (or just a "Back to shop" CTA).
-  - Include the heatmap figure from the shop CTA as the visual anchor (reusable between the two pages).
-  - Draft a minimal wireframe at `wireframes-storefront-v2/SkinInsight.html` first if the shape is unclear.
+  - Drafted `wireframes-storefront-v2/SkinInsight.html` — minimal coming-soon shell (broadsheet masthead · editorial hero · 2-col heatmap + manifest + waitlist · back-to-shop). ✅
+  - Extracted the heatmap figure out of `SkinInsightCTA` into a reusable `components/shop/SkinInsightHeatmap.tsx` — pure refactor, no behaviour change on PLP. ✅
+  - New route `src/app/(shop)/skin-insight/page.tsx` — server component. Broadsheet masthead (VOL. I · NO. 01 · SKIN INSIGHT · PENDING DISPATCH · PHASE 2), editorial hero (`§ COMING SOON — PHASE 2` + "A skin report, by your skin."), 2-col body (heatmap L + `§ THE BRIEF` + `How it will work.` + 3-item manifest (01 Scan · 02 Diagnose · 03 Prescribe) + waitlist block reusing `NewsletterForm`), secondary `← Back to the formulary` CTA. ✅
+  - Nav + Footer inherited from `(shop)` layout; no new layout work. ✅
 - **Done when**:
-  - Route exists, links from Navbar + PLP CTA resolve here.
-  - Optional waitlist form stores email (or explicitly no-ops with a "thanks" state — confirm scope).
-  - Responsive at 1024/768/640.
-- **Tests**: basic render test.
-- **Risk**: low.
+  - Route exists — links from Navbar + PLP `SkinInsightCTA` "Try now →" resolve here. ✅
+  - Waitlist reuses existing `NewsletterForm` → `POST /api/newsletter` (single inbox, single schema). ✅
+  - Static prerender (`○`); 19 routes total (was 18). ✅
+- **Tests**: 526/526 (was 518; +8 covering masthead, hero, manifest, heatmap reuse, waitlist, back-to-shop, "no Try now" guard).
+- **Risk**: low — static page, no commerce, no new data routes.
+- **Delivered commits**:
+  - `ca5de6e` — feat(storefront-v2): Chunk 13 — SkinInsight coming-soon
+- **Notes**:
+  - **No launch-date promise**: page never says "launching X weeks from now". `§ COMING SOON — PHASE 2` is the honest framing.
+  - **Waitlist consolidation**: reusing `NewsletterForm` means one audience + one schema. If SkinInsight gets its own list in Phase 2, swap to a dedicated form + audience — the page structure stays.
+  - **"Try now" guard test**: asserts the coming-soon page never emits a misleading CTA back to itself. Catches the "oops, copy-pasted the PLP block" regression at build time.
+  - **SkinInsightCTA unchanged**: still the only PLP CTA for SkinInsight; it imports the heatmap from the extracted module now. 6 existing SkinInsightCTA tests stay green without modification.
 
 ---
 
@@ -513,3 +520,4 @@ _Update when chunks complete or scope shifts._
 - `2026-04-18` — **Chunk 10 complete** at `72372e6`. `/checkout` and `/order/[id]` both re-skinned to matter editorial layout. Commerce invariants preserved — the POST /api/orders payload shape is byte-identical to main. Checkout: 12-col grid, three § sections, COD-only payment, ink CTA with dynamic total, sticky summary with "Displayed total · Recomputed on submit" caption. Confirmation: broadsheet masthead, "Your consignment is underway." hero, 4-cell info strip, manifest table, guest-only account incentive → /signup?prefill=…&order=…, 4-up related. 512/512 tests (+3 net). Two follow-up fixes: `bf63ba5` dropped non-existent `payment_method` column from getOrder select (was causing 404 on every successful checkout); `43259b5` restored top nav on the confirmation page (dropped in Chunk 10, added back inline so /checkout stays minimal).
 - `2026-04-18` — **Chunk 11 complete** at `1ce6189`. `/login` and `/signup` re-skinned per D3 (typographic-only, no imagery). SignupSchema expanded: first/last name + terms literal; prefill email from `?prefill=`; next-param preserved. Order claim-on-signup flagged as deferred follow-up. 518/518 tests (+6).
 - `2026-04-18` — **Chunk 12 complete** at `8698a00`. `/account` rebuilt as two-col dossier (subject header, sidebar with section nav + sign-out, orders table, restock reminder, skin profile). `/support/new` rebuilt with broadsheet masthead + editorial hero + matter form. Ticket ref format updated to `TKT-XXXXXXXX`. ReorderButton / SignOutButton / SkinProfileForm all re-skinned. API payloads unchanged. 518/518 tests — 2 assertion updates.
+- `2026-04-18` — **Chunk 13 complete** at `ca5de6e`. `/skin-insight` shipped as editorial coming-soon page — broadsheet masthead, "A skin report, by your skin." hero, reused heatmap figure (extracted into `SkinInsightHeatmap` for reuse between PLP CTA and this page), 3-item manifest, waitlist via existing NewsletterForm, back-to-shop link. New V2 wireframe drafted. 526/526 tests (+8).
