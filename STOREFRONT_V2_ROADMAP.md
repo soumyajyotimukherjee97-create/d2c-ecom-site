@@ -29,7 +29,7 @@
 | 9 | Ingredients page (new route, MDX) | ✅ | medium |
 | 10 | Checkout + Order confirmation | ✅ | high |
 | 11 | Auth (`/login`, `/signup`) | ✅ | medium |
-| 12 | Account + Support | ☐ | medium |
+| 12 | Account + Support | ✅ | medium |
 | 13 | SkinInsight coming-soon page | ☐ | low |
 | 14 | Polish — 404, errors, loading, newsletter | ☐ | low |
 | 15 | Pre-cutover QA sweep | ☐ | high |
@@ -366,22 +366,29 @@
 
 ---
 
-## Chunk 12 — Account + Support
+## Chunk 12 — Account + Support ✅
 
-- **Prereqs**: Chunks 2, 3, 11
+- **Prereqs**: Chunks 2, 3, 11 ✅
 - **Scope**:
-  - Re-skin `src/app/(shop)/account/page.tsx` per wireframe:
-    Page header (dossier + subject id), two-col layout (280px sidebar + content), orders table with mono-caps StatusChips, restock reminder, skin profile (subject-profile framing).
-  - Re-skin `src/app/(shop)/support/new/page.tsx` per wireframe:
-    broadsheet masthead, editorial hero, form (email / order dropdown / subject / priority / 5000-char body), inline success state (TKT-XXXXXXXX display).
-  - Re-skin `StatusBadge` usages → `StatusChip`.
-  - Preserve: SignOutButton, ReorderButton (cart.addItems), SkinProfileForm PATCH flow, SupportForm behaviour (authed vs guest).
+  - Re-skinned `src/app/(shop)/account/page.tsx` — paper-2 page header ("§ Your dossier · Subject AK-XXXX" + "Good afternoon, Aarti." + "Member since · MMM YYYY"), two-col 280px/1fr layout, subject card, section nav (01 Orders / 02 Skin profile / 03 Support) with ink left-border on active, sign-out in sidebar footer. Orders table: hairline rows, 6-col grid (ORDER ID · FORMULAS · STATUS · DISPATCHED · TOTAL · View), mono-caps header, StatusBadge already matter-shaped. Lifetime total in header. Restock reminder on paper-2 with display copy. Skin profile below as "Subject profile." in matter key-value rows. ✅
+  - Re-skinned `ReorderButton` to matter pill (ink primary / hairline outline). `SignOutButton` to mono-caps "Sign out →" link. `SkinProfileForm` to matter rows + ink-fill toggles. ✅
+  - Re-skinned `src/app/(shop)/support/new/page.tsx` — broadsheet masthead (3px double-rule, VOL·I / SUPPORT · FILE A NOTE / RESP · 24H + today's date), centered editorial hero "How can we help?", form block. ✅
+  - Re-skinned `SupportForm` — authed email readonly block with ✓ SIGNED IN assay badge; matter select for order dropdown ("None — general query" default); matter textarea with live char counter that shifts colour at threshold (graphite → ink → oxblood); ink "Dispatch note →" CTA. Inline success state: matter-voiced ("§ FILED — TKT-XXXXXXXX · 'Your note is on file.'"); ticket id reformatted to `TKT-XXXXXXXX` (8-char uppercase UUID prefix). "File another" resets form; "Return home" link. ✅
+  - Preserved: SignOutButton flow, ReorderButton cart.addItems, SkinProfileForm PATCH `/api/account/profile`, SupportForm API payload shape (authed → `order_id`, guest → `guest_email` + body prefix). ✅
 - **Done when**:
-  - `/account` and `/support/new` match wireframes.
-  - All flows work — sign out, reorder, profile edit, ticket submission.
-  - Existing account + support tests pass.
-- **Tests**: update account.test + support.test; add tests for StatusChip variants and subject-profile rows.
-- **Risk**: medium.
+  - `/account` and `/support/new` match wireframes. ✅
+  - All flows work — sign out, reorder, profile edit, ticket submission. ✅
+  - Existing account + support tests pass. ✅
+- **Tests**: 518/518 still green (no net new, updated 2 assertions — SkinProfileForm concerns render as chips instead of dot-separated string; SupportForm ticket ref format `TKT-XXXXXXXX`).
+- **Risk**: medium. Data-flow + API payloads unchanged.
+- **Delivered commits**:
+  - `8698a00` — feat(storefront-v2): Chunk 12 — Account + Support re-skin
+- **Notes**:
+  - Subject ID scheme: `{initials}-{last4 of uuid}` — stable, unique, human-pronounceable. e.g. `AK-3F9C`. Pure render-time derivation; no new DB column.
+  - Greeting: UTC-hour based (morning/afternoon/evening). Good enough for MVP; a future pass could honour user locale.
+  - "Priority" chip selector from the wireframe is **not** included — `support_tickets.priority` is a staff-facing column; customers don't set it. Keeping it off the public form matches the existing API contract (no `priority` field on the client schema) and avoids the "always defaults to normal" anti-pattern. Internal console already exposes priority editing.
+  - Restock-reminder copy uses a conservative heuristic (42 days for the first item). Only shown when the user has an order in the 40–180 day window.
+  - Order row layout fixed-grid columns (`140 / 1fr / 140 / 120 / 120 / 80`) — renders well at desktop. On narrow screens (< 768px) the sidebar stacks above content; orders table inherits horizontal scroll if columns get tight. Real mobile optimization deferred to Chunk 14 polish if needed.
 
 ---
 
@@ -505,3 +512,4 @@ _Update when chunks complete or scope shifts._
 - `2026-04-18` — **Chunk 9 complete** at `72fb121`. `/ingredients` ships with IngredientsHero + IngredientsReader (17-chip ChapterRail + dropcap EssayEntry + sticky data-sheet sidecar + wrap-around Prev/Next + hash sync + localStorage resume) + Philosophy. Content pipeline: `src/lib/ingredients/catalogue.ts` (typed) + `src/content/ingredients/*.md` (gray-matter front-matter). D1 deviation flagged: plain .md vs .mdx — upgrade path clean. 509/509 tests (+23). Setup polyfills: ResizeObserver + scrollIntoView/scrollBy.
 - `2026-04-18` — **Chunk 10 complete** at `72372e6`. `/checkout` and `/order/[id]` both re-skinned to matter editorial layout. Commerce invariants preserved — the POST /api/orders payload shape is byte-identical to main. Checkout: 12-col grid, three § sections, COD-only payment, ink CTA with dynamic total, sticky summary with "Displayed total · Recomputed on submit" caption. Confirmation: broadsheet masthead, "Your consignment is underway." hero, 4-cell info strip, manifest table, guest-only account incentive → /signup?prefill=…&order=…, 4-up related. 512/512 tests (+3 net). Two follow-up fixes: `bf63ba5` dropped non-existent `payment_method` column from getOrder select (was causing 404 on every successful checkout); `43259b5` restored top nav on the confirmation page (dropped in Chunk 10, added back inline so /checkout stays minimal).
 - `2026-04-18` — **Chunk 11 complete** at `1ce6189`. `/login` and `/signup` re-skinned per D3 (typographic-only, no imagery). SignupSchema expanded: first/last name + terms literal; prefill email from `?prefill=`; next-param preserved. Order claim-on-signup flagged as deferred follow-up. 518/518 tests (+6).
+- `2026-04-18` — **Chunk 12 complete** at `8698a00`. `/account` rebuilt as two-col dossier (subject header, sidebar with section nav + sign-out, orders table, restock reminder, skin profile). `/support/new` rebuilt with broadsheet masthead + editorial hero + matter form. Ticket ref format updated to `TKT-XXXXXXXX`. ReorderButton / SignOutButton / SkinProfileForm all re-skinned. API payloads unchanged. 518/518 tests — 2 assertion updates.
