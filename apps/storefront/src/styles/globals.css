@@ -1,38 +1,61 @@
-@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  html {
+    background: theme('colors.paper');
+    color: theme('colors.ink');
+  }
+
   body {
-    @apply bg-offwhite text-gray-900 font-body antialiased;
+    @apply bg-paper text-ink font-body antialiased;
+    font-feature-settings: "ss01", "cv11";
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
   }
 
   h1, h2, h3, h4 {
-    @apply font-heading;
+    @apply font-display font-normal;
+    letter-spacing: -0.025em;
   }
 
-  /* Elevation rule: borders only, no shadows — ever */
+  /* Elevation rule: borders only, no shadows — ever. */
   * {
     box-shadow: none !important;
   }
 }
 
 @layer components {
+  /* ─── Inverted surface helper ─────────────────────────────────
+     When a section sets a dark background (bg-ink), add `m-inverted`
+     to flip text + borders to paper tones. Matches matter.css. */
+  .m-inverted {
+    color: theme('colors.paper');
+  }
+  .m-inverted * {
+    border-color: color-mix(in oklab, theme('colors.paper') 25%, transparent);
+  }
+  .m-inverted p {
+    color: color-mix(in oklab, theme('colors.paper') 80%, transparent);
+  }
+
+  /* ─── V1 component classes (retained for compat until Chunk 2) ─── */
+
   .science-tag {
     @apply font-mono text-2xs tracking-widest uppercase
-           bg-mist text-mist-text border border-mist-border
-           px-1.5 py-0.5 rounded-sm;
+           bg-paper-2 text-graphite border border-hairline
+           px-1.5 py-0.5;
   }
 
   .ingredient-tag {
     @apply flex items-center gap-2 px-3 py-1.5
-           bg-white border border-gray-100 border-l-2
-           border-l-gray-900 text-sm;
+           bg-paper border border-hairline border-l-2
+           border-l-ink text-sm;
   }
 
   .science-callout {
-    @apply bg-offwhite border-l-2 border-l-gray-900
-           border border-gray-100 px-4 py-3;
+    @apply bg-paper-2 border-l-2 border-l-ink
+           border border-hairline px-4 py-3;
   }
 }
