@@ -17,7 +17,7 @@
 
 | # | Chunk | Status | Risk |
 |---|---|---|---|
-| 0 | Branch + infra setup | ☐ | low |
+| 0 | Branch + infra setup | ✅ | low |
 | 1 | Design tokens + fonts | ☐ | low |
 | 2 | UI atoms (re-skin + new primitives) | ☐ | low |
 | 3 | Shared chrome — Navbar + Footer | ☐ | medium |
@@ -37,20 +37,26 @@
 
 ---
 
-## Chunk 0 — Branch + infra setup
+## Chunk 0 — Branch + infra setup ✅
 
 - **Prereqs**: none
 - **Scope**:
-  - Cut `storefront-v2` from `main`.
-  - Confirm CI runs on the branch (typecheck, lint, vitest, playwright).
-  - Verify `pnpm build` succeeds on a clean checkout of the branch.
-  - Add the branch-guardrail section to `CLAUDE.md` so future sessions respect it.
+  - Cut `storefront-v2` from `main`. ✅
+  - Add GitHub Actions CI workflow (none existed prior) — typecheck · lint · test on every push and PR to `main` and `storefront-v2`. ✅
+  - Add the branch-guardrail section to `CLAUDE.md` so future sessions respect it. ✅
+  - Land planning docs (`DESIGN_SYSTEM_V2.md`, `STOREFRONT_V2.md`, this file, `wireframes-storefront-v2/`, `design_agent_handoff/`) on `main` so they're visible to all contributors. ✅
 - **Done when**:
-  - Branch exists and is the default working branch.
-  - CI green on `storefront-v2` HEAD.
-  - `CLAUDE.md` has a "While storefront-v2 is active" guardrail block.
-- **Tests**: no code tests touched; manual check of CI.
+  - Branch exists and is the default working branch. ✅
+  - CI green on both `main` and `storefront-v2` HEAD. ✅
+  - `CLAUDE.md` has a "While storefront-v2 is active" guardrail block. ✅
+- **Tests**: no code tests touched; CI green verified on GitHub.
 - **Risk**: low
+- **Delivered commits**:
+  - `bf61957` — docs: storefront-v2 redesign plan, wireframes, and matter design handoff
+  - `092be5d` — ci: add GitHub Actions workflow (typecheck · lint · test)
+- **CI coverage notes**:
+  - Fast three only (typecheck, lint, vitest). Intentionally narrow to keep runtime under ~4 min.
+  - **Deferred to a later pass (not blocking V2 work)**: integration tests (need Supabase in CI — service container + seed), Playwright E2E (needs browser install + both apps running). Revisit before Chunk 15 QA.
 
 ---
 
@@ -385,3 +391,4 @@ These are legitimately out of V2 scope per decisions or TDD:
 _Update when chunks complete or scope shifts._
 
 - `2026-04-18` — Roadmap drafted.
+- `2026-04-18` — **Chunk 0 complete.** `storefront-v2` cut from `main` at `4da9d9c`. GitHub Actions CI added (was missing entirely). Planning docs + handoff landed on `main` at `bf61957`; CI workflow at `092be5d`. Both branches green.
