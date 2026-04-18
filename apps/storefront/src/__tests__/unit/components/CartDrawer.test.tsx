@@ -108,19 +108,53 @@ describe('CartDrawer', () => {
     expect(screen.getByTestId('cart-backdrop')).toBeDefined()
   })
 
-  // ── Empty state ────────────────────────────────────────────────────────────
+  // ── Header eyebrow + count ─────────────────────────────────────────────────
 
-  it('shows empty state when cart has no items', () => {
-    useCartStore.setState({ isOpen: true, items: [] })
+  it('renders the § YOUR BAG eyebrow in the header', () => {
+    useCartStore.setState({ isOpen: true })
     render(<CartDrawer />)
-    expect(screen.getByTestId('cart-empty-heading')).toBeDefined()
-    expect(screen.getByText('Your cart is empty.')).toBeDefined()
+    expect(screen.getByTestId('cart-header-eyebrow')).toHaveTextContent(/§\s*Your bag/i)
   })
 
-  it('shows browse products link in empty state', () => {
+  it('shows "Nothing yet." in header subtitle when cart is empty', () => {
+    useCartStore.setState({ isOpen: true })
+    render(<CartDrawer />)
+    expect(screen.getByTestId('cart-header-count')).toHaveTextContent(/Nothing yet/i)
+  })
+
+  it('shows "N formulas · M items" when cart has multiple quantities', () => {
+    openWithItems([item1, item2]) // 2 formulas · 3 items
+    render(<CartDrawer />)
+    expect(screen.getByTestId('cart-header-count')).toHaveTextContent('2 formulas · 3 items')
+  })
+
+  it('singularises formula / item when counts are 1', () => {
+    openWithItems([item1]) // 1 formula · 1 item
+    render(<CartDrawer />)
+    expect(screen.getByTestId('cart-header-count')).toHaveTextContent('1 formula · 1 item')
+  })
+
+  // ── Empty state ────────────────────────────────────────────────────────────
+
+  it('shows empty state heading "— Empty." when cart has no items', () => {
     useCartStore.setState({ isOpen: true, items: [] })
     render(<CartDrawer />)
-    expect(screen.getByTestId('cart-browse-link')).toBeDefined()
+    expect(screen.getByTestId('cart-empty-heading')).toHaveTextContent(/Empty\./)
+  })
+
+  it('renders browse formulary link in empty state', () => {
+    useCartStore.setState({ isOpen: true, items: [] })
+    render(<CartDrawer />)
+    const link = screen.getByTestId('cart-browse-link') as HTMLAnchorElement
+    expect(link.getAttribute('href')).toBe('/products')
+    expect(link).toHaveTextContent(/browse formulary/i)
+  })
+
+  it('renders "Take the quiz" CTA in empty state pointing to /products?quiz=true', () => {
+    useCartStore.setState({ isOpen: true, items: [] })
+    render(<CartDrawer />)
+    const link = screen.getByTestId('cart-quiz-link') as HTMLAnchorElement
+    expect(link.getAttribute('href')).toBe('/products?quiz=true')
   })
 
   it('does not show browse link when cart has items', () => {
@@ -129,18 +163,10 @@ describe('CartDrawer', () => {
     expect(screen.queryByTestId('cart-browse-link')).toBeNull()
   })
 
-  // ── Item count in header ───────────────────────────────────────────────────
-
-  it('shows item count 0 in header for empty cart', () => {
-    useCartStore.setState({ isOpen: true })
+  it('does not show the footer when cart is empty', () => {
+    useCartStore.setState({ isOpen: true, items: [] })
     render(<CartDrawer />)
-    expect(screen.getByText('(0)')).toBeDefined()
-  })
-
-  it('shows correct item count for items with multiple quantities', () => {
-    openWithItems([item1, item2]) // qty 1 + qty 2 = 3
-    render(<CartDrawer />)
-    expect(screen.getByText('(3)')).toBeDefined()
+    expect(screen.queryByTestId('cart-checkout-link')).toBeNull()
   })
 
   // ── Cart items rendering ───────────────────────────────────────────────────
@@ -154,21 +180,44 @@ describe('CartDrawer', () => {
   it('renders product name in each cart item', () => {
     openWithItems([item1])
     render(<CartDrawer />)
-    expect(screen.getByText('Brightening Serum')).toBeDefined()
+    expect(screen.getByTestId('cart-item-name')).toHaveTextContent('Brightening Serum')
   })
 
-  it('renders sku and size in each cart item', () => {
+  it('renders sku and size ml in each cart item', () => {
     openWithItems([item1])
     render(<CartDrawer />)
-    expect(screen.getByText('BS-30 · 30ml')).toBeDefined()
+    const row = screen.getByTestId('cart-item')
+    expect(within(row).getByText('BS-30')).toBeDefined()
+    expect(within(row).getByText(/30ml/)).toBeDefined()
   })
 
   it('renders line price (price × quantity) for each item', () => {
     openWithItems([{ ...item1, quantity: 2 }]) // 129900 × 2 = 259800 → ₹2,598
     render(<CartDrawer />)
     const cartItem = screen.getByTestId('cart-item')
-    // line price is inside the cart-item row
     expect(within(cartItem).getByText('₹2,598')).toBeDefined()
+  })
+
+  it('shows unit-price × qty breakdown when quantity > 1', () => {
+    openWithItems([{ ...item1, quantity: 3 }])
+    render(<CartDrawer />)
+    const cartItem = screen.getByTestId('cart-item')
+    expect(within(cartItem).getByText(/₹1,299\s*×\s*3/)).toBeDefined()
+  })
+
+  it('omits unit-price breakdown when quantity is 1', () => {
+    openWithItems([item1])
+    render(<CartDrawer />)
+    const cartItem = screen.getByTestId('cart-item')
+    expect(within(cartItem).queryByText(/×\s*1/)).toBeNull()
+  })
+
+  // ── Quantity stepper ───────────────────────────────────────────────────────
+
+  it('uses the compact (sm) qty selector in cart rows', () => {
+    openWithItems([item1])
+    render(<CartDrawer />)
+    expect(screen.getByTestId('quantity-selector')).toHaveAttribute('data-size', 'sm')
   })
 
   // ── Remove item ────────────────────────────────────────────────────────────
@@ -187,7 +236,40 @@ describe('CartDrawer', () => {
     expect(removeItem).toHaveBeenCalledWith('v1')
   })
 
-  // ── Subtotal ───────────────────────────────────────────────────────────────
+  // ── Free-ship progress ─────────────────────────────────────────────────────
+
+  it('renders the free-ship progress block when cart has items', () => {
+    openWithItems([{ ...item1, price: 50000, quantity: 1 }])
+    render(<CartDrawer />)
+    expect(screen.getByTestId('cart-freeship')).toBeDefined()
+  })
+
+  it('shows "₹X to go" when under the free-ship threshold', () => {
+    // 50000 paise subtotal → 99900 - 50000 = 49900 → ₹499
+    openWithItems([{ ...item1, price: 50000, quantity: 1 }])
+    render(<CartDrawer />)
+    expect(screen.getByTestId('cart-freeship-status')).toHaveTextContent(/₹499 to go/i)
+  })
+
+  it('shows "FREE SHIPPING UNLOCKED" when at/above the threshold', () => {
+    openWithItems([item1]) // 129900 ≥ 99900
+    render(<CartDrawer />)
+    expect(screen.getByTestId('cart-freeship-status')).toHaveTextContent(/free shipping unlocked/i)
+  })
+
+  it('progress bar aria-valuenow reflects completion percent', () => {
+    openWithItems([{ ...item1, price: 49950, quantity: 1 }]) // 50% of 99900
+    render(<CartDrawer />)
+    expect(screen.getByTestId('cart-freeship-bar')).toHaveAttribute('aria-valuenow', '50')
+  })
+
+  it('progress bar caps at 100 when subtotal ≥ threshold', () => {
+    openWithItems([item1]) // 129900 ≥ 99900
+    render(<CartDrawer />)
+    expect(screen.getByTestId('cart-freeship-bar')).toHaveAttribute('aria-valuenow', '100')
+  })
+
+  // ── Subtotal / Total ───────────────────────────────────────────────────────
 
   it('shows correct subtotal', () => {
     openWithItems([item1, item2]) // 129900 + 89900×2 = 309700 → ₹3,097
@@ -195,25 +277,39 @@ describe('CartDrawer', () => {
     expect(screen.getByTestId('cart-subtotal').textContent).toBe('₹3,097')
   })
 
-  // ── Shipping ───────────────────────────────────────────────────────────────
-
-  it('shows "Free" shipping when subtotal ≥ ₹999', () => {
-    // item1: 129900 paise = ₹1,299 ≥ ₹999
-    openWithItems([item1])
+  it('shows correct total (equal to subtotal in V2 — shipping added at checkout)', () => {
+    openWithItems([item1, item2])
     render(<CartDrawer />)
-    expect(screen.getByTestId('cart-shipping').textContent).toBe('Free')
+    expect(screen.getByTestId('cart-total').textContent).toBe('₹3,097')
   })
 
-  it('shows shipping cost when subtotal < ₹999', () => {
-    // 50000 paise = ₹500 < ₹999
+  // ── Shipping copy ──────────────────────────────────────────────────────────
+
+  it('shows "Free at checkout" shipping when subtotal ≥ ₹999', () => {
+    openWithItems([item1])
+    render(<CartDrawer />)
+    expect(screen.getByTestId('cart-shipping').textContent).toMatch(/free at checkout/i)
+  })
+
+  it('shows "Calculated at checkout" shipping when subtotal < ₹999', () => {
     openWithItems([{ ...item1, price: 50000, quantity: 1 }])
     render(<CartDrawer />)
-    expect(screen.getByTestId('cart-shipping').textContent).toBe('₹99')
+    expect(screen.getByTestId('cart-shipping').textContent).toMatch(/calculated at checkout/i)
+  })
+
+  // ── Trust strip ────────────────────────────────────────────────────────────
+
+  it('renders the trust strip with returns and dispatch copy', () => {
+    openWithItems([item1])
+    render(<CartDrawer />)
+    const strip = screen.getByTestId('cart-trust-strip')
+    expect(strip).toHaveTextContent(/free returns/i)
+    expect(strip).toHaveTextContent(/dispatched in 48h/i)
   })
 
   // ── Close actions ──────────────────────────────────────────────────────────
 
-  it('calls closeCart when the X button is clicked', () => {
+  it('calls closeCart when the × button is clicked', () => {
     useCartStore.setState({ isOpen: true })
     const closeCart = vi.spyOn(useCartStore.getState(), 'closeCart')
     render(<CartDrawer />)
@@ -229,21 +325,15 @@ describe('CartDrawer', () => {
     expect(closeCart).toHaveBeenCalled()
   })
 
-  it('calls closeCart when "Continue shopping" is clicked', () => {
-    openWithItems([item1])
-    const closeCart = vi.spyOn(useCartStore.getState(), 'closeCart')
-    render(<CartDrawer />)
-    fireEvent.click(screen.getByTestId('cart-continue-shopping'))
-    expect(closeCart).toHaveBeenCalled()
-  })
-
   // ── Checkout link ──────────────────────────────────────────────────────────
 
-  it('renders the checkout link in the footer', () => {
+  it('renders the checkout link in the footer with label "Checkout →"', () => {
     openWithItems([item1])
     render(<CartDrawer />)
     const link = screen.getByTestId('cart-checkout-link') as HTMLAnchorElement
     expect(link.getAttribute('href')).toBe('/checkout')
+    expect(link).toHaveTextContent(/checkout/i)
+    expect(link).toHaveTextContent('→')
   })
 
   // ── Upsell slot ────────────────────────────────────────────────────────────
@@ -252,6 +342,14 @@ describe('CartDrawer', () => {
     openWithItems([item1])
     render(<CartDrawer />)
     await waitFor(() => expect(screen.getByTestId('cart-upsell')).toBeDefined())
+  })
+
+  it('upsell carries the § FREQUENTLY ADDED eyebrow', async () => {
+    openWithItems([item1])
+    render(<CartDrawer />)
+    await waitFor(() => {
+      expect(screen.getByTestId('cart-upsell')).toHaveTextContent(/§\s*Frequently added/i)
+    })
   })
 
   it('hides upsell when cart is empty', () => {

@@ -3,7 +3,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { X } from 'lucide-react'
 import { useCartStore, type CartItem } from '@/lib/store/cart'
 import { QuantitySelector } from '@/components/ui/QuantitySelector'
 import { formatInr } from '@/lib/money'
@@ -72,7 +71,12 @@ export function CartDrawer() {
 
   const total         = subtotal
   const count         = itemCount
+  const formulaCount  = items.length
   const isFreeShip    = total >= SHIPPING_THRESHOLD
+  const remaining     = Math.max(0, SHIPPING_THRESHOLD - total)
+  const progressPct   = isFreeShip
+    ? 100
+    : total <= 0 ? 0 : Math.round((total / SHIPPING_THRESHOLD) * 100)
 
   // ── Focus trap + Escape key ──────────────────────────────────────────────────
   useEffect(() => {
@@ -108,134 +112,225 @@ export function CartDrawer() {
 
   if (!isOpen) return null
 
+  const headerSubtitle =
+    formulaCount === 0
+      ? 'Nothing yet.'
+      : `${formulaCount} ${formulaCount === 1 ? 'formula' : 'formulas'} · ${count} ${count === 1 ? 'item' : 'items'}`
+
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — ink 35% per matter spec, never a blur */}
       <div
         aria-hidden="true"
         data-testid="cart-backdrop"
-        className="fixed inset-0 z-40 bg-black/20"
+        className="fixed inset-0 z-40 bg-ink/35"
         onClick={closeCart}
       />
 
-      {/* Drawer panel */}
+      {/* Drawer panel — 480px md+, full width mobile, hairline left border */}
       <div
         ref={drawerRef}
         role="dialog"
         aria-modal="true"
         aria-label="Shopping cart"
         data-testid="cart-drawer"
-        className="fixed right-0 top-0 z-50 flex h-full flex-col bg-white border-l border-gray-100"
-        style={{ width: '340px' }}
+        className="fixed right-0 top-0 z-50 flex h-full w-full md:w-[480px] flex-col bg-paper border-l border-hairline"
       >
 
         {/* ── Header ────────────────────────────────────────────────────────── */}
-        <div className="flex flex-shrink-0 items-center justify-between border-b border-gray-100 px-4 py-4">
-          <span className="font-body text-sm font-medium text-gray-900">
-            Cart{' '}
-            <span className="font-mono text-2xs font-normal text-gray-400">({count})</span>
-          </span>
-          <button
-            type="button"
-            aria-label="Close cart"
-            data-testid="cart-close"
-            onClick={closeCart}
-            className="flex h-6 w-6 items-center justify-center text-gray-400 transition-colors hover:text-gray-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900"
-          >
-            <X size={14} aria-hidden="true" />
-          </button>
+        <div className="flex-shrink-0 px-6 py-5 border-b border-hairline">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p
+                className="font-mono text-2xs tracking-widest uppercase text-graphite"
+                data-testid="cart-header-eyebrow"
+              >
+                § Your bag
+              </p>
+              <p
+                className="font-display text-2xl text-ink mt-1.5"
+                data-testid="cart-header-count"
+              >
+                {headerSubtitle}{' '}
+                {/* Hidden machine-readable count keeps legacy assertions viable */}
+                <span className="sr-only">({count})</span>
+              </p>
+            </div>
+            <button
+              type="button"
+              aria-label="Close cart"
+              data-testid="cart-close"
+              onClick={closeCart}
+              className="flex-shrink-0 inline-flex h-10 w-10 items-center justify-center border border-hairline font-mono text-base text-ink hover:bg-paper-2 transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2"
+            >
+              ×
+            </button>
+          </div>
         </div>
 
         {/* ── Body ──────────────────────────────────────────────────────────── */}
         {items.length === 0 ? (
 
-          /* Empty state */
-          <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 text-center">
-            <p className="font-body text-sm text-gray-900 mb-2" data-testid="cart-empty-heading">
-              Your cart is empty.
-            </p>
-            <p className="font-body text-xs text-gray-500 mb-6">
-              Add products from the shop to get started.
-            </p>
-            <Link
-              href="/products"
-              onClick={closeCart}
-              data-testid="cart-browse-link"
-              className="font-mono text-2xs uppercase tracking-wider bg-gray-900 text-white px-5 py-2 rounded-sm hover:bg-gray-700 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2"
+          /* Empty state — inline inside drawer (keeps the header, drops the footer) */
+          <div
+            data-testid="cart-empty"
+            className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center"
+          >
+            <p
+              data-testid="cart-empty-heading"
+              className="font-display text-4xl text-ink"
             >
-              Browse products
-            </Link>
+              — Empty.
+            </p>
+            <p className="font-body text-sm text-ink-2 mt-4 max-w-[320px]">
+              Nothing here yet. Begin with a serum, or take the skin insight quiz to let us prescribe.
+            </p>
+            <div className="flex flex-wrap justify-center gap-2 mt-7">
+              <Link
+                href="/products"
+                onClick={closeCart}
+                data-testid="cart-browse-link"
+                className="inline-flex items-center justify-center bg-ink text-paper font-mono text-2xs tracking-widest uppercase px-5 py-3 hover:bg-ink-2 transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2"
+              >
+                Browse formulary
+              </Link>
+              <Link
+                href="/products?quiz=true"
+                onClick={closeCart}
+                data-testid="cart-quiz-link"
+                className="inline-flex items-center justify-center border border-ink text-ink font-mono text-2xs tracking-widest uppercase px-5 py-3 hover:bg-paper-2 transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2"
+              >
+                Take the quiz
+              </Link>
+            </div>
           </div>
 
         ) : (
 
-          <div className="flex-1 overflow-y-auto px-4 py-3">
+          <>
+            {/* Free-ship progress */}
+            <div
+              data-testid="cart-freeship"
+              className="flex-shrink-0 bg-paper-2 border-b border-hairline px-6 py-4"
+            >
+              <div className="flex items-center justify-between mb-2.5">
+                <span className="font-mono text-2xs tracking-widest uppercase text-graphite">
+                  Free shipping at ₹999
+                </span>
+                <span
+                  data-testid="cart-freeship-status"
+                  className={`font-mono text-2xs tracking-widest uppercase ${isFreeShip ? 'text-assay' : 'text-graphite'}`}
+                >
+                  {isFreeShip
+                    ? '✓ Free shipping unlocked'
+                    : `${formatInr(remaining)} to go`}
+                </span>
+              </div>
+              <div
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={progressPct}
+                aria-label="Free shipping progress"
+                data-testid="cart-freeship-bar"
+                className="relative h-0.5 bg-hairline"
+              >
+                <div
+                  className={`absolute inset-y-0 left-0 transition-[width] duration-300 ${isFreeShip ? 'bg-assay' : 'bg-ink'}`}
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+            </div>
 
-            {/* Cart items */}
-            {items.map((item) => (
-              <CartItemRow
-                key={item.variantId}
-                item={item}
-                onQuantityChange={handleQuantityChange}
-                onRemove={handleRemoveItem}
-              />
-            ))}
+            {/* Line items */}
+            <div className="flex-1 overflow-y-auto">
+              {items.map((item) => (
+                <CartItemRow
+                  key={item.variantId}
+                  item={item}
+                  onQuantityChange={handleQuantityChange}
+                  onRemove={handleRemoveItem}
+                />
+              ))}
 
-            {/* Upsell slot */}
-            {upsellProduct && upsellVariant && (
-              <UpsellSlot
-                product={upsellProduct}
-                variant={upsellVariant}
-                onAdd={() => addItem(upsellVariant, upsellProduct, 1)}
-              />
-            )}
-          </div>
+              {upsellProduct && upsellVariant && (
+                <UpsellSlot
+                  product={upsellProduct}
+                  variant={upsellVariant}
+                  onAdd={() => addItem(upsellVariant, upsellProduct, 1)}
+                />
+              )}
+            </div>
+          </>
         )}
 
-        {/* ── Sticky footer ─────────────────────────────────────────────────── */}
-        <div className="flex-shrink-0 border-t border-gray-100 bg-white p-4">
-          <div className="mb-1 flex items-baseline justify-between">
-            <span className="font-mono text-2xs uppercase text-gray-400">Subtotal</span>
-            <span
-              className="font-body text-sm font-medium text-gray-900"
-              data-testid="cart-subtotal"
-            >
-              {formatInr(total)}
-            </span>
-          </div>
-          <div className="mb-4 flex items-baseline justify-between">
-            <span className="font-mono text-2xs uppercase text-gray-400">Shipping</span>
-            <span
-              className={`font-mono text-2xs uppercase ${isFreeShip ? 'text-gray-600' : 'text-gray-400'}`}
-              data-testid="cart-shipping"
-            >
-              {isFreeShip ? 'Free' : '₹99'}
-            </span>
-          </div>
+        {/* ── Sticky footer (shown only when cart has items) ────────────────── */}
+        {items.length > 0 && (
+          <div className="flex-shrink-0 border-t border-hairline bg-paper px-6 py-5">
+            <div className="mb-4">
+              <div className="flex items-baseline justify-between py-1">
+                <span className="font-mono text-xs tracking-widest uppercase text-graphite">
+                  Subtotal
+                </span>
+                <span
+                  className="font-mono text-sm text-ink tabular-nums"
+                  data-testid="cart-subtotal"
+                >
+                  {formatInr(total)}
+                </span>
+              </div>
+              <div className="flex items-baseline justify-between py-1">
+                <span className="font-mono text-xs tracking-widest uppercase text-graphite">
+                  Shipping
+                </span>
+                <span
+                  data-testid="cart-shipping"
+                  className={`font-mono text-xs tracking-widest uppercase ${isFreeShip ? 'text-assay' : 'text-graphite'}`}
+                >
+                  {isFreeShip ? 'Free at checkout' : 'Calculated at checkout'}
+                </span>
+              </div>
+              <div className="flex items-baseline justify-between pt-2.5 mt-1.5 border-t border-hairline/60">
+                <span className="font-display text-lg text-ink">Total</span>
+                <span
+                  className="font-display text-2xl text-ink tabular-nums"
+                  data-testid="cart-total"
+                >
+                  {formatInr(total)}
+                </span>
+              </div>
+            </div>
 
-          <Link
-            href="/checkout"
-            onClick={closeCart}
-            data-testid="cart-checkout-link"
-            className="block w-full rounded-sm bg-gray-900 py-3 text-center font-mono text-2xs uppercase tracking-wider text-white transition-colors hover:bg-gray-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2"
-          >
-            Proceed to checkout
-          </Link>
+            <Link
+              href="/checkout"
+              onClick={closeCart}
+              data-testid="cart-checkout-link"
+              className="block w-full bg-ink py-4 text-center font-mono text-xs uppercase tracking-ultra text-paper hover:bg-ink-2 transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2"
+            >
+              Checkout →
+            </Link>
 
-          <button
-            type="button"
-            data-testid="cart-continue-shopping"
-            onClick={closeCart}
-            className="mt-2 w-full text-center font-mono text-2xs text-gray-400 underline transition-colors hover:text-gray-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900"
-          >
-            Continue shopping
-          </button>
-        </div>
+            {/* Trust strip */}
+            <div
+              data-testid="cart-trust-strip"
+              className="flex items-center justify-between mt-4 pt-3.5 border-t border-hairline/60"
+            >
+              <span className="font-mono text-[9px] tracking-widest uppercase text-graphite">
+                ✓ Free returns · 14 days
+              </span>
+              <span className="font-mono text-[9px] tracking-widest uppercase text-graphite">
+                ✓ Dispatched in 48h
+              </span>
+            </div>
+          </div>
+        )}
 
       </div>
     </>
   )
 }
+
+// ─── Line item row ────────────────────────────────────────────────────────────
 
 const CartItemRow = memo(function CartItemRow({
   item,
@@ -255,96 +350,127 @@ const CartItemRow = memo(function CartItemRow({
     [item.variantId, onRemove],
   )
 
+  const unitPrice = item.price
+  const linePrice = unitPrice * item.quantity
+
   return (
     <div
       data-testid="cart-item"
-      className="flex items-start gap-2.5 border-b border-gray-50 py-3"
+      className="grid grid-cols-[80px_1fr_auto] gap-4 px-6 py-5 border-b border-hairline/50"
     >
-      <div
-        className="relative flex-shrink-0 overflow-hidden rounded-sm border border-gray-100 bg-gray-50"
-        style={{ width: '52px', height: '52px' }}
-      >
+      {/* Thumbnail — real image or m-ph placeholder */}
+      <div className="relative aspect-square overflow-hidden border border-hairline">
         {item.imageUrl ? (
           <Image
             src={item.imageUrl}
             alt={item.productName}
             fill
-            className="object-contain"
-            sizes="52px"
+            className="object-cover"
+            sizes="80px"
           />
-        ) : null}
+        ) : (
+          <div className="m-ph w-full h-full" aria-hidden="true" />
+        )}
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-body text-xs font-medium text-gray-900 mb-0.5">
+
+      {/* Meta + stepper */}
+      <div className="min-w-0">
+        <p className="font-mono text-[9px] tracking-widest uppercase text-graphite">
+          {item.sku}
+        </p>
+        <p
+          className="font-display text-xl text-ink mt-1 truncate"
+          data-testid="cart-item-name"
+        >
           {item.productName}
         </p>
-        <p className="font-mono text-2xs uppercase text-gray-400 mb-1.5">
-          {item.sku} · {item.size_ml}ml
+        <p className="font-mono text-2xs tracking-wider uppercase text-graphite mt-1.5">
+          {item.size_ml}ml
         </p>
-        <QuantitySelector
-          value={item.quantity}
-          onChange={handleQty}
-          min={1}
-          max={99}
-        />
+        <div className="flex items-center gap-3 mt-3">
+          <QuantitySelector
+            value={item.quantity}
+            onChange={handleQty}
+            min={1}
+            max={99}
+            size="sm"
+          />
+          <button
+            type="button"
+            aria-label={`Remove ${item.productName} from cart`}
+            data-testid="cart-item-remove"
+            onClick={handleRemove}
+            className="font-mono text-2xs tracking-widest uppercase text-graphite hover:text-ink border-b border-hairline pb-0.5 transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2"
+          >
+            Remove
+          </button>
+        </div>
       </div>
-      <div className="flex-shrink-0 text-right">
-        <p className="font-body text-xs font-medium text-gray-900 mb-1.5">
-          {formatInr(item.price * item.quantity)}
+
+      {/* Price */}
+      <div className="text-right">
+        <p className="font-mono text-sm text-ink tabular-nums">
+          {formatInr(linePrice)}
         </p>
-        <button
-          type="button"
-          aria-label={`Remove ${item.productName} from cart`}
-          data-testid="cart-item-remove"
-          onClick={handleRemove}
-          className="font-mono text-2xs text-gray-400 underline transition-colors hover:text-gray-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900"
-        >
-          Remove
-        </button>
+        {item.quantity > 1 && (
+          <p className="font-mono text-2xs text-graphite mt-1 tabular-nums">
+            {formatInr(unitPrice)} × {item.quantity}
+          </p>
+        )}
       </div>
     </div>
   )
 })
 
-function UpsellSlot({ product, variant, onAdd }: { product: ProductSummary; variant: Variant; onAdd: () => void }) {
+// ─── Upsell slot ──────────────────────────────────────────────────────────────
+
+function UpsellSlot({
+  product,
+  variant,
+  onAdd,
+}: {
+  product: ProductSummary
+  variant: Variant
+  onAdd: () => void
+}) {
   return (
     <div
       data-testid="cart-upsell"
-      className="mt-3 rounded-sm border border-gray-100 bg-gray-50 p-2.5"
+      className="bg-paper-2 border-t border-hairline border-b border-hairline px-6 py-5"
     >
-      <p className="font-mono text-2xs uppercase text-gray-400 mb-2">
-        Complete your routine
-      </p>
-      <div className="flex items-center gap-2">
-        <div
-          className="relative flex-shrink-0 overflow-hidden rounded-sm bg-blush"
-          style={{ width: '40px', height: '40px' }}
-        >
+      <div className="flex items-center gap-4">
+        <div className="relative w-[72px] aspect-square flex-shrink-0 overflow-hidden border border-hairline">
           {product.image_url ? (
             <Image
               src={product.image_url}
               alt={product.name}
               fill
-              className="object-contain"
-              sizes="40px"
+              className="object-cover"
+              sizes="72px"
             />
-          ) : null}
+          ) : (
+            <div className="m-ph w-full h-full" aria-hidden="true" />
+          )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-body text-xs font-medium text-gray-900">
+          <p className="font-mono text-[9px] tracking-widest uppercase text-graphite">
+            § Frequently added
+          </p>
+          <p className="font-display text-xl text-ink mt-1 truncate">
             {product.name}
           </p>
-          <p className="font-mono text-2xs text-gray-400">
-            {formatInr(variant.price)}
+          <p className="font-mono text-2xs tracking-wider text-graphite mt-1 tabular-nums">
+            {product.category.toUpperCase()} · {variant.size_ml}ml · {formatInr(variant.price)}
           </p>
         </div>
         <button
           type="button"
           data-testid="cart-upsell-add"
           onClick={onAdd}
-          className="flex-shrink-0 whitespace-nowrap rounded-sm border border-gray-200 px-2.5 py-1 font-mono text-2xs transition-colors hover:border-gray-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900"
+          aria-label={`Add ${product.name} to cart`}
+          className="flex-shrink-0 inline-flex items-center justify-center w-8 h-8 bg-ink text-paper font-mono text-base hover:bg-ink-2 transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2"
         >
-          Add
+          +
         </button>
       </div>
     </div>
