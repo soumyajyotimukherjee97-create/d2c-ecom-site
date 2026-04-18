@@ -31,7 +31,7 @@
 | 11 | Auth (`/login`, `/signup`) | ✅ | medium |
 | 12 | Account + Support | ✅ | medium |
 | 13 | SkinInsight coming-soon page | ✅ | low |
-| 14 | Polish — 404, errors, loading, newsletter | ☐ | low |
+| 14 | Polish — 404, errors, loading, newsletter | ✅ | low |
 | 15 | Pre-cutover QA sweep | ☐ | high |
 | 16 | Cutover — merge `storefront-v2` → `main` | ☐ | high |
 
@@ -416,21 +416,29 @@
 
 ---
 
-## Chunk 14 — Polish (404, errors, loading, newsletter)
+## Chunk 14 — Polish (404, errors, loading, newsletter) ✅
 
-- **Prereqs**: Chunks 2, 3
+- **Prereqs**: Chunks 2, 3 ✅
 - **Scope**:
-  - `not-found.tsx` — matter-voiced 404, centered editorial block with CTAs.
-  - `error.tsx` at route-group level — same treatment, with a retry action.
-  - Loading skeletons — confirm every data-fetching page renders striped `m-ph` placeholders at the right grid slots.
-  - Newsletter submission — confirm MVP behaviour (no-op? email capture?) and that success/error states use inline mono captions, never toasts.
-  - Form-field error pattern — single shared inline-error primitive if not already factored.
+  - `src/app/not-found.tsx` — matter-voiced 404 (minimal chrome, `§ 404 — OUT OF CATALOGUE`, "This page is not on file.", Return home + Browse formulary CTAs). Global — used by any `notFound()` call that doesn't have a closer `not-found` boundary. ✅
+  - `src/app/error.tsx` — global error boundary ('use client'). `§ 500 — UNEXPECTED`, "Something gave way.", renders `error.digest` as `Ref · <digest>` when present. Three CTAs: Try again (calls `reset()`), Return home, File a note (→ /support/new). Logs to console.error for Sentry pickup. ✅
+  - Loading skeletons rewritten to matter tokens — swapped V1's `bg-gray-100 rounded-sm` for `.m-ph` stripes + `bg-hairline/40` blocks. Added PLP-specific skeleton (`products/loading.tsx`). Home and PDP skeletons now mirror the actual 12-col and 2-col grids. ✅
+  - Newsletter behaviour confirmed: already matter-shaped (Chunk 6) — assay-green inline success, oxblood inline error, no toast, no modal. Re-used for SkinInsight waitlist in Chunk 13. ✅
+  - Inline field-error pattern confirmed consistent: the `Input` atom's `error` prop renders `— <message>` as oxblood mono caption; used everywhere (Checkout, Signup, Login, Support, Skin profile). No new primitive needed. ✅
 - **Done when**:
-  - 404 + error pages exist and render per V2 voice.
-  - Every data-fetching page has loading skeletons matching layout.
-  - Newsletter success/error behaviour confirmed and tested.
-- **Tests**: add 404 + error page tests; update newsletter form test.
-- **Risk**: low.
+  - 404 + error pages exist and render per V2 voice. ✅
+  - Every data-fetching page has loading skeletons matching layout. ✅
+  - Newsletter success/error behaviour confirmed — no changes needed beyond Chunk 6. ✅
+- **Tests**: 536/536 (was 526; +10). 4 NotFound + 6 GlobalError tests covering voice, CTAs, reset() handler, optional digest display.
+- **Risk**: low — purely additive.
+- **Delivered commits**:
+  - `74e8c72` — feat(storefront-v2): Chunk 14 — 404, error, matter loading skeletons
+- **Notes**:
+  - **Global 404 chrome is self-contained** (wordmark header, paper-2 body) rather than reusing the shared `(shop)` Navbar — Next 14's root `not-found.tsx` renders outside route groups, so the shop layout isn't available here. The minimal header matches the `/checkout` pattern.
+  - **Global error chrome mirrors 404** for consistency. Three CTAs instead of two because failing on the way to an action (checkout, signup, PDP) often wants a support path; "File a note" covers that.
+  - **Digest display is a Next 14 feature** — in production, React+Next hide the real error message from the client and emit a stable `digest` that matches server logs. Surfacing it lets users quote a ref number to support without us leaking stack traces.
+  - **Route-group-specific error.tsx is NOT added**. The root one covers everything. If a specific route group needs tailored recovery (e.g. `(checkout)/error.tsx` that explains "your cart is safe"), add it as a follow-up.
+  - **Loading skeletons** are layout-aware: PLP grid is 4-up on lg, PDP is 2-col, Home is 12-col split. They match the real page structure closely so there's no layout shift on content arrival.
 
 ---
 
@@ -521,3 +529,4 @@ _Update when chunks complete or scope shifts._
 - `2026-04-18` — **Chunk 11 complete** at `1ce6189`. `/login` and `/signup` re-skinned per D3 (typographic-only, no imagery). SignupSchema expanded: first/last name + terms literal; prefill email from `?prefill=`; next-param preserved. Order claim-on-signup flagged as deferred follow-up. 518/518 tests (+6).
 - `2026-04-18` — **Chunk 12 complete** at `8698a00`. `/account` rebuilt as two-col dossier (subject header, sidebar with section nav + sign-out, orders table, restock reminder, skin profile). `/support/new` rebuilt with broadsheet masthead + editorial hero + matter form. Ticket ref format updated to `TKT-XXXXXXXX`. ReorderButton / SignOutButton / SkinProfileForm all re-skinned. API payloads unchanged. 518/518 tests — 2 assertion updates.
 - `2026-04-18` — **Chunk 13 complete** at `ca5de6e`. `/skin-insight` shipped as editorial coming-soon page — broadsheet masthead, "A skin report, by your skin." hero, reused heatmap figure (extracted into `SkinInsightHeatmap` for reuse between PLP CTA and this page), 3-item manifest, waitlist via existing NewsletterForm, back-to-shop link. New V2 wireframe drafted. 526/526 tests (+8).
+- `2026-04-18` — **Chunk 14 complete** at `74e8c72`. Global `not-found.tsx` (§ 404 — OUT OF CATALOGUE / "This page is not on file.") + `error.tsx` (§ 500 — UNEXPECTED / "Something gave way." / reset() + home + support CTAs / Next 14 digest display) shipped. Loading skeletons rewritten to matter tokens (`.m-ph` + `bg-hairline/40`). Newsletter + inline-error pattern already matter-shaped — no changes. 536/536 tests (+10).
