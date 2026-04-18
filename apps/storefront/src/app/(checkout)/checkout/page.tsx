@@ -9,7 +9,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useCartStore } from '@/lib/store/cart'
 import { formatInr } from '@/lib/money'
-import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
 import { extractApiError, NETWORK_MESSAGE } from '@/lib/api/client'
@@ -29,7 +28,6 @@ const INDIAN_STATES = [
 ]
 
 // ─── Form schema ──────────────────────────────────────────────────────────────
-// Separate from CreateOrderSchema — includes name fields and maps to the API shape on submit.
 
 const CheckoutSchema = z.object({
   contact_email: z.string().email('A valid email address is required'),
@@ -47,10 +45,8 @@ type CheckoutFields = z.infer<typeof CheckoutSchema>
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const FREE_SHIPPING_THRESHOLD = 99900
-const SHIPPING_COST           = 9900
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+const FREE_SHIPPING_THRESHOLD = 99900 // paise
+const SHIPPING_COST           = 9900  // paise
 
 function computeShipping(subtotal: number) {
   return subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST
@@ -58,48 +54,64 @@ function computeShipping(subtotal: number) {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function StepHeader({ n, title, subtitle }: { n: number; title: string; subtitle: string }) {
+function SectionHead({
+  n,
+  label,
+  title,
+  aside,
+}: {
+  n:     string
+  label: string
+  title: string
+  aside: string
+}) {
   return (
-    <div className="flex items-center gap-3 mb-3 pb-3 border-b border-gray-50">
-      <div
-        aria-hidden="true"
-        className="w-6 h-6 rounded-full bg-gray-900 text-white flex items-center justify-center font-mono text-2xs flex-shrink-0"
-      >
-        {n}
-      </div>
+    <div className="flex justify-between items-start gap-4 mb-6">
       <div>
-        <p className="font-body text-sm font-medium text-gray-900">{title}</p>
-        <p className="font-mono text-xs text-gray-400">{subtitle}</p>
+        <p className="font-mono text-[10px] tracking-ultra uppercase text-ink">
+          § {n} — {label}
+        </p>
+        <p className="font-display text-[clamp(24px,2.5vw,28px)] text-ink mt-2 leading-tight">
+          {title}
+        </p>
       </div>
+      <span className="font-mono text-[10px] tracking-widest uppercase text-graphite whitespace-nowrap">
+        {aside}
+      </span>
     </div>
   )
 }
 
-function OrderSummaryItem({ item }: { item: CartItem }) {
+function SummaryItem({ item }: { item: CartItem }) {
   return (
     <div
       data-testid="checkout-summary-item"
-      className="flex gap-2 items-start py-2 border-b border-gray-100 last:border-0"
+      className="flex items-start gap-3.5 py-2.5"
     >
-      {/* Product thumbnail */}
-      <div className="w-10 h-10 flex-shrink-0 bg-gray-50 border border-gray-100 rounded-sm relative overflow-hidden">
+      <div className="relative w-14 aspect-square flex-shrink-0 overflow-hidden border border-hairline">
         {item.imageUrl ? (
-          <Image src={item.imageUrl} alt={item.productName} fill className="object-cover" sizes="40px" />
+          <Image
+            src={item.imageUrl}
+            alt={item.productName}
+            fill
+            className="object-cover"
+            sizes="56px"
+          />
         ) : (
-          <span className="sr-only">{item.productName}</span>
+          <div className="m-ph absolute inset-0" aria-hidden="true" />
         )}
       </div>
-
       <div className="flex-1 min-w-0">
-        <p className="font-body text-xs font-medium text-gray-900 truncate">{item.productName}</p>
-        <p className="font-mono text-2xs text-gray-400 uppercase">
+        <p className="font-body text-[13px] text-ink truncate">
+          {item.productName}
+        </p>
+        <p className="font-mono text-[10px] tracking-widest uppercase text-graphite mt-1">
           {item.size_ml}ml · Qty {item.quantity}
         </p>
       </div>
-
-      <p className="font-body text-xs font-medium text-gray-900 flex-shrink-0">
+      <span className="font-mono text-[13px] text-ink tabular-nums">
         {formatInr(item.price * item.quantity)}
-      </p>
+      </span>
     </div>
   )
 }
@@ -107,8 +119,8 @@ function OrderSummaryItem({ item }: { item: CartItem }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function CheckoutPage() {
-  const router   = useRouter()
-  const items    = useCartStore((s) => s.items)
+  const router    = useRouter()
+  const items     = useCartStore((s) => s.items)
   const clearCart = useCartStore((s) => s.clearCart)
 
   const [mounted, setMounted]     = useState(false)
@@ -117,9 +129,9 @@ export default function CheckoutPage() {
 
   useEffect(() => setMounted(true), [])
 
-  // Redirect to products if cart is empty (after hydration).
-  // Skip once an order has been submitted — clearCart() empties items and would
-  // otherwise race with router.push('/order/[id]').
+  // Redirect to /products if cart is empty after hydration. Skip while a
+  // submission is mid-flight — clearCart() empties items and would otherwise
+  // race router.push('/order/[id]').
   useEffect(() => {
     if (mounted && !submitted && items.length === 0) {
       router.replace('/products')
@@ -137,6 +149,7 @@ export default function CheckoutPage() {
   const subtotal = mounted ? items.reduce((sum, i) => sum + i.price * i.quantity, 0) : 0
   const shipping = computeShipping(subtotal)
   const total    = subtotal + shipping
+  const formulaCount = items.length
 
   async function onSubmit(data: CheckoutFields) {
     setApiError(null)
@@ -156,7 +169,7 @@ export default function CheckoutPage() {
     }
 
     try {
-      const res  = await fetch('/api/orders', {
+      const res = await fetch('/api/orders', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify(payload),
@@ -176,309 +189,380 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* ── Minimal checkout navbar ─────────────────────────────────────────── */}
+    <div className="min-h-screen bg-paper">
+      {/* ── Minimal chrome ─────────────────────────────────────────────────── */}
       <header
         data-testid="checkout-navbar"
-        className="border-b border-gray-100 px-6 py-4 flex items-center justify-between"
+        className="bg-paper border-b border-hairline px-8 py-5"
       >
-        <Link
-          href="/"
-          data-testid="checkout-brand"
-          className="font-heading text-base tracking-tight text-gray-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2 rounded-sm"
-        >
-          Form.
-        </Link>
-        <span className="font-mono text-2xs uppercase tracking-widest text-gray-400">
-          🔒 Secure checkout
-        </span>
+        <div className="max-w-container mx-auto flex items-center justify-between gap-4">
+          <Link
+            href="/"
+            data-testid="checkout-brand"
+            aria-label="matter — home"
+            className="font-display text-[22px] leading-none tracking-tight text-ink focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2"
+          >
+            matter<em className="not-italic" style={{ fontStyle: 'italic', letterSpacing: '-0.04em', marginLeft: 1 }}>.</em>
+          </Link>
+          <span
+            data-testid="checkout-secure"
+            className="font-mono text-[10px] tracking-[0.18em] uppercase text-graphite hidden sm:inline"
+          >
+            § Secure checkout · SSL
+          </span>
+          <Link
+            href="/support/new"
+            data-testid="checkout-help"
+            className="font-mono text-[10px] tracking-widest uppercase text-ink hover:text-graphite transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2"
+          >
+            Need help? →
+          </Link>
+        </div>
       </header>
 
-      {/* ── Main layout ────────────────────────────────────────────────────── */}
-      <main className="max-w-5xl mx-auto px-6 py-8 flex gap-8 items-start">
+      {/* ── Main layout (paper-2 bg, 12-col) ──────────────────────────────── */}
+      <main className="bg-paper-2 border-b border-hairline">
+        <div className="max-w-container mx-auto px-8 pt-12 pb-24">
 
-        {/* ── LEFT: Checkout form ─────────────────────────────────────────── */}
-        <form
-          data-testid="checkout-form"
-          onSubmit={handleSubmit(onSubmit)}
-          noValidate
-          className="flex-1 min-w-0"
-        >
-          {apiError && (
-            <div className="mb-6" data-testid="checkout-api-error">
-              <Alert variant="error" message={apiError} />
-            </div>
-          )}
-
-          {/* ── STEP 1: Contact ─────────────────────────────────────────── */}
-          <section aria-labelledby="step-contact" className="mb-6">
-            <StepHeader n={1} title="Contact" subtitle="Email for order updates" />
-
-            <div className="mb-3">
-              <Input
-                id="contact_email"
-                label="Email address *"
-                type="email"
-                placeholder="you@example.com"
-                autoComplete="email"
-                data-testid="input-email"
-                error={errors.contact_email?.message}
-                {...register('contact_email')}
-              />
-            </div>
-
-            <p className="font-mono text-xs text-gray-400">
-              Already have an account?{' '}
-              <Link href="/login" className="underline hover:text-gray-600 transition-colors">
-                Sign in →
-              </Link>
+          {/* Headline */}
+          <div className="mb-12">
+            <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-graphite">
+              § Checkout · Order brief
             </p>
-          </section>
+            <h1
+              data-testid="checkout-heading"
+              className="font-display font-normal text-[clamp(48px,6vw,88px)] leading-[1.02] tracking-tightest mt-4"
+            >
+              Finalising your <em className="italic">consignment</em>.
+            </h1>
+          </div>
 
-          {/* ── STEP 2: Shipping address ────────────────────────────────── */}
-          <section aria-labelledby="step-shipping" className="mb-6">
-            <StepHeader n={2} title="Shipping address" subtitle="Where should we send it?" />
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
 
-            {/* Name row */}
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <Input
-                id="first_name"
-                label="First name *"
-                placeholder="Priya"
-                autoComplete="given-name"
-                data-testid="input-first-name"
-                error={errors.first_name?.message}
-                {...register('first_name')}
-              />
-              <Input
-                id="last_name"
-                label="Last name *"
-                placeholder="Mehta"
-                autoComplete="family-name"
-                data-testid="input-last-name"
-                error={errors.last_name?.message}
-                {...register('last_name')}
-              />
-            </div>
+            {/* ═══ LEFT: Form (cols 1-8) ═══ */}
+            <form
+              data-testid="checkout-form"
+              onSubmit={handleSubmit(onSubmit)}
+              noValidate
+              className="md:col-span-8 min-w-0"
+            >
+              {apiError && (
+                <div className="mb-8" data-testid="checkout-api-error">
+                  <Alert variant="error" message={apiError} />
+                </div>
+              )}
 
-            {/* Address line 1 */}
-            <div className="mb-3">
-              <Input
-                id="address_line1"
-                label="Address line 1 *"
-                placeholder="Flat / Building / Street"
-                autoComplete="address-line1"
-                data-testid="input-address-line1"
-                error={errors.address_line1?.message}
-                {...register('address_line1')}
-              />
-            </div>
+              {/* § 01 CONTACT */}
+              <section
+                aria-labelledby="step-contact"
+                data-testid="checkout-section-contact"
+                className="border-t-2 border-ink pt-5 mb-12"
+              >
+                <SectionHead n="01" label="Contact" title="Who are you?" aside="Required" />
 
-            {/* Address line 2 */}
-            <div className="mb-3">
-              <Input
-                id="address_line2"
-                label="Address line 2 (optional)"
-                placeholder="Area / Landmark"
-                autoComplete="address-line2"
-                data-testid="input-address-line2"
-                {...register('address_line2')}
-              />
-            </div>
+                <Input
+                  id="contact_email"
+                  label="Email address"
+                  type="email"
+                  placeholder="you@domain.com"
+                  autoComplete="email"
+                  data-testid="input-email"
+                  error={errors.contact_email?.message}
+                  {...register('contact_email')}
+                />
 
-            {/* City + PIN */}
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <Input
-                id="city"
-                label="City *"
-                placeholder="Bengaluru"
-                autoComplete="address-level2"
-                data-testid="input-city"
-                error={errors.city?.message}
-                {...register('city')}
-              />
-              <Input
-                id="pin"
-                label="PIN code *"
-                placeholder="560001"
-                autoComplete="postal-code"
-                inputMode="numeric"
-                maxLength={6}
-                data-testid="input-pin"
-                error={errors.pin?.message}
-                {...register('pin')}
-              />
-            </div>
+                <p className="font-mono text-[10px] tracking-widest uppercase text-graphite mt-4">
+                  Already registered?{' '}
+                  <Link
+                    href="/login"
+                    className="underline hover:text-ink transition-colors"
+                  >
+                    Sign in →
+                  </Link>
+                </p>
+              </section>
 
-            {/* State + Country */}
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              <div className="flex flex-col gap-1">
-                <label htmlFor="state" className="font-body text-sm font-medium text-gray-900">
-                  State *
-                </label>
-                <select
-                  id="state"
-                  data-testid="input-state"
-                  aria-invalid={errors.state ? true : undefined}
-                  aria-describedby={errors.state ? 'state-error' : undefined}
-                  className={[
-                    'w-full border rounded-sm',
-                    'px-3 py-2 font-body text-base text-gray-900 bg-white',
-                    'transition-colors duration-150',
-                    'focus:outline-none focus-visible:outline focus-visible:outline-2',
-                    'focus-visible:outline-gray-900 focus-visible:outline-offset-1',
-                    errors.state ? 'border-error' : 'border-gray-200 hover:border-gray-400',
-                  ].join(' ')}
-                  {...register('state')}
+              {/* § 02 DISPATCH ADDRESS */}
+              <section
+                aria-labelledby="step-address"
+                data-testid="checkout-section-address"
+                className="border-t-2 border-ink pt-5 mb-12"
+              >
+                <SectionHead
+                  n="02"
+                  label="Dispatch address"
+                  title="Where shall we send it?"
+                  aside="India only"
+                />
+
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <Input
+                    id="first_name"
+                    label="First name"
+                    placeholder="Aarti"
+                    autoComplete="given-name"
+                    data-testid="input-first-name"
+                    error={errors.first_name?.message}
+                    {...register('first_name')}
+                  />
+                  <Input
+                    id="last_name"
+                    label="Last name"
+                    placeholder="Kapoor"
+                    autoComplete="family-name"
+                    data-testid="input-last-name"
+                    error={errors.last_name?.message}
+                    {...register('last_name')}
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <Input
+                    id="address_line1"
+                    label="Address line 1"
+                    placeholder="Flat / Building / Street"
+                    autoComplete="address-line1"
+                    data-testid="input-address-line1"
+                    error={errors.address_line1?.message}
+                    {...register('address_line1')}
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <Input
+                    id="address_line2"
+                    label="Address line 2 · Optional"
+                    placeholder="Landmark, apt, etc"
+                    autoComplete="address-line2"
+                    data-testid="input-address-line2"
+                    {...register('address_line2')}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-[1fr_180px_140px] gap-4 mb-4">
+                  <Input
+                    id="city"
+                    label="City"
+                    placeholder="Mumbai"
+                    autoComplete="address-level2"
+                    data-testid="input-city"
+                    error={errors.city?.message}
+                    {...register('city')}
+                  />
+                  <div className="flex flex-col gap-2">
+                    <label
+                      htmlFor="state"
+                      className="font-mono text-2xs uppercase tracking-widest text-graphite"
+                    >
+                      State
+                    </label>
+                    <select
+                      id="state"
+                      data-testid="input-state"
+                      aria-invalid={errors.state ? true : undefined}
+                      aria-describedby={errors.state ? 'state-error' : undefined}
+                      className={[
+                        'w-full bg-transparent px-3.5 py-3',
+                        'font-mono text-sm text-ink',
+                        'transition-colors duration-150 border',
+                        'focus:outline-none focus-visible:outline-none',
+                        errors.state
+                          ? 'border-oxblood focus:border-oxblood'
+                          : 'border-hairline hover:border-ink focus:border-ink',
+                      ].join(' ')}
+                      {...register('state')}
+                    >
+                      <option value="">Select state</option>
+                      {INDIAN_STATES.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                    {errors.state && (
+                      <p
+                        id="state-error"
+                        role="alert"
+                        className="font-mono text-2xs uppercase tracking-wide text-oxblood"
+                      >
+                        — {errors.state.message}
+                      </p>
+                    )}
+                  </div>
+                  <Input
+                    id="pin"
+                    label="Pincode"
+                    placeholder="400050"
+                    autoComplete="postal-code"
+                    inputMode="numeric"
+                    maxLength={6}
+                    data-testid="input-pin"
+                    error={errors.pin?.message}
+                    {...register('pin')}
+                  />
+                </div>
+
+                <Input
+                  id="contact_phone"
+                  label="Phone · 10 digits"
+                  type="tel"
+                  placeholder="+91 · 98234 12345"
+                  autoComplete="tel"
+                  data-testid="input-phone"
+                  {...register('contact_phone')}
+                />
+              </section>
+
+              {/* § 03 PAYMENT */}
+              <section
+                aria-labelledby="step-payment"
+                data-testid="checkout-section-payment"
+                className="border-t-2 border-ink pt-5"
+              >
+                <SectionHead
+                  n="03"
+                  label="Payment"
+                  title="How would you like to pay?"
+                  aside="COD only · MVP"
+                />
+
+                <div className="flex flex-col gap-2">
+                  <div
+                    data-testid="payment-callout"
+                    className="border border-ink px-5 py-4 bg-paper"
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="font-mono text-[10px] tracking-widest uppercase">
+                          01 · Cash on delivery
+                        </p>
+                        <p className="font-body text-[13px] text-ink-2 mt-1">
+                          Pay when your consignment arrives.
+                        </p>
+                      </div>
+                      <span
+                        aria-hidden="true"
+                        className="w-4 h-4 rounded-full bg-ink flex-shrink-0"
+                      />
+                    </div>
+                  </div>
+                  <div className="border border-hairline px-5 py-4 bg-paper">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="font-mono text-[10px] tracking-widest uppercase text-graphite">
+                          02 · UPI / Net banking · Coming soon
+                        </p>
+                        <p className="font-body text-[13px] text-graphite mt-1">
+                          Razorpay integration — Phase 2.
+                        </p>
+                      </div>
+                      <span
+                        aria-hidden="true"
+                        className="w-4 h-4 rounded-full border border-hairline flex-shrink-0"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Submit CTA */}
+              <div className="mt-10">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  data-testid="checkout-submit"
+                  className="block w-full bg-ink text-paper py-5 font-mono text-xs tracking-ultra uppercase hover:bg-ink-2 disabled:opacity-60 disabled:cursor-not-allowed transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2"
                 >
-                  <option value="">Select state</option>
-                  {INDIAN_STATES.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-                {errors.state && (
-                  <p id="state-error" role="alert" className="font-body text-sm text-error">
-                    {errors.state.message}
-                  </p>
+                  {isSubmitting
+                    ? 'Placing order…'
+                    : `Place order${mounted && total > 0 ? ` · ${formatInr(total)}` : ''}`}
+                </button>
+                <p className="font-mono text-2xs tracking-widest uppercase text-graphite text-center mt-3">
+                  No account needed · Guest checkout welcome
+                </p>
+              </div>
+            </form>
+
+            {/* ═══ RIGHT: Sticky summary (cols 9-12) ═══ */}
+            <aside
+              data-testid="order-summary"
+              aria-label="Order summary"
+              className="md:col-span-4 md:sticky md:top-6 bg-paper border border-ink p-6"
+            >
+              <div className="flex justify-between items-baseline pb-3.5 border-b-2 border-ink">
+                <span className="font-mono text-[10px] tracking-ultra uppercase text-ink">
+                  § Order brief
+                </span>
+                <span
+                  data-testid="checkout-formula-count"
+                  className="font-mono text-[10px] tracking-widest uppercase text-graphite"
+                >
+                  {formulaCount} {formulaCount === 1 ? 'formula' : 'formulas'}
+                </span>
+              </div>
+
+              {/* Compact line items */}
+              <div
+                data-testid="checkout-summary-items"
+                className="py-3 border-b border-hairline/60"
+              >
+                {mounted && items.map((item) => (
+                  <SummaryItem key={item.variantId} item={item} />
+                ))}
+                {!mounted && (
+                  <div className="h-16 m-ph" aria-hidden="true" />
                 )}
               </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="font-body text-sm font-medium text-gray-900">Country</label>
-                <input
-                  value="India"
-                  disabled
-                  aria-label="Country: India (fixed)"
-                  className="w-full border border-gray-100 rounded-sm px-3 py-2 font-body text-base text-gray-400 bg-gray-50 cursor-not-allowed"
-                />
+              {/* Math strip */}
+              <div className="py-3 border-b border-hairline/60">
+                <div className="flex items-center justify-between py-1">
+                  <span className="font-mono text-[11px] tracking-widest uppercase text-graphite">
+                    Subtotal
+                  </span>
+                  <span
+                    className="font-mono text-xs text-ink tabular-nums"
+                    data-testid="checkout-subtotal"
+                  >
+                    {mounted ? formatInr(subtotal) : '—'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <span className="font-mono text-[11px] tracking-widest uppercase text-graphite">
+                    Shipping
+                  </span>
+                  <span
+                    data-testid="checkout-shipping"
+                    className={`font-mono text-xs tracking-widest uppercase ${mounted && shipping === 0 ? 'text-assay' : 'text-ink'}`}
+                  >
+                    {mounted
+                      ? shipping === 0 ? 'Free' : formatInr(shipping)
+                      : '—'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <span className="font-mono text-[11px] tracking-widest uppercase text-graphite">
+                    Tax · Incl. GST
+                  </span>
+                  <span className="font-mono text-xs text-ink tabular-nums">₹0</span>
+                </div>
               </div>
-            </div>
 
-            {/* Phone */}
-            <Input
-              id="contact_phone"
-              label="Phone (for delivery updates)"
-              type="tel"
-              placeholder="+91 98765 43210"
-              autoComplete="tel"
-              data-testid="input-phone"
-              {...register('contact_phone')}
-            />
-          </section>
-
-          {/* ── STEP 3: Review and place ────────────────────────────────── */}
-          <section aria-labelledby="step-review">
-            <StepHeader n={3} title="Review and place order" subtitle="Confirm your details above" />
-
-            {/* Payment callout */}
-            <div
-              className="bg-offwhite border-l-2 border-gray-900 px-3 py-2 mb-4"
-              data-testid="payment-callout"
-            >
-              <p className="font-mono text-2xs uppercase tracking-widest text-gray-400 mb-1">
-                COD
+              {/* Total */}
+              <div className="flex items-baseline justify-between pt-4">
+                <span className="font-display text-[22px] text-ink">Total</span>
+                <span
+                  data-testid="checkout-total"
+                  className="font-display text-[28px] text-ink tabular-nums"
+                >
+                  {mounted ? formatInr(total) : '—'}
+                </span>
+              </div>
+              <p className="font-mono text-[9px] tracking-widest uppercase text-graphite mt-1.5">
+                Displayed total · Recomputed on submit
               </p>
-              <p className="font-body text-xs text-gray-600">
-                Payment to be done at the time of delivery
-              </p>
-            </div>
+            </aside>
 
-            {/* Submit CTA */}
-            <Button
-              type="submit"
-              variant="primary"
-              loading={isSubmitting}
-              disabled={isSubmitting}
-              data-testid="checkout-submit"
-              className="w-full mb-2"
-            >
-              Place order →
-            </Button>
-
-            <p className="font-mono text-2xs text-gray-400 text-center">
-              No account needed · Guest checkout
-            </p>
-          </section>
-        </form>
-
-        {/* ── RIGHT: Order summary (sticky) ───────────────────────────────── */}
-        <aside
-          data-testid="order-summary"
-          className="w-[280px] flex-shrink-0 bg-offwhite border border-gray-100 rounded-sm p-4 sticky top-6"
-          aria-label="Order summary"
-        >
-          <p className="font-mono text-2xs uppercase tracking-widest text-gray-400 mb-3">
-            Order summary
-          </p>
-
-          {/* Items */}
-          <div className="mb-3" data-testid="checkout-summary-items">
-            {mounted && items.map((item) => (
-              <OrderSummaryItem key={item.variantId} item={item} />
-            ))}
-            {!mounted && (
-              <div className="h-16 bg-gray-100 rounded-sm animate-pulse" />
-            )}
           </div>
-
-          {/* Totals */}
-          <div className="border-t border-gray-100 pt-3 space-y-1">
-            <div className="flex justify-between items-center">
-              <span className="font-mono text-xs uppercase text-gray-400">Subtotal</span>
-              <span className="font-body text-sm text-gray-900" data-testid="checkout-subtotal">
-                {mounted ? formatInr(subtotal) : '—'}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="font-mono text-xs uppercase text-gray-400">Shipping</span>
-              <span
-                className="font-mono text-xs text-mist-text uppercase"
-                data-testid="checkout-shipping"
-              >
-                {mounted
-                  ? shipping === 0 ? 'Free' : formatInr(shipping)
-                  : '—'}
-              </span>
-            </div>
-            <div className="flex justify-between items-center border-t border-gray-100 pt-2 mt-2">
-              <span className="font-body text-sm font-medium text-gray-900">Total</span>
-              <span
-                className="font-heading text-base text-gray-900"
-                data-testid="checkout-total"
-              >
-                {mounted ? formatInr(total) : '—'}
-              </span>
-            </div>
-          </div>
-
-          {/* Promo code (Phase 2 — UI only) */}
-          <div className="border-t border-gray-100 pt-3 mt-3">
-            <label
-              htmlFor="promo-code"
-              className="font-mono text-2xs uppercase tracking-widest text-gray-400 mb-1 block"
-            >
-              Promo code
-            </label>
-            <div className="flex gap-2">
-              <input
-                id="promo-code"
-                type="text"
-                placeholder="Enter code"
-                disabled
-                aria-label="Promo code (coming soon)"
-                className="flex-1 border border-gray-200 rounded-sm px-3 py-2 font-body text-sm text-gray-400 bg-gray-50 cursor-not-allowed"
-              />
-              <button
-                type="button"
-                disabled
-                className="border border-gray-200 rounded-sm px-3 py-2 font-mono text-xs text-gray-400 bg-gray-50 cursor-not-allowed"
-              >
-                Apply
-              </button>
-            </div>
-            <p className="font-mono text-2xs text-gray-400 mt-1">Coming soon.</p>
-          </div>
-        </aside>
+        </div>
       </main>
     </div>
   )

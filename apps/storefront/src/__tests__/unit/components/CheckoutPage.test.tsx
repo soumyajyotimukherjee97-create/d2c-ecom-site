@@ -81,20 +81,30 @@ beforeEach(() => {
 })
 
 describe('CheckoutPage — rendering', () => {
-  it('renders the minimal checkout navbar with brand and secure label', () => {
+  it('renders the minimal checkout navbar with brand, secure label, and help link', () => {
     setCart([item1])
     render(<CheckoutPage />)
     expect(screen.getByTestId('checkout-navbar')).toBeInTheDocument()
-    expect(screen.getByTestId('checkout-brand')).toHaveTextContent('Form.')
-    expect(screen.getByText('🔒 Secure checkout')).toBeInTheDocument()
+    expect(screen.getByTestId('checkout-brand')).toHaveTextContent(/matter/)
+    expect(screen.getByTestId('checkout-secure')).toHaveTextContent(/secure checkout/i)
+    expect(screen.getByTestId('checkout-help')).toHaveTextContent(/need help/i)
   })
 
-  it('renders three form sections', () => {
+  it('renders the editorial checkout headline', () => {
     setCart([item1])
     render(<CheckoutPage />)
-    expect(screen.getByText('Contact')).toBeInTheDocument()
-    expect(screen.getByText('Shipping address')).toBeInTheDocument()
-    expect(screen.getByText('Review and place order')).toBeInTheDocument()
+    const h1 = screen.getByTestId('checkout-heading')
+    expect(h1.tagName).toBe('H1')
+    expect(h1).toHaveTextContent(/finalising your/i)
+    expect(h1).toHaveTextContent(/consignment/)
+  })
+
+  it('renders three § form sections', () => {
+    setCart([item1])
+    render(<CheckoutPage />)
+    expect(screen.getByTestId('checkout-section-contact')).toBeInTheDocument()
+    expect(screen.getByTestId('checkout-section-address')).toBeInTheDocument()
+    expect(screen.getByTestId('checkout-section-payment')).toBeInTheDocument()
   })
 
   it('renders the order summary sidebar', () => {
@@ -103,11 +113,12 @@ describe('CheckoutPage — rendering', () => {
     expect(screen.getByTestId('order-summary')).toBeInTheDocument()
   })
 
-  it('renders the COD callout', () => {
+  it('renders the COD payment callout as selected', () => {
     setCart([item1])
     render(<CheckoutPage />)
     expect(screen.getByTestId('payment-callout')).toBeInTheDocument()
-    expect(screen.getByText(/Payment to be done at the time of delivery/)).toBeInTheDocument()
+    expect(screen.getByTestId('payment-callout')).toHaveTextContent(/cash on delivery/i)
+    expect(screen.getByTestId('payment-callout')).toHaveTextContent(/pay when your consignment arrives/i)
   })
 
   it('renders cart items in the order summary', () => {
@@ -118,10 +129,12 @@ describe('CheckoutPage — rendering', () => {
     expect(items.length).toBeGreaterThan(0)
   })
 
-  it('shows the submit button', () => {
-    setCart([item1])
+  it('shows the submit button with the total embedded', () => {
+    setCart([item1]) // ₹1,299 subtotal → free shipping → ₹1,299 total
     render(<CheckoutPage />)
-    expect(screen.getByTestId('checkout-submit')).toHaveTextContent(/Place order/)
+    const submit = screen.getByTestId('checkout-submit')
+    expect(submit).toHaveTextContent(/Place order/i)
+    expect(submit).toHaveTextContent(/₹1,299/)
   })
 
   it('shows the sign-in link for guests', () => {
@@ -130,10 +143,22 @@ describe('CheckoutPage — rendering', () => {
     expect(screen.getByText(/Sign in/)).toBeInTheDocument()
   })
 
-  it('shows "No account needed · Guest checkout" note', () => {
+  it('shows a guest-welcome note under the CTA', () => {
     setCart([item1])
     render(<CheckoutPage />)
-    expect(screen.getByText(/No account needed/)).toBeInTheDocument()
+    expect(screen.getByText(/no account needed/i)).toBeInTheDocument()
+  })
+
+  it('shows the "DISPLAYED TOTAL · RECOMPUTED ON SUBMIT" caption in the summary', () => {
+    setCart([item1])
+    render(<CheckoutPage />)
+    expect(screen.getByText(/displayed total/i)).toBeInTheDocument()
+  })
+
+  it('shows the formula count in the summary header', () => {
+    setCart([item1, item2])
+    render(<CheckoutPage />)
+    expect(screen.getByTestId('checkout-formula-count')).toHaveTextContent('2 formulas')
   })
 })
 

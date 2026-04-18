@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 import type { Metadata } from 'next'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Footer } from '@/components/layout/Footer'
@@ -18,29 +17,32 @@ type RelatedItem = {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type OrderRow = {
-  id: string
-  order_number: string
-  contact_email: string
-  subtotal: number
-  shipping_total: number
-  total: number
+  id:              string
+  order_number:    string
+  contact_email:   string
+  user_id:         string | null
+  subtotal:        number
+  shipping_total:  number
+  total:           number
+  payment_method:  string | null
+  status:          string
   shipping_address: {
-    line1: string
-    line2: string | null
-    city: string
-    state: string
-    pin: string
+    line1:   string
+    line2:   string | null
+    city:    string
+    state:   string
+    pin:     string
     country: string
   }
-  created_at: string
+  created_at:      string
   order_items: {
-    id: string
-    variant_id: string
-    product_name: string
-    variant_sku: string
-    quantity: number
-    unit_price: number
-    line_total: number
+    id:            string
+    variant_id:    string
+    product_name:  string
+    variant_sku:   string
+    quantity:      number
+    unit_price:    number
+    line_total:    number
   }[]
 }
 
@@ -49,7 +51,7 @@ type RouteContext = { params: Promise<{ id: string }> }
 // ─── Metadata ─────────────────────────────────────────────────────────────────
 
 export const metadata: Metadata = {
-  title: 'Order confirmed — Form.',
+  title: 'Order confirmed · matter',
 }
 
 // ─── Data fetching ────────────────────────────────────────────────────────────
@@ -59,8 +61,9 @@ async function getOrder(id: string): Promise<OrderRow | null> {
   const { data, error } = await admin
     .from('orders')
     .select(`
-      id, order_number, contact_email,
+      id, order_number, contact_email, user_id,
       subtotal, shipping_total, total,
+      payment_method, status,
       shipping_address,
       created_at,
       order_items(id, variant_id, product_name, variant_sku, quantity, unit_price, line_total)
@@ -72,14 +75,16 @@ async function getOrder(id: string): Promise<OrderRow | null> {
   return data as unknown as OrderRow
 }
 
-async function getRelatedProducts(_excludeSkus: string[]): Promise<RelatedItem[]> {
+const RELATED_TONES = ['mineral', 'default', 'ink', 'default'] as const
+
+async function getRelatedProducts(excludeSkus: string[]): Promise<RelatedItem[]> {
   const admin = createAdminClient()
 
   const { data } = await admin
     .from('products')
     .select('id, name, slug, category, skin_types, concerns, is_active, image_url')
     .eq('is_active', true)
-    .limit(6)
+    .limit(8)
 
   if (!data) return []
 
@@ -94,6 +99,9 @@ async function getRelatedProducts(_excludeSkus: string[]): Promise<RelatedItem[]
       .order('price', { ascending: true })
 
     if (!variants || variants.length === 0) continue
+    // Skip products whose variants were all in this order (no point in
+    // "also like" suggesting the exact same formula twice).
+    if (variants.every((v) => excludeSkus.includes(v.sku))) continue
 
     const inStock = variants.filter((v) => v.stock > 0)
     const defaultVariant: VariantData | null = inStock.length > 0 ? inStock[0] : null
@@ -113,10 +121,39 @@ async function getRelatedProducts(_excludeSkus: string[]): Promise<RelatedItem[]
       defaultVariant,
     })
 
-    if (items.length === 3) break
+    if (items.length === 4) break
   }
 
   return items
+}
+
+// ─── Formatters ───────────────────────────────────────────────────────────────
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
+                'July', 'August', 'September', 'October', 'November', 'December']
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+function formatFullDate(iso: string): string {
+  const d = new Date(iso)
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`
+}
+
+function formatShortDate(d: Date): string {
+  return `${String(d.getUTCDate()).padStart(2, '0')} ${MONTH_ABBR[d.getUTCMonth()].toUpperCase()}`
+}
+
+function estimatedDispatch(createdAtIso: string): string {
+  const start = new Date(createdAtIso)
+  start.setUTCDate(start.getUTCDate() + 2)
+  const end = new Date(createdAtIso)
+  end.setUTCDate(end.getUTCDate() + 4)
+  return `${formatShortDate(start)} — ${formatShortDate(end)}`
+}
+
+function paymentLabel(method: string | null): string {
+  if (!method || method === 'cod') return 'COD'
+  return method.toUpperCase()
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -124,224 +161,274 @@ async function getRelatedProducts(_excludeSkus: string[]): Promise<RelatedItem[]
 export default async function OrderConfirmationPage({ params }: RouteContext) {
   const { id } = await params
   const order = await getOrder(id)
-
   if (!order) notFound()
 
   const orderSkus    = order.order_items.map((i) => i.variant_sku)
   const relatedItems = await getRelatedProducts(orderSkus)
 
-  const emailUser = order.contact_email.split('@')[0]
-  const firstName = emailUser.charAt(0).toUpperCase() + emailUser.slice(1)
+  const isGuest        = order.user_id === null
+  const totalItemCount = order.order_items.reduce((s, i) => s + i.quantity, 0)
+  const formulaCount   = order.order_items.length
+  const payment        = paymentLabel(order.payment_method)
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* ── Minimal navbar ─────────────────────────────────────────────────── */}
+    <div className="min-h-screen bg-paper">
+      {/* ── Broadsheet masthead ────────────────────────────────────────────── */}
       <header
-        data-testid="confirmation-navbar"
-        className="border-b border-gray-100 px-6 py-4 flex items-center justify-between"
+        data-testid="confirmation-masthead"
+        className="bg-paper border-b-[3px] border-double border-ink"
       >
-        <Link
-          href="/"
-          data-testid="confirmation-brand"
-          className="font-heading text-base tracking-tight text-gray-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2 rounded-sm"
-        >
-          Form.
-        </Link>
-        {/* Cart shows 0 — it was cleared after order placed */}
-        <Link
-          href="/products"
-          aria-label="Continue shopping"
-          className="font-mono text-xs text-gray-400 hover:text-gray-600 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2 rounded-sm"
-        >
-          Continue shopping
-        </Link>
+        <div className="max-w-container mx-auto px-8 md:px-12 pt-7 pb-4">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-6 font-mono text-2xs tracking-ultra uppercase">
+            <Link
+              href="/"
+              data-testid="confirmation-brand"
+              aria-label="matter — home"
+              className="text-graphite hover:text-ink transition-colors justify-self-start font-mono tracking-ultra"
+            >
+              Vol. I · No. 01
+            </Link>
+            <span className="text-ink text-xs tracking-[0.3em] whitespace-nowrap">
+              Order brief · Dispatch
+            </span>
+            <span className="text-graphite text-right">
+              {formatFullDate(order.created_at)}
+            </span>
+          </div>
+        </div>
       </header>
 
-      <main>
-        {/* ── Confirmation hero ─────────────────────────────────────────────── */}
-        <section
-          data-testid="confirmation-hero"
-          className="text-center px-6 py-12"
-          aria-labelledby="confirmation-heading"
-        >
-          {/* Checkmark */}
-          <div
-            aria-hidden="true"
-            className="w-10 h-10 rounded-full bg-gray-900 flex items-center justify-center mx-auto mb-4 text-white"
+      {/* ── Confirmation hero ──────────────────────────────────────────────── */}
+      <section
+        aria-labelledby="confirmation-heading"
+        data-testid="confirmation-hero"
+        className="bg-paper border-b border-hairline"
+      >
+        <div className="max-w-container mx-auto px-8 py-20 text-center">
+          <p
+            data-testid="confirmation-ack"
+            className="font-mono text-2xs tracking-ultra uppercase text-graphite"
           >
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-              <path d="M3 9l4 4 8-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-
+            § Acknowledged — {order.order_number}
+          </p>
           <h1
             id="confirmation-heading"
             data-testid="confirmation-title"
-            className="font-heading text-2xl font-normal text-gray-900 mb-2"
+            className="font-display font-normal text-[clamp(48px,7vw,104px)] leading-[0.96] tracking-tightest mt-5 max-w-[14ch] mx-auto"
           >
-            Order confirmed.
+            Your consignment is <em className="italic">underway</em>.
           </h1>
-
-          <p className="font-body text-sm text-gray-600 mb-1" data-testid="confirmation-thank-you">
-            Thank you, {firstName}. We&rsquo;re preparing your order now.
-          </p>
-
           <p
-            className="font-mono text-xs text-gray-400 mb-8"
-            data-testid="confirmation-order-meta"
+            data-testid="confirmation-email"
+            className="font-body text-base text-ink-2 max-w-[560px] mx-auto mt-7 leading-[1.6]"
           >
-            Order #{order.order_number} · Confirmation sent to {order.contact_email}
+            A confirmation has been dispatched to{' '}
+            <span className="font-mono text-[13px] text-ink">{order.contact_email}</span>.
+            Tracking will follow within 48 hours.
           </p>
+        </div>
+      </section>
 
-          {/* Info strip */}
-          <div
-            data-testid="confirmation-info-strip"
-            className="inline-flex border border-gray-100 rounded-sm overflow-hidden mb-8 max-w-sm w-full"
+      {/* ── Info strip (4-cell) ────────────────────────────────────────────── */}
+      <section
+        aria-label="Order summary"
+        data-testid="confirmation-info-strip"
+        className="bg-paper border-b border-hairline"
+      >
+        <div className="max-w-container mx-auto px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 border-t border-b border-hairline">
+            <div className="px-6 py-5 border-r border-hairline/60 border-b md:border-b-0">
+              <p className="font-mono text-[9px] tracking-[0.18em] uppercase text-graphite">
+                Status
+              </p>
+              <p className="font-mono text-sm text-assay mt-1.5 uppercase tracking-widest">
+                ● {order.status === 'confirmed' ? 'Confirmed' : order.status}
+              </p>
+            </div>
+            <div className="px-6 py-5 md:border-r border-hairline/60 border-b md:border-b-0">
+              <p className="font-mono text-[9px] tracking-[0.18em] uppercase text-graphite">
+                Estimated dispatch
+              </p>
+              <p className="font-mono text-sm text-ink mt-1.5 tabular-nums">
+                {estimatedDispatch(order.created_at)}
+              </p>
+            </div>
+            <div className="px-6 py-5 border-r border-hairline/60">
+              <p className="font-mono text-[9px] tracking-[0.18em] uppercase text-graphite">
+                Payment
+              </p>
+              <p className="font-mono text-sm text-ink mt-1.5 tabular-nums">
+                {payment} · {formatInr(order.total)}
+              </p>
+            </div>
+            <div className="px-6 py-5">
+              <p className="font-mono text-[9px] tracking-[0.18em] uppercase text-graphite">
+                Order ID
+              </p>
+              <p
+                data-testid="confirmation-order-id"
+                className="font-mono text-sm text-ink mt-1.5 tabular-nums"
+              >
+                {order.order_number}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Manifest table ─────────────────────────────────────────────────── */}
+      <section
+        aria-label="Order items"
+        data-testid="confirmation-manifest"
+        className="bg-paper border-b border-hairline"
+      >
+        <div className="max-w-container mx-auto px-8 py-16">
+          <div className="flex items-baseline justify-between flex-wrap gap-4 mb-6">
+            <h2 className="font-display text-[clamp(24px,3vw,32px)] text-ink">
+              Manifest
+            </h2>
+            <p className="font-mono text-[10px] tracking-widest uppercase text-graphite tabular-nums">
+              {totalItemCount} {totalItemCount === 1 ? 'item' : 'items'} · {formulaCount}{' '}
+              {formulaCount === 1 ? 'formula' : 'formulas'}
+            </p>
+          </div>
+
+          <ul
+            data-testid="confirmation-order-items"
+            className="border-t border-hairline"
           >
-            <div className="flex-1 px-3 py-3 border-r border-gray-100 text-center">
-              <p className="font-mono text-2xs uppercase tracking-widest text-gray-400 mb-1">
-                Estimated delivery
-              </p>
-              <p className="font-body text-sm font-medium text-gray-900">3–5 business days</p>
-            </div>
-            <div className="flex-1 px-3 py-3 border-r border-gray-100 text-center">
-              <p className="font-mono text-2xs uppercase tracking-widest text-gray-400 mb-1">
-                Shipping to
-              </p>
-              <p className="font-body text-sm font-medium text-gray-900">
-                {order.shipping_address.city}, {order.shipping_address.pin}
-              </p>
-            </div>
-            <div className="flex-1 px-3 py-3 text-center">
-              <p className="font-mono text-2xs uppercase tracking-widest text-gray-400 mb-1">
-                Total paid
-              </p>
-              <p className="font-body text-sm font-medium text-gray-900">{formatInr(order.total)}</p>
-            </div>
-          </div>
-
-          {/* Account creation incentive */}
-          <div className="max-w-sm mx-auto">
-            <div
-              data-testid="account-incentive"
-              className="bg-offwhite border-l-2 border-gray-900 text-left px-4 py-3 mb-4"
-            >
-              <p className="font-mono text-2xs uppercase tracking-widest text-gray-400 mb-1">
-                Save 10% on your next order
-              </p>
-              <p className="font-body text-xs text-gray-600 mb-3">
-                Create an account to track this order, reorder with one click, and get early
-                access to new formulas.
-              </p>
-              <div className="flex gap-2">
-                <input
-                  type="password"
-                  placeholder="Set a password"
-                  aria-label="Password for new account"
-                  data-testid="account-password-input"
-                  className="flex-1 border border-gray-200 rounded-sm px-3 py-2 font-body text-sm text-gray-900 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-1"
-                />
-                <button
-                  type="button"
-                  data-testid="account-create-btn"
-                  className="bg-gray-900 text-white rounded-sm px-3 py-2 font-mono text-2xs uppercase tracking-widest hover:bg-gray-800 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2 whitespace-nowrap"
-                >
-                  Create account
-                </button>
-              </div>
-              <p className="font-mono text-2xs text-gray-400 mt-2">
-                Auth is Phase 2 — this will be wired up in Task 4.1.
-              </p>
-            </div>
-
-            <Link
-              href="/products"
-              data-testid="continue-shopping-link"
-              className="block border border-gray-200 rounded-sm py-2 font-body text-sm text-gray-900 text-center hover:bg-gray-50 transition-colors mb-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2"
-            >
-              Continue shopping
-            </Link>
-
-            <p className="font-mono text-xs text-gray-400">
-              Questions?{' '}
-              <Link href="/support/new" className="underline hover:text-gray-600 transition-colors">
-                Contact us
-              </Link>
-            </p>
-          </div>
-        </section>
-
-        {/* ── Order items ────────────────────────────────────────────────────── */}
-        <section
-          data-testid="confirmation-order-items"
-          className="bg-offwhite border-t border-gray-100 px-6 py-8"
-          aria-labelledby="order-items-heading"
-        >
-          <div className="max-w-sm mx-auto">
-            <p
-              id="order-items-heading"
-              className="font-mono text-2xs uppercase tracking-widest text-gray-400 mb-4"
-            >
-              Your order
-            </p>
-
-            <ul>
-              {order.order_items.map((item) => (
-                <li
-                  key={item.id}
-                  data-testid="confirmation-order-item"
-                  className="flex gap-3 items-start py-3 border-b border-gray-100 last:border-0"
-                >
-                  <div className="w-12 h-12 flex-shrink-0 bg-gray-50 border border-gray-100 rounded-sm" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-body text-sm font-medium text-gray-900">
-                      {item.product_name}
-                    </p>
-                    <p className="font-mono text-2xs uppercase text-gray-400">
-                      {item.variant_sku} · Qty {item.quantity}
-                    </p>
-                  </div>
-                  <p className="font-body text-sm font-medium text-gray-900 flex-shrink-0">
-                    {formatInr(item.line_total)}
+            {order.order_items.map((item, idx) => (
+              <li
+                key={item.id}
+                data-testid="confirmation-order-item"
+                className="grid grid-cols-[36px_1fr_auto_auto_auto] gap-4 md:gap-6 py-5 border-b border-hairline/60 items-baseline"
+              >
+                <span className="font-mono text-[9px] tracking-widest uppercase text-graphite tabular-nums">
+                  {String(idx + 1).padStart(2, '0')}
+                </span>
+                <div>
+                  <p className="font-body text-[15px] text-ink">{item.product_name}</p>
+                  <p className="font-mono text-[10px] tracking-widest uppercase text-graphite mt-1">
+                    SKU {item.variant_sku}
                   </p>
-                </li>
-              ))}
-            </ul>
+                </div>
+                <span className="font-mono text-xs text-graphite whitespace-nowrap tabular-nums">
+                  Qty {item.quantity}
+                </span>
+                <span className="font-mono text-xs text-graphite whitespace-nowrap tabular-nums">
+                  {formatInr(item.unit_price)}
+                </span>
+                <span className="font-mono text-sm text-ink whitespace-nowrap tabular-nums">
+                  {formatInr(item.line_total)}
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          {/* Totals strip */}
+          <div className="flex flex-col md:items-end gap-1 mt-8">
+            <div className="flex justify-between md:justify-end md:gap-8 font-mono text-[11px] tracking-widest uppercase">
+              <span className="text-graphite">Subtotal</span>
+              <span className="text-ink tabular-nums">{formatInr(order.subtotal)}</span>
+            </div>
+            <div className="flex justify-between md:justify-end md:gap-8 font-mono text-[11px] tracking-widest uppercase">
+              <span className="text-graphite">Shipping</span>
+              <span className={`tabular-nums ${order.shipping_total === 0 ? 'text-assay' : 'text-ink'}`}>
+                {order.shipping_total === 0 ? 'Free' : formatInr(order.shipping_total)}
+              </span>
+            </div>
+            <div className="flex justify-between md:justify-end md:gap-8 pt-3 mt-2 border-t border-hairline min-w-[220px]">
+              <span className="font-display text-lg text-ink">Total</span>
+              <span
+                data-testid="confirmation-total"
+                className="font-display text-2xl text-ink tabular-nums"
+              >
+                {formatInr(order.total)}
+              </span>
+            </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* ── Related products ───────────────────────────────────────────────── */}
-        {relatedItems.length > 0 && (
-          <section
-            data-testid="confirmation-related"
-            className="px-6 py-8 border-t border-gray-100"
-            aria-labelledby="related-heading"
-          >
-            <div className="max-w-5xl mx-auto">
-              <div className="flex items-baseline justify-between mb-6">
-                <h2
-                  id="related-heading"
-                  className="font-heading text-xl font-normal text-gray-900"
-                >
-                  You might also like
+      {/* ── Account incentive (guest only) ─────────────────────────────────── */}
+      {isGuest && (
+        <section
+          aria-label="Create account"
+          data-testid="account-incentive"
+          className="bg-paper-2 border-b border-hairline"
+        >
+          <div className="max-w-container mx-auto px-8 py-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+              <div>
+                <p className="font-mono text-[10px] tracking-ultra uppercase text-graphite">
+                  § Optional — Create your dossier
+                </p>
+                <h2 className="font-display font-normal text-[clamp(28px,3.5vw,36px)] leading-[1.1] tracking-tight mt-3.5">
+                  Track consignments and reorder in one step.
                 </h2>
-                <Link
-                  href="/products"
-                  className="font-mono text-xs text-gray-400 hover:text-gray-600 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2 rounded-sm"
-                >
-                  View all →
-                </Link>
+                <p className="font-body text-sm leading-[1.6] text-ink-2 mt-4 max-w-[420px]">
+                  Link this order to an account and we&rsquo;ll keep a complete
+                  dossier — dispatch tracking, reorder shortcuts, and a skin
+                  profile you can edit.
+                </p>
               </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                {relatedItems.map(({ product, defaultVariant }) => (
-                  <ProductCard key={product.id} product={product} defaultVariant={defaultVariant} />
-                ))}
+              <div className="md:justify-self-end w-full max-w-[280px]">
+                <Link
+                  href={`/signup?prefill=${encodeURIComponent(order.contact_email)}&order=${order.id}`}
+                  data-testid="account-create-link"
+                  className="block bg-ink text-paper px-6 py-4 font-mono text-xs tracking-ultra uppercase text-center hover:bg-ink-2 transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2"
+                >
+                  Create account →
+                </Link>
+                <p className="font-mono text-2xs tracking-widest uppercase text-graphite text-center mt-3">
+                  30 seconds · Email + password
+                </p>
               </div>
             </div>
-          </section>
-        )}
-      </main>
+          </div>
+        </section>
+      )}
+
+      {/* ── Related products ───────────────────────────────────────────────── */}
+      {relatedItems.length > 0 && (
+        <section
+          aria-label="Complete the regimen"
+          data-testid="confirmation-related"
+          className="bg-paper border-b border-hairline"
+        >
+          <div className="max-w-container mx-auto px-8 pt-18 pb-24">
+            <div className="flex items-baseline justify-between flex-wrap gap-4 mb-10">
+              <div>
+                <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-graphite">
+                  § Complete the regimen
+                </p>
+                <h2 className="font-display font-normal text-[clamp(28px,3vw,40px)] leading-[1.05] tracking-tighter mt-3.5">
+                  You might <em className="italic">also</em> like.
+                </h2>
+              </div>
+              <Link
+                href="/products"
+                data-testid="confirmation-view-all"
+                className="font-mono text-xs tracking-widest uppercase text-ink border-b border-ink pb-0.5 hover:text-graphite hover:border-graphite transition-colors"
+              >
+                Browse all →
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {relatedItems.map(({ product, defaultVariant }, idx) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  defaultVariant={defaultVariant}
+                  showAddButton={false}
+                  placeholderTone={RELATED_TONES[idx % RELATED_TONES.length]}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <Footer />
     </div>
