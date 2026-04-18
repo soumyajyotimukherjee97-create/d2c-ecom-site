@@ -2,11 +2,8 @@
 
 import { useState } from 'react'
 import { useCartStore } from '@/lib/store/cart'
-import { Badge } from '@/components/ui/Badge'
 import { IngredientTag } from '@/components/ui/IngredientTag'
-import { ScienceCallout } from '@/components/ui/ScienceCallout'
 import { QuantitySelector } from '@/components/ui/QuantitySelector'
-import { ReviewBar } from '@/components/shop/ReviewBar'
 import { formatInr } from '@/lib/money'
 import type { Product, Variant } from '@/types'
 
@@ -18,6 +15,10 @@ function firstInStock(variants: Variant[]): Variant | undefined {
   return variants.find((v) => v.is_active && v.stock > 0) ?? variants.find((v) => v.is_active)
 }
 
+function capFirst(s: string): string {
+  return s.length ? s.charAt(0).toUpperCase() + s.slice(1) : s
+}
+
 export function PDPPurchasePanel({ product }: PDPPurchasePanelProps) {
   const [selectedId, setSelectedId] = useState<string>(
     firstInStock(product.variants)?.id ?? product.variants[0]?.id ?? '',
@@ -27,13 +28,10 @@ export function PDPPurchasePanel({ product }: PDPPurchasePanelProps) {
   const activeVariants  = product.variants.filter((v) => v.is_active)
   const selectedVariant = activeVariants.find((v) => v.id === selectedId) ?? activeVariants[0]
   const outOfStock      = !selectedVariant || selectedVariant.stock === 0
-  const price           = selectedVariant
-    ? formatInr(selectedVariant.price)
-    : '—'
 
   // First 3 ingredients (sorted by display_order — already sorted by server)
-  const keyIngredients  = product.ingredients.slice(0, 3)
-  const scienceNote     = product.ingredients.find((i) => i.science_note)
+  const keyIngredients = product.ingredients.slice(0, 3)
+  const scienceNote    = product.ingredients.find((i) => i.science_note)
 
   const addItem  = useCartStore((s) => s.addItem)
   const openCart = useCartStore((s) => s.openCart)
@@ -45,42 +43,47 @@ export function PDPPurchasePanel({ product }: PDPPurchasePanelProps) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div data-testid="pdp-purchase-panel" className="md:border-l md:border-hairline md:pl-12">
 
-      {/* Category overline */}
-      <p className="font-mono text-2xs uppercase tracking-widest text-gray-400">
-        {product.category}
+      {/* Category eyebrow */}
+      <p className="font-mono text-xs tracking-[0.18em] uppercase text-graphite">
+        {product.category.toUpperCase()}
       </p>
 
-      {/* Product name */}
-      <h1 className="font-heading text-3xl font-normal tracking-tight">
+      {/* Product name — display h1 */}
+      <h1
+        data-testid="pdp-name"
+        className="font-display font-normal text-[clamp(40px,5vw,52px)] leading-[1.02] tracking-tightest mt-4"
+      >
         {product.name}
       </h1>
 
-      {/* Rating summary */}
-      <ReviewBar summary={product.reviews_summary} scrollTargetId="reviews" />
-
       {/* Price */}
-      <p className="font-heading text-2xl font-normal">
-        {price}
+      <div className="flex items-baseline gap-2.5 mt-5">
+        <span
+          data-testid="pdp-price"
+          className="font-display text-[clamp(28px,3vw,34px)] text-ink tabular-nums"
+        >
+          {selectedVariant ? formatInr(selectedVariant.price) : '—'}
+        </span>
         {selectedVariant && (
-          <span className="font-body text-xs text-gray-400 ml-2 font-normal">
-            / {selectedVariant.size_ml}ml
+          <span className="font-mono text-xs text-graphite">
+            / {selectedVariant.size_ml}ML
           </span>
         )}
-      </p>
+      </div>
 
-      {/* Variant selector — size pills */}
+      {/* SIZE selector */}
       {activeVariants.length > 0 && (
-        <div>
-          <p className="font-mono text-2xs uppercase tracking-widest text-gray-400 mb-2">
-            SIZE
+        <div className="mt-8">
+          <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-graphite mb-2.5">
+            Size
           </p>
           <div className="flex flex-wrap gap-2" role="group" aria-label="Select size">
             {activeVariants.map((v) => {
-              const isSelected  = v.id === selectedId
-              const isOos       = v.stock === 0
-              const label       = `${v.size_ml}ml${isOos ? ' — Out of stock' : ''}`
+              const isSelected = v.id === selectedId
+              const isOos      = v.stock === 0
+              const label      = `${v.size_ml}ml${isOos ? ' — Out of lot' : ''}`
               return (
                 <button
                   key={v.id}
@@ -88,22 +91,28 @@ export function PDPPurchasePanel({ product }: PDPPurchasePanelProps) {
                   aria-pressed={isSelected}
                   aria-label={label}
                   data-testid={`variant-pill-${v.id}`}
+                  data-selected={isSelected}
+                  data-oos={isOos}
+                  disabled={isOos}
                   onClick={() => { setSelectedId(v.id); setQty(1) }}
                   className={[
-                    'font-mono text-2xs px-4 py-2 rounded-sm border transition-colors',
-                    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2',
+                    'font-mono text-[11px] tracking-wider uppercase px-3.5 py-2.5 border transition-colors',
+                    'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2',
                     isOos
-                      ? 'border-gray-100 text-gray-400 cursor-not-allowed line-through'
+                      ? 'border-hairline text-graphite cursor-not-allowed line-through'
                       : isSelected
-                      ? 'bg-gray-900 text-white border-gray-900'
-                      : 'bg-white text-gray-900 border-gray-200 hover:border-gray-400',
+                        ? 'bg-ink text-paper border-ink'
+                        : 'bg-transparent text-ink border-hairline hover:border-ink',
                   ].join(' ')}
                 >
-                  {v.size_ml}ml
+                  {v.size_ml}ML
                   {!isSelected && !isOos && (
-                    <span className="text-gray-400 ml-1">
+                    <span className="text-graphite ml-1.5 normal-case tracking-normal">
                       — {formatInr(v.price)}
                     </span>
+                  )}
+                  {isOos && (
+                    <span className="text-graphite ml-1.5">— Out of lot</span>
                   )}
                 </button>
               )
@@ -112,64 +121,69 @@ export function PDPPurchasePanel({ product }: PDPPurchasePanelProps) {
         </div>
       )}
 
-      {/* Ideal for — skin types + concerns */}
+      {/* IDEAL FOR */}
       {(product.skin_types.length > 0 || product.concerns.length > 0) && (
-        <div>
-          <p className="font-mono text-2xs uppercase tracking-widest text-gray-400 mb-2">
-            IDEAL FOR
+        <div className="mt-7">
+          <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-graphite mb-2.5">
+            Ideal for
           </p>
           <div className="flex flex-wrap gap-2">
             {product.skin_types.map((st) => (
-              <Badge key={st} variant="default">
-                {st === 'all' ? 'All skin types' : st.charAt(0).toUpperCase() + st.slice(1)}
-              </Badge>
+              <span
+                key={`st-${st}`}
+                data-testid={`pdp-chip-skin-${st}`}
+                className="font-mono text-[10px] tracking-widest uppercase text-graphite border border-hairline px-3 py-1.5"
+              >
+                {st === 'all' ? 'All skin' : capFirst(st)}
+              </span>
             ))}
             {product.concerns.map((c) => (
-              <Badge key={c} variant="filled">
-                {c.charAt(0).toUpperCase() + c.slice(1)}
-              </Badge>
+              <span
+                key={`c-${c}`}
+                data-testid={`pdp-chip-concern-${c}`}
+                className="font-mono text-[10px] tracking-widest uppercase text-graphite border border-hairline px-3 py-1.5"
+              >
+                {capFirst(c)}
+              </span>
             ))}
           </div>
         </div>
       )}
 
-      {/* Quantity + Add to cart */}
-      <div className="flex gap-2 items-center sticky bottom-0 md:static bg-white py-2 md:py-0">
-        {!outOfStock && (
-          <QuantitySelector
-            value={qty}
-            onChange={setQty}
-            min={1}
-            max={selectedVariant?.stock ?? 99}
-          />
-        )}
+      {/* Qty + ATC — 130 / 1fr grid */}
+      <div className="grid grid-cols-[130px_1fr] gap-2.5 mt-8">
+        <QuantitySelector
+          value={qty}
+          onChange={setQty}
+          min={1}
+          max={Math.max(1, selectedVariant?.stock ?? 99)}
+          size="md"
+        />
         <button
           type="button"
           data-testid="add-to-cart"
           onClick={handleAddToCart}
           disabled={outOfStock}
           className={[
-            'flex-1 font-mono text-2xs uppercase tracking-wider py-3 rounded-sm transition-colors',
-            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2',
+            'inline-flex items-center justify-center h-[46px] px-6',
+            'font-mono text-[11px] tracking-ultra uppercase transition-colors',
+            'focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2',
             outOfStock
-              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              : 'bg-gray-900 text-white hover:bg-gray-700',
+              ? 'bg-paper-3 text-graphite cursor-not-allowed border border-hairline'
+              : 'bg-ink text-paper hover:bg-ink-2',
           ].join(' ')}
         >
-          {outOfStock ? 'Out of stock' : 'Add to cart'}
+          {outOfStock ? 'Out of lot' : 'Add to cart'}
         </button>
       </div>
 
-      {/* Divider */}
-      <hr className="border-gray-100" />
-
-      {/* Key ingredients */}
+      {/* KEY INGREDIENTS */}
       {keyIngredients.length > 0 && (
-        <div>
-          <p className="font-mono text-2xs uppercase tracking-widest text-gray-400 mb-2">
-            KEY INGREDIENTS
+        <div className="mt-10">
+          <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-graphite mb-3">
+            Key ingredients
           </p>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5">
             {keyIngredients.map((ing) => (
               <IngredientTag
                 key={ing.id}
@@ -181,16 +195,20 @@ export function PDPPurchasePanel({ product }: PDPPurchasePanelProps) {
         </div>
       )}
 
-      {/* Science callout */}
-      {scienceNote && (
-        <ScienceCallout>
-          <p className="font-mono text-2xs uppercase tracking-widest text-gray-400 mb-1">
+      {/* CLINICAL INSIGHT */}
+      {scienceNote?.science_note && (
+        <div
+          data-testid="pdp-clinical-insight"
+          className="mt-5 border border-hairline bg-paper-2 px-5 py-4"
+        >
+          <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-graphite">
             Clinical insight
           </p>
-          <p className="font-body text-sm text-gray-600">{scienceNote.science_note}</p>
-        </ScienceCallout>
+          <p className="font-body text-[13px] leading-[1.55] text-ink-2 mt-2">
+            {scienceNote.science_note}
+          </p>
+        </div>
       )}
-
     </div>
   )
 }

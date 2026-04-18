@@ -1,11 +1,11 @@
 import { cache } from 'react'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
+import { PDPGallery } from '@/components/shop/PDPGallery'
 import { PDPPurchasePanel } from '@/components/shop/PDPPurchasePanel'
-import { ReviewsSection } from '@/components/shop/ReviewsSection'
+import { PDPReviews } from '@/components/shop/PDPReviews'
 import { ProductCard } from '@/components/shop/ProductCard'
 import { IngredientTag } from '@/components/ui/IngredientTag'
 import type { Product, ProductSummary, Variant } from '@/types'
@@ -144,7 +144,7 @@ async function getRelatedProducts(
       .eq('product_variants.is_active', true)
       .neq('slug', excludeSlug)
       .order('created_at', { ascending: false })
-      .limit(3)
+      .limit(4)
 
     if (error || !rawData) return []
 
@@ -181,37 +181,25 @@ export async function generateMetadata({
   if (!product) return {}
 
   return {
-    title:       `${product.name} — Form.`,
-    description: product.description ?? `Shop ${product.name} from Form.`,
+    title:       `${product.name} · matter`,
+    description: product.description ?? `Shop ${product.name} from matter.`,
     openGraph: {
-      title:       `${product.name} — Form.`,
-      description: product.description ?? `Shop ${product.name} from Form.`,
+      title:       `${product.name} · matter`,
+      description: product.description ?? `Shop ${product.name} from matter.`,
       images:      product.image_url ? [product.image_url] : [],
     },
   }
 }
 
+const RELATED_TONES = ['mineral', 'default', 'ink', 'default'] as const
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function ProductPage({ params }: { params: { slug: string } }) {
-  const [product, related] = await Promise.all([
-    getProduct(params.slug),
-    // related is fetched after product — category needed, so sequential is fine
-    // but we optimistically start fetching with getProduct above
-    getProduct(params.slug).then((p) =>
-      p ? getRelatedProducts(p.category, p.slug) : [],
-    ),
-  ])
-
+  const product = await getProduct(params.slug)
   if (!product) notFound()
 
-  const categoryBg: Record<string, string> = {
-    serum:       'bg-gray-50',
-    moisturiser: 'bg-blush',
-    toner:       'bg-mist',
-    spf:         'bg-gray-50',
-  }
-  const imageBg = categoryBg[product.category] ?? 'bg-gray-50'
+  const related = await getRelatedProducts(product.category, product.slug)
 
   // JSON-LD breadcrumb
   const breadcrumbJsonLd = {
@@ -231,120 +219,137 @@ export default async function ProductPage({ params }: { params: { slug: string }
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
 
-      <main className="max-w-5xl mx-auto px-6 py-8">
-
-        {/* Breadcrumb */}
-        <nav aria-label="Breadcrumb" className="mb-6">
-          <ol className="flex items-center gap-1 font-mono text-2xs text-gray-400">
-            <li><Link href="/" className="hover:text-gray-900 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2">Home</Link></li>
-            <li aria-hidden="true">/</li>
-            <li><Link href="/products" className="hover:text-gray-900 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2">Shop</Link></li>
-            <li aria-hidden="true">/</li>
-            <li aria-current="page" className="text-gray-900 truncate max-w-xs">{product.name}</li>
+      {/* ── Breadcrumb ───────────────────────────────────────────────────── */}
+      <div
+        data-testid="pdp-breadcrumb"
+        className="bg-paper border-b border-hairline"
+      >
+        <nav
+          aria-label="Breadcrumb"
+          className="max-w-container mx-auto px-8 py-5"
+        >
+          <ol className="flex items-center gap-2.5 font-mono text-[11px] tracking-widest uppercase text-graphite">
+            <li>
+              <Link href="/" className="hover:text-ink transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2">
+                Home
+              </Link>
+            </li>
+            <li aria-hidden="true" className="opacity-40">/</li>
+            <li>
+              <Link href="/products" className="hover:text-ink transition-colors focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2">
+                Shop
+              </Link>
+            </li>
+            <li aria-hidden="true" className="opacity-40">/</li>
+            <li aria-current="page" className="text-ink truncate max-w-xs">
+              {product.name}
+            </li>
           </ol>
         </nav>
+      </div>
 
-        {/* ── Two-column layout ─────────────────────────────────────────────── */}
-        <div className="flex flex-col md:flex-row gap-8 mb-16">
-
-          {/* Left — image */}
-          <div className="flex-1">
-            <div className={`w-full aspect-square ${imageBg} relative rounded-sm border border-gray-100 mb-2`}>
-              {product.image_url ? (
-                <Image
-                  src={product.image_url}
-                  alt={product.name}
-                  fill
-                  priority
-                  className="object-contain"
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                />
-              ) : (
-                <span className="sr-only">{product.name}</span>
-              )}
-            </div>
-
-            {/* Thumbnail row — single image MVP */}
-            <div className="flex gap-2">
-              <div
-                aria-current="true"
-                className={`flex-1 aspect-square ${imageBg} relative border-2 border-gray-900 rounded-sm overflow-hidden`}
-              >
-                {product.image_url && (
-                  <Image
-                    src={product.image_url}
-                    alt={product.name}
-                    fill
-                    className="object-contain"
-                    sizes="(max-width: 768px) 25vw, 12vw"
-                  />
-                )}
-              </div>
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  aria-hidden="true"
-                  className={`flex-1 aspect-square ${imageBg} border border-gray-100 rounded-sm`}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Right — purchase panel */}
-          <div className="flex-1 md:flex-[1.2]">
+      {/* ── PDP main: 2-col grid ─────────────────────────────────────────── */}
+      <section
+        aria-label={product.name}
+        data-testid="pdp-main"
+        className="bg-paper border-b border-hairline"
+      >
+        <div className="max-w-container mx-auto px-8 pt-8 pb-20">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-16 items-start">
+            <PDPGallery
+              imageUrl={product.image_url}
+              name={product.name}
+              placeholderTone="mineral"
+            />
             <PDPPurchasePanel product={product} />
           </div>
-
         </div>
+      </section>
 
-        {/* ── Description (replaces "How to use" — no API field for steps) ─── */}
-        {product.description && (
-          <section aria-label="About this product" className="mb-12 max-w-2xl">
-            <h2 className="font-heading text-2xl font-normal mb-4">About this product</h2>
-            <p className="font-body text-base text-gray-600">{product.description}</p>
-          </section>
-        )}
+      {/* ── Description + full ingredients ──────────────────────────────── */}
+      {(product.description || product.ingredients.length > 0) && (
+        <section
+          aria-label="About this product"
+          data-testid="pdp-details"
+          className="bg-paper-2 border-b border-hairline"
+        >
+          <div className="max-w-container mx-auto px-8 py-20">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-10 md:gap-16">
+              {product.description && (
+                <div className="md:col-span-6">
+                  <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-graphite">
+                    § Notes on the formula
+                  </p>
+                  <h2 className="font-display font-normal text-[clamp(32px,3.5vw,44px)] leading-[1.05] tracking-tighter mt-3.5">
+                    The formulation.
+                  </h2>
+                  <p className="font-body text-[15px] leading-[1.7] text-ink-2 mt-6 max-w-[520px]">
+                    {product.description}
+                  </p>
+                </div>
+              )}
 
-        {/* ── Full ingredients list ─────────────────────────────────────────── */}
-        {product.ingredients.length > 0 && (
-          <section aria-label="Full ingredients" className="mb-12">
-            <h2 className="font-heading text-2xl font-normal mb-4">Ingredients</h2>
-            <div className="flex flex-col gap-2 max-w-md">
-              {product.ingredients.map((ing) => (
-                <IngredientTag
-                  key={ing.id}
-                  name={ing.name}
-                  concentration={ing.concentration ?? undefined}
+              {product.ingredients.length > 0 && (
+                <div className="md:col-span-6">
+                  <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-graphite">
+                    § Full ingredients
+                  </p>
+                  <h2 className="font-display font-normal text-[clamp(32px,3.5vw,44px)] leading-[1.05] tracking-tighter mt-3.5">
+                    The assay.
+                  </h2>
+                  <div className="flex flex-col gap-1.5 mt-6">
+                    {product.ingredients.map((ing) => (
+                      <IngredientTag
+                        key={ing.id}
+                        name={ing.name}
+                        concentration={ing.concentration ?? undefined}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── Reviews carousel ─────────────────────────────────────────────── */}
+      <PDPReviews
+        productName={product.name}
+        reviews={product.reviews}
+        summary={product.reviews_summary}
+      />
+
+      {/* ── Related products ─────────────────────────────────────────────── */}
+      {related.length > 0 && (
+        <section
+          aria-label="Related products"
+          data-testid="pdp-related"
+          className="bg-paper border-b border-hairline"
+        >
+          <div className="max-w-container mx-auto px-8 pt-18 pb-24">
+            <div className="mb-10">
+              <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-graphite">
+                § Complete the regimen
+              </p>
+              <h2 className="font-display font-normal text-[clamp(32px,3.5vw,40px)] leading-[1.05] tracking-tighter mt-3.5">
+                You might <em className="italic">also</em> like.
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {related.map(({ product: p, defaultVariant }, idx) => (
+                <ProductCard
+                  key={p.id}
+                  product={p}
+                  defaultVariant={defaultVariant}
+                  showAddButton={false}
+                  placeholderTone={RELATED_TONES[idx % RELATED_TONES.length]}
                 />
               ))}
             </div>
-          </section>
-        )}
-
-        {/* ── Reviews ──────────────────────────────────────────────────────── */}
-        <ReviewsSection reviews={product.reviews} summary={product.reviews_summary} />
-
-        {/* ── Related products ──────────────────────────────────────────────── */}
-        {related.length > 0 && (
-          <section aria-label="Related products" className="mt-12 pt-8 border-t border-gray-100">
-            <div className="flex items-baseline justify-between mb-6">
-              <h2 className="font-heading text-2xl font-normal">You may also like</h2>
-              <Link
-                href="/products"
-                className="font-mono text-2xs uppercase tracking-widest text-gray-400 hover:text-gray-900 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2"
-              >
-                View all →
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {related.map(({ product: p, defaultVariant }) => (
-                <ProductCard key={p.id} product={p} defaultVariant={defaultVariant} />
-              ))}
-            </div>
-          </section>
-        )}
-
-      </main>
+          </div>
+        </section>
+      )}
     </>
   )
 }

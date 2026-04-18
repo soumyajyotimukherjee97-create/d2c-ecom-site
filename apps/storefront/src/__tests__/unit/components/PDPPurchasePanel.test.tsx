@@ -16,7 +16,8 @@ const mockProduct: Product = {
   starting_price: 129900,
   variants: [
     { id: 'v1', size_ml: 30, price: 129900, sku: 'BS-30', stock: 10, is_active: true },
-    { id: 'v2', size_ml: 60, price: 229900, sku: 'BS-60', stock: 0,  is_active: true },
+    { id: 'v2', size_ml: 60, price: 229900, sku: 'BS-60', stock: 5,  is_active: true },
+    { id: 'v3', size_ml: 100, price: 329900, sku: 'BS-100', stock: 0, is_active: true },
   ],
   ingredients: [
     { id: 'i1', name: 'L-ASCORBIC ACID', concentration: 10, benefit: 'Brightening', science_note: 'At pH 3.5.', display_order: 0 },
@@ -39,6 +40,7 @@ describe('PDPPurchasePanel', () => {
     render(<PDPPurchasePanel product={mockProduct} />)
     expect(screen.getByTestId('variant-pill-v1')).toBeDefined()
     expect(screen.getByTestId('variant-pill-v2')).toBeDefined()
+    expect(screen.getByTestId('variant-pill-v3')).toBeDefined()
   })
 
   it('selects the first in-stock variant by default', () => {
@@ -47,10 +49,12 @@ describe('PDPPurchasePanel', () => {
     expect(pill.getAttribute('aria-pressed')).toBe('true')
   })
 
-  it('marks out-of-stock variant pill with line-through styling', () => {
+  it('marks out-of-stock variant pill with line-through styling + data-oos', () => {
     render(<PDPPurchasePanel product={mockProduct} />)
-    const oosBtn = screen.getByTestId('variant-pill-v2')
+    const oosBtn = screen.getByTestId('variant-pill-v3')
     expect(oosBtn.className).toContain('line-through')
+    expect(oosBtn.getAttribute('data-oos')).toBe('true')
+    expect((oosBtn as HTMLButtonElement).disabled).toBe(true)
   })
 
   it('switches selected variant when a pill is clicked', () => {
@@ -62,13 +66,13 @@ describe('PDPPurchasePanel', () => {
 
   it('shows the price for the selected variant', () => {
     render(<PDPPurchasePanel product={mockProduct} />)
-    expect(screen.getByText('₹1,299')).toBeDefined()
+    expect(screen.getByTestId('pdp-price')).toHaveTextContent('₹1,299')
   })
 
   it('updates the price when a different variant is selected', () => {
     render(<PDPPurchasePanel product={mockProduct} />)
     fireEvent.click(screen.getByTestId('variant-pill-v2'))
-    expect(screen.getByText('₹2,299')).toBeDefined()
+    expect(screen.getByTestId('pdp-price')).toHaveTextContent('₹2,299')
   })
 
   it('renders the add-to-cart button', () => {
@@ -76,7 +80,7 @@ describe('PDPPurchasePanel', () => {
     expect(screen.getByTestId('add-to-cart')).toBeDefined()
   })
 
-  it('disables add-to-cart and shows "Out of stock" when variant has no stock', () => {
+  it('disables add-to-cart and shows "Out of lot" when the selected variant has no stock', () => {
     const oos: Product = {
       ...mockProduct,
       variants: [{ id: 'v1', size_ml: 30, price: 129900, sku: 'BS-30', stock: 0, is_active: true }],
@@ -84,7 +88,7 @@ describe('PDPPurchasePanel', () => {
     render(<PDPPurchasePanel product={oos} />)
     const btn = screen.getByTestId('add-to-cart') as HTMLButtonElement
     expect(btn.disabled).toBe(true)
-    expect(btn.textContent).toContain('Out of stock')
+    expect(btn.textContent).toContain('Out of lot')
   })
 
   it('renders the quantity selector for in-stock products', () => {
@@ -97,14 +101,21 @@ describe('PDPPurchasePanel', () => {
     expect(screen.getAllByTestId('ingredient-tag').length).toBeGreaterThan(0)
   })
 
-  it('renders ReviewBar when there are reviews', () => {
+  it('renders the CATEGORY eyebrow in matter caps', () => {
     render(<PDPPurchasePanel product={mockProduct} />)
-    expect(screen.getByTestId('review-bar')).toBeDefined()
+    expect(screen.getByText('SERUM')).toBeDefined()
   })
 
-  it('renders skin_type and concern badges', () => {
+  it('renders skin_type and concern chips in the IDEAL FOR row', () => {
     render(<PDPPurchasePanel product={mockProduct} />)
-    expect(screen.getByText('Dry')).toBeDefined()
-    expect(screen.getByText('Dullness')).toBeDefined()
+    expect(screen.getByTestId('pdp-chip-skin-dry')).toHaveTextContent(/Dry/)
+    expect(screen.getByTestId('pdp-chip-concern-dullness')).toHaveTextContent(/Dullness/)
+  })
+
+  it('renders the clinical-insight callout when a science_note is present', () => {
+    render(<PDPPurchasePanel product={mockProduct} />)
+    const callout = screen.getByTestId('pdp-clinical-insight')
+    expect(callout).toHaveTextContent(/clinical insight/i)
+    expect(callout).toHaveTextContent(/At pH 3\.5/)
   })
 })
