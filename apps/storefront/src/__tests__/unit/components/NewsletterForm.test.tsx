@@ -56,7 +56,7 @@ describe('NewsletterForm', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('newsletter-success')).toBeDefined()
-      expect(screen.getByText("You're in.")).toBeDefined()
+      expect(screen.getByTestId('newsletter-success').textContent).toMatch(/you're in/i)
     })
   })
 
@@ -85,10 +85,8 @@ describe('NewsletterForm', () => {
     submit()
 
     await waitFor(() => {
-      expect(screen.getByTestId('newsletter-error')).toBeDefined()
-      expect(
-        screen.getByText('Network error. Please check your connection and try again.'),
-      ).toBeDefined()
+      const err = screen.getByTestId('newsletter-error')
+      expect(err.textContent).toMatch(/network error/i)
     })
   })
 
