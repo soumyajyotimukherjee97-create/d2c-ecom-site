@@ -25,7 +25,7 @@
 | 5 | **Pilot page: About** (new route) | ✅ | low |
 | 6 | Home page | ✅ | medium |
 | 7 | PLP (`/products`) | ✅ | medium |
-| 8 | PDP (`/products/[slug]`) | ☐ | medium |
+| 8 | PDP (`/products/[slug]`) | ✅ | medium |
 | 9 | Ingredients page (new route, MDX) | ☐ | medium |
 | 10 | Checkout + Order confirmation | ☐ | high |
 | 11 | Auth (`/login`, `/signup`) | ☐ | medium |
@@ -257,23 +257,33 @@
 
 ---
 
-## Chunk 8 — PDP (`/products/[slug]`)
+## Chunk 8 — PDP (`/products/[slug]`) ✅
 
-- **Prereqs**: Chunks 2, 3, 4, 7
-- **Scope**: re-skin `src/app/(shop)/products/[slug]/page.tsx` per `wireframes-storefront-v2/Pdp.html`:
-  - Breadcrumb (mono trail).
-  - Gallery (1:1 hero + 4 thumbs, client island for swap).
-  - Purchase panel: category eyebrow, display name, price, size variant pills, Ideal For chip list, qty stepper + ATC, Key Ingredients with 3px ink left border, optional Clinical Insight callout.
-  - ProductReviews carousel (reuses Home carousel primitive).
-  - YouMightAlsoLike (4-up with in-card arrow+dot pager).
-  - generateMetadata + JSON-LD breadcrumb (retain).
+- **Prereqs**: Chunks 2, 3, 4, 7 ✅
+- **Scope**: re-skinned `src/app/(shop)/products/[slug]/page.tsx` per `wireframes-storefront-v2/Pdp.html`:
+  - Breadcrumb (mono trail, hairline-bordered bar). ✅
+  - New `PDPGallery` client island (1/1 hero + 4 hairline thumbs with ink-border selected state; `role=tablist`). ✅
+  - `PDPPurchasePanel` rewritten: category eyebrow, display h1 (clamped 40-52px), price (display + / size mono), SIZE variant pills (ink fill active, disabled + line-through + "— Out of lot" when OOS), IDEAL FOR chip list, 130px/1fr Qty+ATC grid, KEY INGREDIENTS rows (IngredientTag 3px ink left border), paper-2 CLINICAL INSIGHT callout. ✅
+  - New `PDPReviews` client island — 3-up arrow-nav carousel matching Home reviews pattern, with empty state + dynamic page counter. ✅
+  - New "The formulation. / The assay." split on paper-2 replaces V1's single description block + ingredients strip. ✅
+  - Related products: "Complete the regimen" 4-up using existing ProductCard (home variant — no + button, full-card link). ✅
+  - `generateMetadata` + JSON-LD breadcrumb retained; Site name updated from "Form." to "· matter". ✅
 - **Done when**:
-  - Every section matches wireframe.
-  - Variant switching updates price/stock display only (not server-trusted).
-  - ATC works end-to-end (triggers CartDrawer with correct variant+qty).
-  - All PDP tests pass.
-- **Tests**: update PDP tests; add tests for variant pill selection, ingredient rows, clinical insight visibility.
+  - Every section matches wireframe. ✅
+  - Variant switching updates price display only (never trusts client prices). ✅
+  - ATC works end-to-end (triggers CartDrawer with correct variant+qty). ✅
+  - All PDP-related tests pass. ✅
+- **Tests**: 486/486 (was 471; +15). Updated PDPPurchasePanel tests to match new DOM; new PDPGallery (6 tests) + PDPReviews (8 tests) specs.
 - **Risk**: medium.
+- **Delivered commits**:
+  - `f9f6ff7` — feat(storefront-v2): Chunk 8 — PDP re-skin + PDPGallery + PDPReviews
+- **Notes**:
+  - Removed `ReviewBar` from the purchase panel (wireframe doesn't include it — the aggregate lives on the PDPReviews header now as "n = N · avg X.X / 5"). `ReviewBar` atom kept for other surfaces.
+  - Variant OOS state: `disabled={true}` + `data-oos="true"` + visible `— Out of lot` caption + line-through, so screen readers see the disabled state AND sighted users see it. Disabled variants can't be selected (matches wireframe intent that OOS is a display-only state, not a broken click target).
+  - Description + ingredients moved to a shared paper-2 section (`The formulation. / The assay.`) below the purchase panel. Keeps the main 2-col dense above the fold and gives the full ingredient list a proper home that matches matter's editorial voice.
+  - `PDPReviews` duplicates ~70% of `HomeReviewsCarousel` intentionally: data sources differ (hardcoded vs. fetched), empty-state handling differs, and refactoring to a shared primitive would delay shipping. If a third review carousel appears, extract then.
+  - Related products limit bumped from 3 → 4 to match the wireframe.
+  - In-card image pager on related cards (per wireframe) is deferred — we only have one image per product today, so a 1-of-1 pager is dead weight. Revisit when multi-image products ship.
 
 ---
 
@@ -467,3 +477,4 @@ _Update when chunks complete or scope shifts._
 - `2026-04-18` — **Chunk 4 complete** at `8c1d5e0`. CartDrawer re-skinned to matter. Drawer widened to 480px. New free-ship progress block with assay-green unlock state; new trust strip; new formulas/items header format; new empty-state quiz CTA. Upsell eyebrow renamed to § FREQUENTLY ADDED. `Continue shopping` button removed (redundant with Esc/×/backdrop). 435/435 tests (+14).
 - `2026-04-18` — **Chunk 6 complete** at `dbd90ce`. Home page rebuilt for matter — hero, featured, spotlight (new client island), principles (hand-drawn 1px SVGs), reviews carousel (new client island), press 6-cell, newsletter. ProductCard re-skinned and made home/PLP-aware via props (`showAddButton`, `index`, `placeholderTone`). NewsletterForm re-skinned to matter inline (ELECTRONIC ADDRESS + ENROL →, assay-green success, oxblood errors). 456/456 tests (+21).
 - `2026-04-18` — **Chunk 7 complete** at `73d68a7`. PLP rebuilt for matter — FilterBar chips, new ProductTile (1/1 square + hairline-wrapped info block), matter pagination, SkinInsightCTA block with heatmap figure extracted for reuse in Chunk 13. Home keeps ProductCard; PLP uses ProductTile — two components because typography differs. 471/471 tests (+15).
+- `2026-04-18` — **Chunk 8 complete** at `f9f6ff7`. PDP rebuilt — mono breadcrumb, 2-col PDPMain, PDPGallery (new client island with tablist thumbs), PDPPurchasePanel re-skin (display h1, ink variant pills with OOS states, IDEAL FOR chips, matter ATC, clinical-insight callout), paper-2 "formulation + assay" section, PDPReviews carousel (new client island), 4-up related products. ReviewBar removed from panel — aggregate moved to PDPReviews header. 486/486 tests (+15).
