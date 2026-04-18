@@ -25,36 +25,62 @@ describe('LoginSchema', () => {
 
 describe('SignupSchema', () => {
   const valid = {
-    email: 'buyer@example.com',
-    password: 'correcthorse',
-    confirm_password: 'correcthorse',
+    first_name: 'Aarti',
+    last_name:  'Kapoor',
+    email:      'buyer@example.com',
+    password:   'correcthorse',
+    terms:      true as const,
   }
 
-  it('accepts a matching password pair', () => {
+  it('accepts a valid payload', () => {
     expect(SignupSchema.safeParse(valid).success).toBe(true)
   })
 
   it('rejects a password shorter than 8 characters', () => {
-    const result = SignupSchema.safeParse({ ...valid, password: 'short', confirm_password: 'short' })
+    const result = SignupSchema.safeParse({ ...valid, password: 'short' })
     expect(result.success).toBe(false)
   })
 
   it('rejects a password longer than 72 characters', () => {
     const long = 'a'.repeat(73)
-    const result = SignupSchema.safeParse({ ...valid, password: long, confirm_password: long })
+    const result = SignupSchema.safeParse({ ...valid, password: long })
     expect(result.success).toBe(false)
-  })
-
-  it('rejects when passwords do not match', () => {
-    const result = SignupSchema.safeParse({ ...valid, confirm_password: 'different1' })
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(result.error.issues[0]?.path).toEqual(['confirm_password'])
-    }
   })
 
   it('rejects an invalid email', () => {
     const result = SignupSchema.safeParse({ ...valid, email: 'nope' })
     expect(result.success).toBe(false)
+  })
+
+  it('requires a first name', () => {
+    const result = SignupSchema.safeParse({ ...valid, first_name: '' })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0]?.path).toEqual(['first_name'])
+    }
+  })
+
+  it('requires a last name', () => {
+    const result = SignupSchema.safeParse({ ...valid, last_name: '   ' })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects when terms is unchecked', () => {
+    const result = SignupSchema.safeParse({ ...valid, terms: false })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0]?.path).toEqual(['terms'])
+    }
+  })
+
+  it('trims and lowercases the email', () => {
+    const parsed = SignupSchema.parse({ ...valid, email: '  AARTI@Example.COM  ' })
+    expect(parsed.email).toBe('aarti@example.com')
+  })
+
+  it('trims name fields', () => {
+    const parsed = SignupSchema.parse({ ...valid, first_name: '  Aarti ', last_name: 'Kapoor ' })
+    expect(parsed.first_name).toBe('Aarti')
+    expect(parsed.last_name).toBe('Kapoor')
   })
 })

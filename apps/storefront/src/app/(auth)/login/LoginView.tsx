@@ -5,16 +5,15 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Alert } from '@/components/ui/Alert'
 import { createClient } from '@/lib/supabase/browser'
 import { LoginSchema, type LoginInput } from '@/lib/api/schemas/auth'
 
-export default function LoginPage() {
-  const router = useRouter()
+export default function LoginView() {
+  const router       = useRouter()
   const searchParams = useSearchParams()
-  const nextPath = searchParams.get('next') || '/account'
+  const nextPath     = searchParams.get('next') || '/account'
 
   const [apiError, setApiError] = useState<string | null>(null)
 
@@ -28,7 +27,7 @@ export default function LoginPage() {
     setApiError(null)
     const supabase = createClient()
     const { error } = await supabase.auth.signInWithPassword({
-      email: values.email,
+      email:    values.email,
       password: values.password,
     })
 
@@ -42,37 +41,56 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      {/* Minimal header */}
+    <div className="min-h-screen bg-paper flex flex-col">
+      {/* Minimal chrome — wordmark only */}
       <header
         data-testid="auth-navbar"
-        className="border-b border-gray-100 px-6 py-4 flex items-center justify-between"
+        className="bg-paper border-b border-hairline px-8 py-6"
       >
-        <Link
-          href="/"
-          data-testid="auth-brand"
-          className="font-heading text-base tracking-tight text-gray-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gray-900 focus-visible:outline-offset-2 rounded-sm"
-        >
-          Form.
-        </Link>
-        <span className="font-mono text-2xs uppercase tracking-widest text-gray-400">
-          🔒 Secure sign in
-        </span>
+        <div className="max-w-container mx-auto flex items-center justify-between gap-4">
+          <Link
+            href="/"
+            data-testid="auth-brand"
+            aria-label="matter — home"
+            className="font-display text-[22px] leading-none tracking-tight text-ink focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2"
+          >
+            matter<em className="not-italic" style={{ fontStyle: 'italic', letterSpacing: '-0.04em', marginLeft: 1 }}>.</em>
+          </Link>
+          <span className="font-mono text-[10px] tracking-[0.18em] uppercase text-graphite">
+            § Access · Verified
+          </span>
+        </div>
       </header>
 
-      {/* Form */}
-      <main className="flex-1 flex items-start justify-center px-6 py-12">
-        <div className="w-full max-w-sm">
-          <h1 className="font-heading text-2xl text-gray-900 mb-1">Welcome back</h1>
-          <p className="font-body text-sm text-gray-600 mb-8">
-            Sign in to view your orders and skin profile.
-          </p>
+      {/* Form panel on paper-2 */}
+      <main className="flex-1 bg-paper-2 px-8 py-24">
+        <div className="max-w-[480px] mx-auto">
 
+          {/* Header */}
+          <div className="text-center mb-12">
+            <p
+              data-testid="login-eyebrow"
+              className="inline-block font-mono text-[10px] tracking-ultra uppercase text-graphite"
+            >
+              § Returning subject
+            </p>
+            <h1
+              data-testid="login-heading"
+              className="font-display font-normal text-[clamp(40px,5vw,72px)] leading-[0.98] tracking-tightest mt-5"
+            >
+              Welcome <em className="italic">back</em>.
+            </h1>
+            <p className="font-body text-sm text-ink-2 mt-5 leading-[1.6]">
+              Access your dossier to track consignments and reorder.
+            </p>
+          </div>
+
+          {/* Form */}
           <form
             data-testid="login-form"
             onSubmit={handleSubmit(onSubmit)}
             noValidate
-            className="flex flex-col gap-4"
+            className="border-t-2 border-ink pt-6 flex flex-col gap-5"
           >
             {apiError && (
               <div data-testid="login-api-error">
@@ -85,7 +103,7 @@ export default function LoginPage() {
               label="Email address"
               type="email"
               autoComplete="email"
-              placeholder="you@example.com"
+              placeholder="you@domain.com"
               data-testid="input-email"
               error={errors.email?.message}
               {...register('email')}
@@ -96,33 +114,35 @@ export default function LoginPage() {
               label="Password"
               type="password"
               autoComplete="current-password"
+              placeholder="••••••••"
               data-testid="input-password"
               error={errors.password?.message}
               {...register('password')}
             />
 
-            <Button
+            <button
               type="submit"
-              variant="primary"
-              loading={isSubmitting}
               disabled={isSubmitting}
               data-testid="login-submit"
-              className="w-full mt-2"
+              className="bg-ink text-paper py-4 font-mono text-xs tracking-ultra uppercase hover:bg-ink-2 disabled:opacity-60 disabled:cursor-not-allowed transition-colors mt-2 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-ink focus-visible:outline-offset-2"
             >
-              Sign in
-            </Button>
+              {isSubmitting ? 'Signing in…' : 'Sign in →'}
+            </button>
           </form>
 
-          <p className="font-body text-sm text-gray-600 mt-8 text-center">
-            New here?{' '}
+          {/* Switch to signup */}
+          <div className="text-center mt-10 pt-6 border-t border-hairline/60">
+            <span className="font-mono text-[10px] tracking-widest uppercase text-graphite">
+              New here?
+            </span>
             <Link
               href="/signup"
               data-testid="link-signup"
-              className="text-gray-900 underline hover:text-gray-600 transition-colors"
+              className="ml-2.5 font-mono text-[11px] tracking-widest uppercase text-ink border-b border-ink pb-0.5 hover:text-graphite hover:border-graphite transition-colors"
             >
-              Create an account
+              Create a dossier →
             </Link>
-          </p>
+          </div>
         </div>
       </main>
     </div>
