@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import { Navbar } from '@/components/layout/Navbar'
@@ -13,9 +13,9 @@ describe('Navbar', () => {
       expect(screen.getByTestId('navbar').tagName).toBe('HEADER')
     })
 
-    it('renders the brand link', () => {
+    it('renders the brand wordmark', () => {
       render(<Navbar />)
-      expect(screen.getByTestId('navbar-brand')).toHaveTextContent('Form.')
+      expect(screen.getByTestId('navbar-brand')).toHaveTextContent('matter.')
     })
 
     it('brand link points to /', () => {
@@ -27,21 +27,36 @@ describe('Navbar', () => {
       render(<Navbar />)
       expect(screen.getByTestId('nav-link-shop')).toBeInTheDocument()
       expect(screen.getByTestId('nav-link-ingredients')).toBeInTheDocument()
+      expect(screen.getByTestId('nav-link-skininsight')).toBeInTheDocument()
       expect(screen.getByTestId('nav-link-about')).toBeInTheDocument()
-      expect(screen.getByTestId('nav-link-journal')).toBeInTheDocument()
     })
 
-    it('renders search, account, and cart icon buttons', () => {
+    it('SkinInsight link points to /skin-insight (coming-soon)', () => {
       render(<Navbar />)
-      expect(screen.getByTestId('navbar-search')).toBeInTheDocument()
+      expect(screen.getByTestId('nav-link-skininsight')).toHaveAttribute('href', '/skin-insight')
+    })
+
+    it('Ingredients link points to /ingredients', () => {
+      render(<Navbar />)
+      expect(screen.getByTestId('nav-link-ingredients')).toHaveAttribute('href', '/ingredients')
+    })
+
+    it('renders account and cart (no search button in V2)', () => {
+      render(<Navbar />)
       expect(screen.getByTestId('navbar-account')).toBeInTheDocument()
       expect(screen.getByTestId('navbar-cart')).toBeInTheDocument()
+      expect(screen.queryByTestId('navbar-search')).not.toBeInTheDocument()
     })
 
     it('account link points to /login when signed out', () => {
       render(<Navbar />)
       // Default supabase mock returns { user: null } — treated as signed-out
       expect(screen.getByTestId('navbar-account')).toHaveAttribute('href', '/login')
+    })
+
+    it('signed-out account link renders "Account" text label', () => {
+      render(<Navbar />)
+      expect(screen.getByTestId('navbar-account')).toHaveTextContent(/account/i)
     })
   })
 
@@ -52,22 +67,22 @@ describe('Navbar', () => {
       const links = [
         screen.getByTestId('nav-link-shop'),
         screen.getByTestId('nav-link-ingredients'),
+        screen.getByTestId('nav-link-skininsight'),
         screen.getByTestId('nav-link-about'),
-        screen.getByTestId('nav-link-journal'),
       ]
       links.forEach((link) => expect(link).not.toHaveAttribute('aria-current'))
     })
   })
 
-  describe('cart badge', () => {
-    it('cart badge is not shown when cart count is 0', () => {
+  describe('cart bag', () => {
+    it('shows (0) when cart count is 0', () => {
       render(<Navbar />)
-      expect(screen.queryByTestId('navbar-cart-badge')).not.toBeInTheDocument()
+      expect(screen.getByTestId('navbar-cart-count')).toHaveTextContent('(0)')
     })
 
-    it('cart button has accessible label "Cart" when count is 0', () => {
+    it('cart button has accessible label "Bag" when count is 0', () => {
       render(<Navbar />)
-      expect(screen.getByTestId('navbar-cart')).toHaveAttribute('aria-label', 'Cart')
+      expect(screen.getByTestId('navbar-cart')).toHaveAttribute('aria-label', 'Bag')
     })
   })
 
@@ -93,8 +108,8 @@ describe('Navbar', () => {
       await userEvent.click(screen.getByTestId('navbar-mobile-toggle'))
       expect(screen.getByTestId('mobile-nav-link-shop')).toBeInTheDocument()
       expect(screen.getByTestId('mobile-nav-link-ingredients')).toBeInTheDocument()
+      expect(screen.getByTestId('mobile-nav-link-skininsight')).toBeInTheDocument()
       expect(screen.getByTestId('mobile-nav-link-about')).toBeInTheDocument()
-      expect(screen.getByTestId('mobile-nav-link-journal')).toBeInTheDocument()
     })
 
     it('toggle button aria-expanded reflects open state', async () => {
@@ -122,7 +137,7 @@ describe('Navbar', () => {
   })
 
   describe('auth state', () => {
-    it('shows initials and links to /account when signed in', async () => {
+    it('shows initials square and links to /account when signed in', async () => {
       vi.mocked(createClient).mockReturnValueOnce({
         auth: {
           getUser: vi.fn().mockResolvedValue({
@@ -143,16 +158,12 @@ describe('Navbar', () => {
     })
   })
 
-  describe('scroll behaviour', () => {
-    it('starts in transparent state (not scrolled)', () => {
+  describe('sticky behaviour', () => {
+    it('uses sticky positioning (matter: always on paper background, never transparent)', () => {
       render(<Navbar />)
-      expect(screen.getByTestId('navbar').className).toContain('bg-transparent')
-    })
-
-    it('transitions to white background after scroll', () => {
-      render(<Navbar />)
-      fireEvent.scroll(window, { target: { scrollY: 100 } })
-      expect(screen.getByTestId('navbar').className).toContain('bg-white')
+      const el = screen.getByTestId('navbar')
+      expect(el.className).toContain('sticky')
+      expect(el.className).toContain('bg-paper')
     })
   })
 })

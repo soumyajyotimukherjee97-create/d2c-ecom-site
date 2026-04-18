@@ -9,9 +9,9 @@ describe('Footer', () => {
       expect(screen.getByTestId('footer').tagName).toBe('FOOTER')
     })
 
-    it('renders the brand link', () => {
+    it('renders the brand wordmark', () => {
       render(<Footer />)
-      expect(screen.getByTestId('footer-brand')).toHaveTextContent('Form.')
+      expect(screen.getByTestId('footer-brand')).toHaveTextContent('matter.')
     })
 
     it('brand link points to /', () => {
@@ -21,7 +21,7 @@ describe('Footer', () => {
 
     it('renders copyright text', () => {
       render(<Footer />)
-      expect(screen.getByTestId('footer-copyright').textContent).toMatch(/Form\. All rights reserved/)
+      expect(screen.getByTestId('footer-copyright').textContent).toMatch(/Matter\. All rights reserved/)
     })
 
     it('renders privacy link', () => {
@@ -55,9 +55,9 @@ describe('Footer', () => {
       expect(screen.getByTestId('footer-heading-help')).toBeInTheDocument()
     })
 
-    it('renders All products link under Shop', () => {
+    it('renders All formulas link under Shop', () => {
       render(<Footer />)
-      expect(screen.getByRole('link', { name: 'All products' })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: 'All formulas' })).toHaveAttribute(
         'href',
         '/products',
       )
