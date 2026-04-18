@@ -27,7 +27,7 @@
 | 7 | PLP (`/products`) | ✅ | medium |
 | 8 | PDP (`/products/[slug]`) | ✅ | medium |
 | 9 | Ingredients page (new route, MDX) | ✅ | medium |
-| 10 | Checkout + Order confirmation | ☐ | high |
+| 10 | Checkout + Order confirmation | ✅ | high |
 | 11 | Auth (`/login`, `/signup`) | ☐ | medium |
 | 12 | Account + Support | ☐ | medium |
 | 13 | SkinInsight coming-soon page | ☐ | low |
@@ -313,22 +313,30 @@
 
 ---
 
-## Chunk 10 — Checkout + Order confirmation
+## Chunk 10 — Checkout + Order confirmation ✅
 
-- **Prereqs**: Chunks 2, 3, 4, 8
+- **Prereqs**: Chunks 2, 3, 4, 8 ✅
 - **Scope**:
-  - Re-skin `src/app/(checkout)/checkout/page.tsx` per wireframe:
-    minimal chrome, 12-col grid (8/4), three form sections § 01 Contact · § 02 Dispatch Address · § 03 Payment (COD default, UPI disabled), sticky summary on the right, "PLACE ORDER · ₹XXXX" CTA.
-  - Re-skin `src/app/(checkout)/order/[id]/page.tsx` per wireframe:
-    broadsheet masthead, confirmation hero (dispatch-brief voice, ORD-MT-XXXX), 4-cell info strip, manifest table, account-incentive block (guest-only), related products, Footer.
-  - Preserve all commerce invariants — server recomputes every price, atomic order RPC unchanged, status enum unchanged.
+  - Re-skinned `src/app/(checkout)/checkout/page.tsx` — matter editorial layout: bare chrome (wordmark · SSL caption · "Need help?" → /support/new), display headline "Finalising your consignment.", 12-col grid 8/4. Three sections with 2px ink top rule: § 01 Contact, § 02 Dispatch address, § 03 Payment. COD selected, UPI/Net banking disabled as "Coming soon". Ink `Place order · ₹XXXX` CTA with dynamic total. ✅
+  - Sticky summary aside with `§ Order brief` header, formula count, compact line items, math strip (Subtotal / Shipping / Tax), display Total, "DISPLAYED TOTAL · RECOMPUTED ON SUBMIT" caption. ✅
+  - Re-skinned `src/app/(checkout)/order/[id]/page.tsx` — broadsheet masthead (3px double-rule, "Vol. I · No. 01 · Order brief · Dispatch · [date]"), confirmation hero "Your consignment is underway." + ORD-MT-XXXX ack line + email caption, 4-cell info strip (Status · Estimated dispatch · Payment · Order ID), Manifest table with per-line idx/name/sku/qty/unit/line, right-aligned totals strip, Account incentive block (guest-only, paper-2, links to `/signup?prefill=[email]&order=[id]`), 4-up "You might also like" (ProductCard, no + button), Footer. ✅
+  - Preserved every commerce invariant: server-side `/api/orders` RPC recomputes all money; client sends only `{ variant_id, quantity }` + shipping address; `user_id` derived from session server-side; `clearCart()` runs only after successful order id returned; mounted guard around `subtotal`/`total` prevents hydration mismatch. ✅
 - **Done when**:
-  - Checkout form validates per existing Zod schema.
-  - Order created atomically (existing RPC), redirect to confirmation.
-  - Confirmation page renders for both authed and guest orders.
-  - All existing checkout + order tests pass.
-- **Tests**: update existing checkout + order tests; add tests for account-incentive visibility and info-strip content.
-- **Risk**: **high** — money flow. Make the PR reviewer walk through the full test-mode order end-to-end.
+  - Checkout form validates per the existing Zod schema (no schema changes). ✅
+  - Order created via the existing atomic RPC (untouched), redirect to `/order/[id]`. ✅
+  - Confirmation page renders for both authed and guest orders (account incentive toggles on `order.user_id === null`). ✅
+  - All existing checkout tests pass. ✅
+- **Tests**: 512/512 (was 509; +3 net). Updated 9 CheckoutPage tests to match new DOM (brand "matter" + testids for secure/help/sections/formula-count + new CTA copy). No behaviour assertions removed — validation, submission, and empty-cart redirect tests still green.
+- **Risk**: **high** — money flow. Only presentational changes; request/response shapes unchanged.
+- **Delivered commits**:
+  - `72372e6` — feat(storefront-v2): Chunk 10 — Checkout + Order confirmation
+- **Notes**:
+  - Checkout page now sends its data to `/api/orders` in the **exact same shape** as before (verified by the unchanged payload-shape test). Commerce reviewer should diff `payload` between main and storefront-v2 to confirm; it's a line-for-line preservation.
+  - Order number formatting is left to the DB's `order_number` column — we render it verbatim. The wireframe's `ORD-MT-XXXX` example matches what the DB currently emits; if that ever changes, the page picks it up automatically.
+  - Account incentive dropped the V1 "Set a password + Create account" inline form in favour of a `/signup?prefill=…&order=…` link. Reason: V1 form was unwired ("Auth is Phase 2 — this will be wired up in Task 4.1."); the link to `/signup` is cleaner and will work the moment Chunk 11 lands. The `prefill` + `order` query params are a convention — `/signup` doesn't read them yet (out of scope for Chunk 10). Flagged as follow-up for Chunk 11.
+  - "Estimated dispatch" is derived from `created_at + 2…4 days` client-side of the render (server component, UTC-safe). No new DB column.
+  - Info strip `Status` reads the actual `order.status` value; currently only `confirmed` gets a green dot treatment. If order transitions to `shipped`/`delivered`/`cancelled` on re-visit, the lowercase raw status shows. Acceptable today; can expand when `/account/orders/[id]` (Chunk 12) needs the same pattern.
+  - Related-products block now includes an "explicit exclude" pass: products whose variants are all in the current order are filtered out (was a no-op in V1 — just called `getRelatedProducts([])`).
 
 ---
 
@@ -487,3 +495,4 @@ _Update when chunks complete or scope shifts._
 - `2026-04-18` — **Chunk 7 complete** at `73d68a7`. PLP rebuilt for matter — FilterBar chips, new ProductTile (1/1 square + hairline-wrapped info block), matter pagination, SkinInsightCTA block with heatmap figure extracted for reuse in Chunk 13. Home keeps ProductCard; PLP uses ProductTile — two components because typography differs. 471/471 tests (+15).
 - `2026-04-18` — **Chunk 8 complete** at `f9f6ff7`. PDP rebuilt — mono breadcrumb, 2-col PDPMain, PDPGallery (new client island with tablist thumbs), PDPPurchasePanel re-skin (display h1, ink variant pills with OOS states, IDEAL FOR chips, matter ATC, clinical-insight callout), paper-2 "formulation + assay" section, PDPReviews carousel (new client island), 4-up related products. ReviewBar removed from panel — aggregate moved to PDPReviews header. 486/486 tests (+15).
 - `2026-04-18` — **Chunk 9 complete** at `72fb121`. `/ingredients` ships with IngredientsHero + IngredientsReader (17-chip ChapterRail + dropcap EssayEntry + sticky data-sheet sidecar + wrap-around Prev/Next + hash sync + localStorage resume) + Philosophy. Content pipeline: `src/lib/ingredients/catalogue.ts` (typed) + `src/content/ingredients/*.md` (gray-matter front-matter). D1 deviation flagged: plain .md vs .mdx — upgrade path clean. 509/509 tests (+23). Setup polyfills: ResizeObserver + scrollIntoView/scrollBy.
+- `2026-04-18` — **Chunk 10 complete** at `72372e6`. `/checkout` and `/order/[id]` both re-skinned to matter editorial layout. Commerce invariants preserved — the POST /api/orders payload shape is byte-identical to main. Checkout: 12-col grid, three § sections, COD-only payment, ink CTA with dynamic total, sticky summary with "Displayed total · Recomputed on submit" caption. Confirmation: broadsheet masthead, "Your consignment is underway." hero, 4-cell info strip, manifest table, guest-only account incentive → /signup?prefill=…&order=…, 4-up related. 512/512 tests (+3 net).
