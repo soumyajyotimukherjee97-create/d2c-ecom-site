@@ -20,7 +20,7 @@
 | 0 | Branch + infra setup | ✅ | low |
 | 1 | Design tokens + fonts | ✅ | low |
 | 2 | UI atoms (re-skin + new primitives) | ✅ | low |
-| 3 | Shared chrome — Navbar + Footer | ☐ | medium |
+| 3 | Shared chrome — Navbar + Footer | ✅ | medium |
 | 4 | Cart drawer (overlay re-skin) | ☐ | medium |
 | 5 | **Pilot page: About** (new route) | ☐ | low |
 | 6 | Home page | ☐ | medium |
@@ -113,20 +113,29 @@
 
 ---
 
-## Chunk 3 — Shared chrome (Navbar + Footer)
+## Chunk 3 — Shared chrome (Navbar + Footer) ✅
 
-- **Prereqs**: Chunks 1, 2
+- **Prereqs**: Chunks 1, 2 ✅
 - **Scope**:
-  - Rewrite `components/layout/Navbar.tsx` per `wireframes-storefront-v2/Home.html` (wordmark + text-only nav links + Account + Bag, mono-caps 10px, active link underline).
-  - Rewrite `components/layout/Footer.tsx` per same wireframe.
-  - Preserve: sticky behaviour, cart badge with mounted-guard (Zustand persist SSR rule), useAuthUser integration, mobile hamburger collapse.
-  - Add nav entries: `Ingredients` (→ `/ingredients`), `SkinInsight` (→ `/skin-insight`).
+  - Rewrite Navbar per `wireframes-storefront-v2/Home.html` (wordmark + text-only nav + Account + Bag). ✅
+  - Rewrite Footer per same wireframe. ✅
+  - Preserve sticky behaviour, Zustand persist mounted guard, `useAuthUser`, mobile hamburger collapse. ✅
+  - Add nav entries: Ingredients → `/ingredients`, SkinInsight → `/skin-insight` (coming-soon per D2). Dropped `Journal` from top-level nav (remains in Footer). ✅
+  - Remove the V1 search button (was never wired). ✅
 - **Done when**:
-  - Navbar matches wireframe on desktop; mobile stacks reasonably.
-  - Cart badge still reflects `useCartStore.itemCount()` without hydration mismatch.
-  - Existing Navbar/Footer tests pass; add data-testid for new nav items.
-- **Tests**: update Navbar.test.tsx + Footer.test.tsx; add tests for new nav items and active state.
-- **Risk**: medium — every page consumes these.
+  - Navbar matches wireframe on desktop; mobile drawer stacks all nav + Account + Bag. ✅
+  - Cart bag label reflects `useCartStore.itemCount()` through a mounted guard (no hydration mismatch). ✅
+  - Updated tests all pass; new tests cover Ingredients and SkinInsight link targets. ✅
+- **Tests**: 407/407 (was 405; +2 new — SkinInsight and Ingredients link destinations).
+- **Risk**: medium — every page consumes these components. Mitigated: behaviour preserved, test suite still green.
+- **Delivered commits**:
+  - `540e669` — feat(storefront-v2): Chunk 3 — Navbar + Footer re-skin (matter chrome)
+- **Notes**:
+  - Brand wordmark changed from "Form." to "matter." (Instrument Serif, italic period with tighter letter-spacing).
+  - Navbar switched from scroll-based transparent/white toggle to always-sticky paper background. Simpler, matches matter spec, reduces state.
+  - Signed-in Account: 28px paper-3 square with initials (per V2 avatar rule), replacing the V1 black circle.
+  - Bag label is now text: `Bag (N)` with tabular-nums count — no icon badge. Mobile drawer adds Account + Bag rows for full functionality.
+  - Search icon removed; V1 button had no handler.
 
 ---
 
@@ -412,3 +421,4 @@ _Update when chunks complete or scope shifts._
 - `2026-04-18` — **Chunk 0 complete.** `storefront-v2` cut from `main` at `4da9d9c`. GitHub Actions CI added (was missing entirely). Planning docs + handoff landed on `main` at `bf61957`; CI workflow at `092be5d`. Both branches green.
 - `2026-04-18` — **Chunk 1 complete** at `38096be`. Matter tokens + fonts (`next/font/google`) applied. V1 class names back-compat-aliased to matter values; 372/372 tests still pass. V1 pages now render in V1 layouts with matter palette/typography as expected.
 - `2026-04-18` — **Chunk 2 complete** at `846df2e`. 12 atoms re-skinned, 4 new primitives added (Placeholder, Eyebrow, MonoCaption, Ruler), StatusChip alias in barrel. Class-name test assertions refactored to `data-variant` / `data-size` / `data-status` / `data-tone`. 405/405 tests green (+33).
+- `2026-04-18` — **Chunk 3 complete** at `540e669`. Navbar + Footer re-skinned to matter chrome. Wordmark "Form." → "matter." Nav: Shop · Ingredients · SkinInsight · About. Search button removed (unwired). 407/407 tests green (+2).
