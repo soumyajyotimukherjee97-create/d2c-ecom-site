@@ -24,7 +24,7 @@
 | 4 | Cart drawer (overlay re-skin) | ✅ | medium |
 | 5 | **Pilot page: About** (new route) | ✅ | low |
 | 6 | Home page | ✅ | medium |
-| 7 | PLP (`/products`) | ☐ | medium |
+| 7 | PLP (`/products`) | ✅ | medium |
 | 8 | PDP (`/products/[slug]`) | ☐ | medium |
 | 9 | Ingredients page (new route, MDX) | ☐ | medium |
 | 10 | Checkout + Order confirmation | ☐ | high |
@@ -230,22 +230,30 @@
 
 ---
 
-## Chunk 7 — PLP (`/products`)
+## Chunk 7 — PLP (`/products`) ✅
 
-- **Prereqs**: Chunks 2, 3, 4
-- **Scope**: re-skin `src/app/(shop)/products/page.tsx` per `wireframes-storefront-v2/Plp.html`:
-  - FilterBar (skin_type chips, concern chips, sort dropdown) — URL-driven, single-select.
-  - ProductGrid (4-up, tile with class eyebrow, name, concerns, price, + button).
-  - Pagination (URL-driven, prev/page-counter/next, no infinite scroll).
-  - QuizCTA / SkinInsight marketing block (retargets "Try now" → `/skin-insight`).
-  - Preserve `unstable_cache` + admin-client fix (recent commit `4da9d9c`).
+- **Prereqs**: Chunks 2, 3, 4 ✅
+- **Scope**: re-skinned `src/app/(shop)/products/page.tsx` per `wireframes-storefront-v2/Plp.html`:
+  - `FilterBar` re-skinned to matter mono-caps chips (hairline border, ink fill on active); 3-zone grid layout; sort select unchanged. URL-driven + optimistic UI preserved. ✅
+  - New `ProductTile` component (1/1 square specimen, hairline-wrapped info block with `border-top: 0`, body-medium name, concerns eyebrow, `+` button). ✅
+  - Pagination re-skinned to `← Prev · PAGE NN / NN · NEXT →` hairline bar; disabled states keep hairline border and render `text-graphite`. ✅
+  - New `SkinInsightCTA` component extracted for reuse in Chunk 13 (coming-soon page). Heatmap figure with SVG grid + 8 ink-opacity clusters + 4 plotted markers + trust-data strip. ✅
+  - Preserved `unstable_cache` + admin-client fetch (recent `4da9d9c`). ✅
 - **Done when**:
-  - FilterBar drives URL, server re-renders with filtered products.
-  - `+` button on tile triggers CartDrawer.
-  - Empty / loading / error states all handled per V2 rules.
-  - Existing PLP tests + filter logic tests pass.
-- **Tests**: update PLP tests; add tests for ProductTile + button and SkinInsight block CTA.
+  - FilterBar drives URL, server re-renders with filtered products. ✅
+  - `+` button on tile triggers CartDrawer via existing `AddToCartButton`. ✅
+  - Empty state handled with matter voice ("— No formulas match your filters."). ✅
+  - Existing FilterBar tests still pass (aria-pressed contract preserved); new ProductTile + SkinInsightCTA tests added. ✅
+- **Tests**: 471/471 (was 456; +15). FilterBar 18 tests still green without modification.
 - **Risk**: medium — filter state + server fetch cache interaction.
+- **Delivered commits**:
+  - `73d68a7` — feat(storefront-v2): Chunk 7 — PLP re-skin + ProductTile + SkinInsightCTA
+- **Notes**:
+  - Home kept using `ProductCard` (4/5 aspect, display name, counter row, "View assay →" CTA). PLP now uses new `ProductTile` (1/1 aspect, body-medium name, concerns eyebrow, `+` button). Two components because the PLP tile's typography + border system is different enough that `ProductCard + props` would have become a mess.
+  - `AddToCartButton` is shared across both tile variants, Cart upsell, and PDP. Click handler `preventDefault + stopPropagation` prevents the wrapping `<Link>` from navigating when the `+` is clicked.
+  - The PLP tile puts the `+` button outside the `<Link>` via absolute positioning inside the info block (prevents invalid button-inside-anchor nesting).
+  - Empty state lives inside the grid section (not a full-page takeover) and adds a secondary "Take the quiz" CTA.
+  - `SkinInsightCTA` renders an `id="skininsight"` anchor on its `<section>`, so the nav's `/skin-insight` link can deep-scroll here (or navigate to `/skin-insight` once Chunk 13 ships) without breaking either behaviour.
 
 ---
 
@@ -458,3 +466,4 @@ _Update when chunks complete or scope shifts._
 - `2026-04-18` — **Chunk 5 complete** (Chunk 4 deferred — pilot page prioritised to validate atoms + chrome + tokens end-to-end on a real page before touching the cart overlay). `/about` shipped as a server component with `AboutHero` + `Manifesto` per handoff. `wireframes-storefront-v2/About.html` added for V2 consistency. 421/421 tests (+14). 17 routes build (was 16; `/about` is static `○`).
 - `2026-04-18` — **Chunk 4 complete** at `8c1d5e0`. CartDrawer re-skinned to matter. Drawer widened to 480px. New free-ship progress block with assay-green unlock state; new trust strip; new formulas/items header format; new empty-state quiz CTA. Upsell eyebrow renamed to § FREQUENTLY ADDED. `Continue shopping` button removed (redundant with Esc/×/backdrop). 435/435 tests (+14).
 - `2026-04-18` — **Chunk 6 complete** at `dbd90ce`. Home page rebuilt for matter — hero, featured, spotlight (new client island), principles (hand-drawn 1px SVGs), reviews carousel (new client island), press 6-cell, newsletter. ProductCard re-skinned and made home/PLP-aware via props (`showAddButton`, `index`, `placeholderTone`). NewsletterForm re-skinned to matter inline (ELECTRONIC ADDRESS + ENROL →, assay-green success, oxblood errors). 456/456 tests (+21).
+- `2026-04-18` — **Chunk 7 complete** at `73d68a7`. PLP rebuilt for matter — FilterBar chips, new ProductTile (1/1 square + hairline-wrapped info block), matter pagination, SkinInsightCTA block with heatmap figure extracted for reuse in Chunk 13. Home keeps ProductCard; PLP uses ProductTile — two components because typography differs. 471/471 tests (+15).
